@@ -106,8 +106,13 @@ internal fun rememberMovableSlot(content: @Composable () -> Unit): @Composable (
 }
 
 @Composable
-internal fun LevyraRetractableDock(retracted: Boolean, animated: Boolean, dock: @Composable () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+internal fun LevyraRetractableDock(
+    retracted: Boolean,
+    animated: Boolean,
+    modifier: Modifier = Modifier,
+    dock: @Composable () -> Unit
+) {
+    Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         AnimatedVisibility(
             visible = !retracted,
             enter = LevyraMotion.dockRevealEnter(animated),

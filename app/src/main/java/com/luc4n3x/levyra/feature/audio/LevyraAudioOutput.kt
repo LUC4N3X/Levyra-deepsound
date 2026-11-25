@@ -1,7 +1,10 @@
 package com.luc4n3x.levyra.feature.audio
 
+import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -122,7 +125,15 @@ fun rememberLevyraAudioOutputState(): LevyraAudioOutputState {
     return state
 }
 
+private const val MI_PLAY_DETAIL_ACTION = "miui.intent.action.ACTIVITY_MIPLAY_DETAIL"
+private const val MI_PLAY_SERVICE_PACKAGE = "com.milink.service"
+private const val MI_PLAY_AUDIO_SERVICE = "com.miui.miplay.audio.service.CoreService"
+private const val MI_PLAY_RECORDER_CLASS = "miui.media.MiuiAudioPlaybackRecorder"
+private const val MI_PLAY_FOREGROUND_ALLOWLIST_ENTRY = "com.milink.service:hide_foreground"
+private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+
 fun openLevyraSystemOutputSwitcher(context: Context): Boolean {
+    if (openLevyraMiPlayOutputSwitcher(context)) return true
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         val shown = runCatching {
             MediaRouter2.getInstance(context).showSystemOutputSwitcher()
@@ -137,6 +148,38 @@ fun openLevyraSystemOutputSwitcher(context: Context): Boolean {
         true
     }.getOrDefault(false)
 }
+
+private fun openLevyraMiPlayOutputSwitcher(context: Context): Boolean = runCatching {
+    val packageManager = context.packageManager
+    packageManager.getServiceInfo(
+        ComponentName(MI_PLAY_SERVICE_PACKAGE, MI_PLAY_AUDIO_SERVICE),
+        PackageManager.MATCH_ALL
+    )
+    context.classLoader.loadClass(MI_PLAY_RECORDER_CLASS)
+    val detail = packageManager.resolveActivity(
+        Intent(MI_PLAY_DETAIL_ACTION),
+        PackageManager.MATCH_DEFAULT_ONLY or PackageManager.MATCH_SYSTEM_ONLY
+    )?.activityInfo
+        ?.takeIf { miPlayForegroundAllowed(packageManager) }
+        ?: return@runCatching false
+    context.startActivity(
+        Intent(MI_PLAY_DETAIL_ACTION)
+            .setClassName(detail.packageName, detail.name)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
+    true
+}.getOrDefault(false)
+
+@SuppressLint("DiscouragedApi")
+private fun miPlayForegroundAllowed(packageManager: PackageManager): Boolean = runCatching {
+    val resources = packageManager.getResourcesForApplication(SYSTEM_UI_PACKAGE)
+    val allowlistId = resources.getIdentifier(
+        "system_foreground_notification_whitelist",
+        "array",
+        SYSTEM_UI_PACKAGE
+    )
+    allowlistId != 0 && MI_PLAY_FOREGROUND_ALLOWLIST_ENTRY in resources.getStringArray(allowlistId)
+}.getOrDefault(false)
 
 internal fun queryLevyraAudioOutputState(
     audioManager: AudioManager,

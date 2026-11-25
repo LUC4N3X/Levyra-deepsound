@@ -2762,7 +2762,10 @@ fun LevyraApp(
                         .onSizeChanged { selectionChromeHeight.value = it.height }
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
-                        .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) }
+                        .graphicsLayer {
+                            alpha = playerChromeAlpha(expansionProvider())
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
+                        }
                         .then(if (bottomTabsScrimVisible) Modifier.bottomTabsScrim() else Modifier),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -2819,6 +2822,7 @@ fun LevyraApp(
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
                         scaleX = 1f + MiniReceiveOpenX * receive
                         scaleY = 1f + MiniReceiveOpenY * receive
+                        translationY = morphAnchors.miniLiftPx()
                     }
                     val miniPlayerSlot = rememberMovableSlot {
                         AnimatedVisibility(
@@ -2932,6 +2936,9 @@ fun LevyraApp(
                     }
                     val dockRetracted = dockHidden
                     val dockRowSideBySide = dockSideBySide && !dockRetracted
+                    androidx.compose.runtime.SideEffect {
+                        morphAnchors.miniLiftEnabled = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin && !LevyraIsAtelier && !dockRowSideBySide
+                    }
                     run {
                         val dockModifier = if (miniMaxWidth.isFinite()) {
                             Modifier.widthIn(max = miniMaxWidth.dp)
@@ -2973,7 +2980,18 @@ fun LevyraApp(
                                 )
                             }
                         }
-                        val dockRevealSlot = rememberMovableSlot { LevyraRetractableDock(dockRetracted, state.animationsEnabled, dockSurfaceSlot) }
+                        val dockRevealSlot = rememberMovableSlot {
+                            LevyraRetractableDock(
+                                retracted = dockRetracted,
+                                animated = state.animationsEnabled,
+                                modifier = Modifier.graphicsLayer {
+                                    if (morphAnchors.miniLiftEnabled) {
+                                        translationY = size.height * com.luc4n3x.levyra.ui.player.playerTabsSlideFraction(expansionProvider())
+                                    }
+                                },
+                                dock = dockSurfaceSlot
+                            )
+                        }
                         LevyraDockStack(
                             dockMorph, dockRowSideBySide, miniPlayerSlot, dockRevealSlot,
                             DockSearchRoute(state.interfaceSettings.skin, navigationStudio.settings, backgroundTab, dockState, viewModel::selectTab)

@@ -73,6 +73,11 @@ fun playerMotionProgress(fraction: Float): Float {
 fun playerChromeAlpha(expansion: Float): Float =
     1f - playerMotionProgress(normalize(expansion, ChromeFadeStart, ChromeFadeEnd))
 
+fun playerMiniLiftFraction(expansion: Float): Float =
+    expansion.finiteOr(PlayerExpansionCollapsed).coerceIn(PlayerExpansionCollapsed, ChromeFadeEnd)
+
+fun playerTabsSlideFraction(expansion: Float): Float = 1f - playerChromeAlpha(expansion)
+
 fun playerSurfaceAlpha(expansion: Float, classic: Boolean = false): Float =
     playerMotionProgress(normalize(expansion, SurfaceFadeStart, if (classic) ClassicSurfaceFadeEnd else SurfaceFadeEnd))
 

@@ -12,15 +12,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 
 private const val StageRevealStart = 0.70f
 private const val StageRevealEnd = 0.86f
 private const val StageHandOffEnd = 0.98f
+private const val MiniLiftTolerancePx = 0.5f
 
 internal val PlayerMorphFlightShadow = 18.dp
 
@@ -52,6 +55,7 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
         private set
     var landing by mutableStateOf(PlayerMorphLanding.Rounded)
         private set
+    var miniLiftEnabled by mutableStateOf(false)
     private var fullRestScale by mutableFloatStateOf(1f)
     private var fullRestOffsetY by mutableFloatStateOf(0f)
     internal var playerContainer: LayoutCoordinates? = null
@@ -70,8 +74,12 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     fun update(slot: PlayerMorphSlot, bounds: Rect) {
         if (!bounds.isUsableMorphRect()) return
         when (slot) {
-            PlayerMorphSlot.Mini -> if (miniBounds != bounds) miniBounds = bounds
-            PlayerMorphSlot.MiniCard -> if (miniCardBounds != bounds) miniCardBounds = bounds
+            PlayerMorphSlot.Mini -> bounds.withoutMiniLift().let { rest ->
+                if (!miniBounds.isNear(rest)) miniBounds = rest
+            }
+            PlayerMorphSlot.MiniCard -> bounds.withoutMiniLift().let { rest ->
+                if (!miniCardBounds.isNear(rest)) miniCardBounds = rest
+            }
             PlayerMorphSlot.Full -> if (fullBounds != bounds) fullBounds = bounds
             PlayerMorphSlot.Stage -> if (stageBounds != bounds) stageBounds = bounds
         }
@@ -84,6 +92,21 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
     }
 
     internal fun currentExpansion(): Float = expansion()
+
+    fun miniLiftPx(): Float {
+        if (!miniLiftEnabled) return 0f
+        val restTop = miniCardBounds?.top ?: return 0f
+        return -restTop * playerMiniLiftFraction(expansion())
+    }
+
+    private fun Rect.withoutMiniLift(): Rect = translate(0f, -miniLiftPx())
+
+    private fun Rect?.isNear(other: Rect): Boolean {
+        if (this == null) return false
+        if (!miniLiftEnabled) return this == other
+        return abs(left - other.left) < MiniLiftTolerancePx && abs(top - other.top) < MiniLiftTolerancePx &&
+            abs(right - other.right) < MiniLiftTolerancePx && abs(bottom - other.bottom) < MiniLiftTolerancePx
+    }
 
     fun updateLanding(shape: PlayerMorphLanding) {
         if (landing != shape) landing = shape
@@ -146,7 +169,11 @@ fun Modifier.playerMorphAnchor(
     if (!coordinates.isAttached) return@onGloballyPositioned
     val inPlayer = slot == PlayerMorphSlot.Full || slot == PlayerMorphSlot.Stage
     val container = anchors.playerContainer?.takeIf { inPlayer && it.isAttached }
-    val bounds = container?.localBoundingBoxOf(coordinates, clipBounds = false) ?: coordinates.boundsInRoot()
+    val bounds = when {
+        container != null -> container.localBoundingBoxOf(coordinates, clipBounds = false)
+        !inPlayer && anchors.miniLiftEnabled -> coordinates.findRootCoordinates().localBoundingBoxOf(coordinates, clipBounds = false)
+        else -> coordinates.boundsInRoot()
+    }
     anchors.update(slot, bounds)
 }
 

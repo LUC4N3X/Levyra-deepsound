@@ -25,7 +25,7 @@ class PlayerDeckTest {
 
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
-        assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
+        assertEquals(PlayerDeckLayout.Turntable, PlayerVisualMode.Artwork.deckLayout())
         assertEquals(PlayerDeckLayout.Cinema, PlayerVisualMode.Cinema.deckLayout())
         assertEquals(PlayerDeckLayout.Aura, PlayerVisualMode.CanvasImmersive.deckLayout())
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
@@ -51,8 +51,9 @@ class PlayerDeckTest {
         assertFalse(PlayerDeckLayout.Pulse.showsLyricsFace())
         assertFalse(PlayerDeckLayout.Cinema.showsLyricsFace())
         assertFalse(PlayerDeckLayout.Stack.showsLyricsFace())
+        assertFalse(PlayerDeckLayout.Turntable.showsLyricsFace())
         PlayerDeckLayout.entries
-            .filterNot { it == PlayerDeckLayout.Aura || it == PlayerDeckLayout.Pulse || it == PlayerDeckLayout.Cinema || it == PlayerDeckLayout.Stack }
+            .filterNot { it == PlayerDeckLayout.Aura || it == PlayerDeckLayout.Pulse || it == PlayerDeckLayout.Cinema || it == PlayerDeckLayout.Stack || it == PlayerDeckLayout.Turntable }
             .forEach { assertTrue(it.showsLyricsFace()) }
     }
 
@@ -328,6 +329,7 @@ class PlayerDeckTest {
         assertEquals("Padrão", brazil.playerDeckDefaultBadge)
         assertFalse(PlayerDeckLayout.Cinema.usesPlayerBackground())
         assertFalse(PlayerDeckLayout.Stack.usesPlayerBackground())
+        assertFalse(PlayerDeckLayout.Turntable.usesPlayerBackground())
         assertTrue(PlayerDeckLayout.Flow.usesPlayerBackground())
         assertTrue(PlayerDeckLayout.Levyra.usesPlayerBackground())
         assertEquals(1, stackSwipeStep(0.4f, 0f, canForward = true))
