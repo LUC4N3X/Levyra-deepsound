@@ -66,6 +66,8 @@ import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.components.horizontalShelfBleed
 import com.luc4n3x.levyra.desktop.app.ui.components.levyraLogoPainter
 import com.luc4n3x.levyra.desktop.app.ui.components.SunnyShape
+import androidx.compose.foundation.lazy.LazyListScope
+import com.luc4n3x.levyra.ui.i18n.HomeSectionSubtitles
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.desktop.app.ui.components.rememberArtworkRequest
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
@@ -280,123 +282,7 @@ fun HomeScreen(
             }
         }
 
-        if (discover.freshCurrents.isNotEmpty()) {
-            item(key = "albums") {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(
-                        LevyraIcons.Disc,
-                        SectionTints.Periwinkle,
-                        remember(code) { LevyraMonoHomeStrings.forCode(code).newAlbums },
-                        subtitles.newAlbums
-                    ) { SectionShowAll(shared.showAll, onOpenNewReleases) }
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(discover.freshCurrents, key = { "album-${it.id}" }) { track ->
-                            AlbumCard(track, onClick = {
-                                actions.onPlay(discover.freshCurrents, discover.freshCurrents.indexOf(track).coerceAtLeast(0))
-                            })
-                        }
-                    }
-                }
-            }
-        }
-
-        if (trendingArtists.isNotEmpty()) {
-            item(key = "artists") {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(LevyraIcons.Artist, SectionTints.Rose, shared.trendingArtists, subtitles.trendingArtists)
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        items(trendingArtists, key = { "artist-$it" }) { name ->
-                            ArtistBubble(name, artistPortraits[name.lowercase()].orEmpty(), onClick = { onOpenArtist(name) })
-                        }
-                    }
-                }
-            }
-        }
-
-        if (discover.genres.isNotEmpty()) {
-            item(key = "genres") {
-                val copy = remember(code) { genreChartCopy(code) }
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(LevyraIcons.Chart, SectionTints.Periwinkle, copy.shelfTitle, copy.shelfSubtitle)
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(discover.genres, key = { "genre-${it.id}" }) { shelf ->
-                            GenreCard(
-                                title = shelf.title,
-                                badge = copy.title,
-                                artists = shelf.tracks.map { soundtrackPrimaryArtist(it.artist) }.distinct().take(4).joinToString(", "),
-                                artworkUrl = shelf.tracks.firstOrNull { it.hasArtwork }?.artworkUrl.orEmpty(),
-                                onClick = { if (shelf.tracks.isNotEmpty()) actions.onPlay(shelf.tracks, 0) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        if (feed.videos.isNotEmpty()) {
-            item(key = "videos") {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(LevyraIcons.Play, SectionTints.Sky, shared.homeTrendingVideoShelfTitle, subtitles.trendingVideos) {
-                        SectionPlayButton(strings.playAll) { actions.onPlay(feed.videos, 0) }
-                    }
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(feed.videos, key = { "video-${it.id}" }) { video ->
-                            VideoCard(video, code, shared.pulsePlays, onClick = { actions.onPlay(feed.videos, feed.videos.indexOf(video).coerceAtLeast(0)) })
-                        }
-                    }
-                }
-            }
-        }
-
-        if (discover.tracks.isNotEmpty()) {
-            item(key = "top") {
-                val country = remember(discover.country, code) {
-                    Locale("", discover.country).getDisplayCountry(Locale.forLanguageTag(code)).ifBlank { discover.country }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(
-                        LevyraIcons.Chart,
-                        SectionTints.Amber,
-                        shared.chartMarketTitle(discover.tracks.size.coerceAtMost(50), country),
-                        subtitles.chartMarket
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            SectionShowAll(shared.showAll, onOpenDiscover)
-                            SectionPlayButton(strings.playAll) { actions.onPlay(discover.tracks, 0) }
-                        }
-                    }
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(discover.tracks.take(RANKED_CARDS), key = { "rank-${it.id}" }) { track ->
-                            val index = discover.tracks.indexOf(track)
-                            PosterCard(track, rank = index + 1, onClick = { actions.onPlay(discover.tracks, index.coerceAtLeast(0)) })
-                        }
-                    }
-                    if (discover.tracks.size > RANKED_CARDS) {
-                        TrackColumns(discover.tracks, actions, ranked = true, startIndex = RANKED_CARDS)
-                    }
-                }
-            }
-        }
+        homeCatalogSections(discover, feed, actions, artistPortraits, trendingArtists, code, strings, shared, subtitles, onOpenArtist, onOpenDiscover, onOpenNewReleases)
     }
 }
 
@@ -867,3 +753,137 @@ private const val DAILY_LIMIT = 14
 private const val ARTIST_LIMIT = 14
 private const val RANKED_CARDS = 10
 private const val ROWS_PER_COLUMN = 4
+
+
+private fun LazyListScope.homeCatalogSections(
+    discover: DiscoverUiState,
+    feed: com.luc4n3x.levyra.desktop.app.state.HomeFeedState,
+    actions: TrackActions,
+    artistPortraits: Map<String, String>,
+    trendingArtists: List<String>,
+    code: String,
+    strings: com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings,
+    shared: SharedStrings,
+    subtitles: HomeSectionSubtitles,
+    onOpenArtist: (String) -> Unit,
+    onOpenDiscover: () -> Unit,
+    onOpenNewReleases: () -> Unit
+) {
+    if (discover.freshCurrents.isNotEmpty()) {
+        item(key = "albums") {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(
+                    LevyraIcons.Disc,
+                    SectionTints.Periwinkle,
+                    remember(code) { LevyraMonoHomeStrings.forCode(code).newAlbums },
+                    subtitles.newAlbums
+                ) { SectionShowAll(shared.showAll, onOpenNewReleases) }
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(discover.freshCurrents, key = { "album-${it.id}" }) { track ->
+                        AlbumCard(track, onClick = {
+                            actions.onPlay(discover.freshCurrents, discover.freshCurrents.indexOf(track).coerceAtLeast(0))
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    if (trendingArtists.isNotEmpty()) {
+        item(key = "artists") {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(LevyraIcons.Artist, SectionTints.Rose, shared.trendingArtists, subtitles.trendingArtists)
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    items(trendingArtists, key = { "artist-$it" }) { name ->
+                        ArtistBubble(name, artistPortraits[name.lowercase()].orEmpty(), onClick = { onOpenArtist(name) })
+                    }
+                }
+            }
+        }
+    }
+
+    if (discover.genres.isNotEmpty()) {
+        item(key = "genres") {
+            val copy = remember(code) { genreChartCopy(code) }
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(LevyraIcons.Chart, SectionTints.Periwinkle, copy.shelfTitle, copy.shelfSubtitle)
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(discover.genres, key = { "genre-${it.id}" }) { shelf ->
+                        GenreCard(
+                            title = shelf.title,
+                            badge = copy.title,
+                            artists = shelf.tracks.map { soundtrackPrimaryArtist(it.artist) }.distinct().take(4).joinToString(", "),
+                            artworkUrl = shelf.tracks.firstOrNull { it.hasArtwork }?.artworkUrl.orEmpty(),
+                            onClick = { if (shelf.tracks.isNotEmpty()) actions.onPlay(shelf.tracks, 0) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (feed.videos.isNotEmpty()) {
+        item(key = "videos") {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(LevyraIcons.Play, SectionTints.Sky, shared.homeTrendingVideoShelfTitle, subtitles.trendingVideos) {
+                    SectionPlayButton(strings.playAll) { actions.onPlay(feed.videos, 0) }
+                }
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(feed.videos, key = { "video-${it.id}" }) { video ->
+                        VideoCard(video, code, shared.pulsePlays, onClick = { actions.onPlay(feed.videos, feed.videos.indexOf(video).coerceAtLeast(0)) })
+                    }
+                }
+            }
+        }
+    }
+
+    if (discover.tracks.isNotEmpty()) {
+        item(key = "top") {
+            val country = remember(discover.country, code) {
+                Locale("", discover.country).getDisplayCountry(Locale.forLanguageTag(code)).ifBlank { discover.country }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(
+                    LevyraIcons.Chart,
+                    SectionTints.Amber,
+                    shared.chartMarketTitle(discover.tracks.size.coerceAtMost(50), country),
+                    subtitles.chartMarket
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SectionShowAll(shared.showAll, onOpenDiscover)
+                        SectionPlayButton(strings.playAll) { actions.onPlay(discover.tracks, 0) }
+                    }
+                }
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(discover.tracks.take(RANKED_CARDS), key = { "rank-${it.id}" }) { track ->
+                        val index = discover.tracks.indexOf(track)
+                        PosterCard(track, rank = index + 1, onClick = { actions.onPlay(discover.tracks, index.coerceAtLeast(0)) })
+                    }
+                }
+                if (discover.tracks.size > RANKED_CARDS) {
+                    TrackColumns(discover.tracks, actions, ranked = true, startIndex = RANKED_CARDS)
+                }
+            }
+        }
+    }
+}

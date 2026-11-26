@@ -50,55 +50,71 @@ fun LevyraSlider(
         modifier = modifier
             .height(16.dp)
             .hoverable(interaction, enabled)
-            .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
-            .semantics {
-                if (description.isNotBlank()) contentDescription = description
-                progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
-                if (enabled) {
-                    setProgress { target ->
-                        change(target.coerceIn(0f, 1f))
-                        finished()
-                        true
-                    }
-                }
-            }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                detectTapGestures { offset ->
-                    change((offset.x / size.width).coerceIn(0f, 1f))
-                    finished()
-                }
-            }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        dragging = true
-                        change((offset.x / size.width).coerceIn(0f, 1f))
-                    },
-                    onDragEnd = {
-                        dragging = false
-                        finished()
-                    },
-                    onDragCancel = {
-                        dragging = false
-                        finished()
-                    },
-                    onHorizontalDrag = { pointer, _ ->
-                        change((pointer.position.x / size.width).coerceIn(0f, 1f))
-                    }
-                )
-            }
+            .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand).sliderInput(fraction, description, { dragging = it }, { change(it) }, { finished() }) else Modifier.sliderSemantics(fraction, description))
     ) {
         val track = (if (emphasized) 5.dp else 4.dp).toPx()
         val top = (size.height - track) / 2f
         val radius = CornerRadius(track / 2f)
         val value = fraction.coerceIn(0f, 1f)
         drawRoundRect(inactiveColor, Offset(0f, top), Size(size.width, track), radius)
-        val active = if (enabled) (if (emphasized) activeColor else activeColor.copy(alpha = 0.92f)) else activeColor.copy(alpha = 0.38f)
+        val active = activeTint(activeColor, enabled, emphasized)
         drawRoundRect(active, Offset(0f, top), Size(size.width * value, track), radius)
         if (emphasized) {
             drawCircle(activeColor, radius = 6.dp.toPx(), center = Offset(size.width * value, size.height / 2f))
         }
     }
 }
+
+private fun activeTint(color: Color, enabled: Boolean, emphasized: Boolean): Color = when {
+    !enabled -> color.copy(alpha = 0.38f)
+    emphasized -> color
+    else -> color.copy(alpha = 0.92f)
+}
+
+private fun Modifier.sliderSemantics(fraction: Float, description: String, onSet: ((Float) -> Unit)? = null): Modifier = semantics {
+    if (description.isNotBlank()) contentDescription = description
+    progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
+    if (onSet != null) {
+        setProgress { target ->
+            onSet(target.coerceIn(0f, 1f))
+            true
+        }
+    }
+}
+
+private fun Modifier.sliderInput(
+    fraction: Float,
+    description: String,
+    onDragging: (Boolean) -> Unit,
+    change: (Float) -> Unit,
+    finished: () -> Unit
+): Modifier = this
+    .sliderSemantics(fraction, description) { target ->
+        change(target)
+        finished()
+    }
+    .pointerInput(Unit) {
+        detectTapGestures { offset ->
+            change((offset.x / size.width).coerceIn(0f, 1f))
+            finished()
+        }
+    }
+    .pointerInput(Unit) {
+        detectHorizontalDragGestures(
+            onDragStart = { offset ->
+                onDragging(true)
+                change((offset.x / size.width).coerceIn(0f, 1f))
+            },
+            onDragEnd = {
+                onDragging(false)
+                finished()
+            },
+            onDragCancel = {
+                onDragging(false)
+                finished()
+            },
+            onHorizontalDrag = { pointer, _ ->
+                change((pointer.position.x / size.width).coerceIn(0f, 1f))
+            }
+        )
+    }
