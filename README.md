@@ -90,22 +90,15 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-39">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-39" width="900" alt="Unified library, Top 100 and city charts, playlist import, and skin customization.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-40">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-40" width="900" alt="Unified library, Top 100 and city charts, skin customization, and Spotify Style.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-30">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-30" width="900" alt="Settings and studios, on-device listening insights, shared listening with Unison over Wi-Fi, and Your Year in Music.">
-  </picture></a>
-</p>
-
-<p>
-  <a href="docs/assets/showcase/readme/row-06-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-28">
-    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-28" width="900" alt="Spotify Style, in-app updates, live radio, and Player Deck.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-31">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-31" width="900" alt="In-app updates, on-device listening insights, shared listening with Unison over Wi-Fi, and Your Year in Music.">
   </picture></a>
 </p>
 

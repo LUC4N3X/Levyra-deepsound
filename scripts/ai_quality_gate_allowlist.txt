@@ -61,6 +61,9 @@ docs/assets/showcase/readme/row-05-studio.webp
 docs/assets/showcase/readme/row-05-studio-mobile.webp
 docs/assets/showcase/readme/row-06-studio.webp
 docs/assets/showcase/readme/row-06-studio-mobile.webp
+docs/assets/showcase/editorial-cards/desktop_home_clean.webp
+docs/assets/showcase/readme/desktop-studio.webp
+docs/assets/showcase/readme/desktop-studio-mobile.webp
 app/src/main/res/drawable-nodpi/onboarding_levyra_brand.webp
 docs/assets/levyra-github-banner.webp
 docs/assets/levyra-github-banner-light.webp
