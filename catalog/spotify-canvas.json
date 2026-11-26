@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-25T21:45:33Z",
+  "generatedAt": "2026-11-26T08:27:07Z",
   "items": [
     {
       "song": "Victory Lap (feat. Shiva, Geolier)",
@@ -430,13 +430,6 @@
       "scope": "track"
     },
     {
-      "song": "The Christmas Song (Merry Christmas To You) - Remastered 1999",
-      "artist": "Nat King Cole",
-      "album": "Christmas Hits",
-      "url": "https://canvaz.scdn.co/upload/artist/7v4imS0moSyGdXyLgVTIV7/video/5aa095aaa53749e78d1895236412d043.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Sleigh Ride",
       "artist": "The Ronettes",
       "album": "Sleigh Ride",
@@ -544,7 +537,7 @@
     {
       "song": "Mistletoe",
       "artist": "Justin Bieber",
-      "album": "Under The Mistletoe",
+      "album": "Christmas",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fdad1192d6504562ad65445226732137.cnvs.mp4",
       "scope": "track"
     },
@@ -553,6 +546,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1223,7 +1223,7 @@
     {
       "song": "Mistletoe",
       "artist": "Justin Bieber",
-      "album": "Under The Mistletoe (Deluxe Edition)",
+      "album": "Under The Mistletoe",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fdad1192d6504562ad65445226732137.cnvs.mp4",
       "scope": "track"
     },
@@ -1928,13 +1928,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Perfect",
       "artist": "Kevin",
       "album": "DE GIER",
@@ -2562,6 +2555,13 @@
       "artist": "Björnzone",
       "album": "A Christmas Song",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/8bed8db0aea347bab0fbba2ae5c3ffdb.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mistletoe",
+      "artist": "Justin Bieber",
+      "album": "Under The Mistletoe (Deluxe Edition)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fdad1192d6504562ad65445226732137.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5764,13 +5764,6 @@
       "scope": "track"
     },
     {
-      "song": "ROCKSTAR/RANGE ROVER",
-      "artist": "scottyolorin",
-      "album": "GLACIER BOY",
-      "url": "https://canvaz.scdn.co/upload/artist/3CyKLwlqtYmQxNt4cWflKx/video/13598dc3ffa54a8899dc87c33dc7d7c1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "23",
       "artist": "Burna Boy",
       "album": "Twice As Tall",
@@ -6741,6 +6734,13 @@
       "artist": "Take That",
       "album": "Dreamers",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/39fedf1365df49b9ad8a5c79424fb5f8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Hơn Cả Anh",
+      "artist": "VSTRA, Tyronee",
+      "album": "Hơn Cả Anh",
+      "url": "https://canvaz.scdn.co/upload/artist/2aMo0CYbTieTisS0BlWc59/video/8dcb3a2f37be418e9f2ef56d78ed4448.cnvs.mp4",
       "scope": "track"
     },
     {
