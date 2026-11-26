@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.desktop.core.storage.HistoryEntry
 import com.luc4n3x.levyra.desktop.core.storage.DownloadData
 import com.luc4n3x.levyra.desktop.core.storage.DownloadRecord
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
@@ -86,7 +87,9 @@ fun LibraryScreen(
     val historyTracks = remember(history) { history.map { it.track } }
     val recent = remember(historyTracks) { historyTracks.distinctBy { it.id } }
     val mostPlayed = remember(history) {
-        history.groupBy { it.track.id }.values.sortedByDescending { it.size }.map { it.first().track }
+        history.groupBy { it.track.id }.values
+            .sortedWith(compareByDescending<List<HistoryEntry>> { entries -> entries.sumOf { it.playCount } }.thenByDescending { entries -> entries.maxOf { it.playedAt } })
+            .map { it.first().track }
     }
     val pulse = remember(library.history) { libraryPulse(library.history) }
     val orderedDownloads = remember(downloads.records) { downloads.records.sortedByDescending { it.updatedAt } }

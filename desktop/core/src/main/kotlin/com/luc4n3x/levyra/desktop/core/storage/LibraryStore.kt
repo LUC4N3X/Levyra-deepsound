@@ -85,7 +85,8 @@ class LibraryStore(
     }
 
     fun recordPlayback(track: Track) = mutate { data ->
-        val entry = HistoryEntry(track = track, playedAt = nowMillis())
+        val previous = data.history.firstOrNull { it.track.id == track.id }?.playCount ?: 0
+        val entry = HistoryEntry(track = track, playedAt = nowMillis(), playCount = previous + 1)
         val history = (listOf(entry) + data.history.filterNot { it.track.id == track.id })
             .take(MAX_HISTORY)
         data.copy(history = history)

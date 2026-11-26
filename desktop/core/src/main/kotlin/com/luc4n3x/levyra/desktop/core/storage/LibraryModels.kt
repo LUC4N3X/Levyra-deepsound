@@ -16,7 +16,8 @@ data class LocalPlaylist(
 @Serializable
 data class HistoryEntry(
     val track: Track,
-    val playedAt: Long
+    val playedAt: Long,
+    val playCount: Int = 1
 )
 
 @Serializable

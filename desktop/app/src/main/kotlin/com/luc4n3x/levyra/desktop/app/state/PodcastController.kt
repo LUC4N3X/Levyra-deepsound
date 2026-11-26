@@ -64,6 +64,7 @@ class PodcastController(
     private var resumeJob: Job? = null
     @Volatile private var trackedEpisodes: Map<String, Track> = emptyMap()
     private var lastSavedId = ""
+    @Volatile private var resumedId = ""
     private var lastSavedPositionMs = 0L
 
     val state: StateFlow<PodcastUiState> = internalState.asStateFlow()
@@ -171,23 +172,33 @@ class PodcastController(
     fun play(episodes: List<Track>, episode: Track) {
         val list = episodes.distinctBy(Track::id).ifEmpty { listOf(episode) }
         val index = list.indexOfFirst { it.id == episode.id }.coerceAtLeast(0)
-        val resume = resumePositionMs(internalState.value.progressById[episode.id])
         trackedEpisodes = list.associateBy(Track::id)
         resumeJob?.cancel()
+        resumedId = ""
         playback.playTracks(list, index)
+    }
+
+    private fun resumeIfSaved(episodeId: String) {
+        resumedId = episodeId
+        val resume = resumePositionMs(internalState.value.progressById[episodeId])
+        resumeJob?.cancel()
         if (resume <= 0L) return
         resumeJob = scope.launch {
             val ready = withTimeoutOrNull(RESUME_TIMEOUT_MS) {
-                playback.state.first { it.current?.id == episode.id && it.durationMs > 0L && it.status == PlaybackStatus.PLAYING }
+                playback.state.first { it.current?.id == episodeId && it.durationMs > 0L && it.status == PlaybackStatus.PLAYING }
             }
             if (ready != null && resume < ready.durationMs) playback.seekTo(resume)
         }
     }
 
     private fun recordProgress(snapshot: PlaybackUiState) {
-        if (resumeJob?.isActive == true) return
         val current = snapshot.current ?: return
         val episode = trackedEpisodes[current.id] ?: return
+        if (current.id != resumedId) {
+            resumeIfSaved(current.id)
+            return
+        }
+        if (resumeJob?.isActive == true) return
         val position = snapshot.positionMs
         if (snapshot.durationMs <= 0L || position < PODCAST_RESUME_MIN_POSITION_MS) return
         val moved = abs(position - lastSavedPositionMs)

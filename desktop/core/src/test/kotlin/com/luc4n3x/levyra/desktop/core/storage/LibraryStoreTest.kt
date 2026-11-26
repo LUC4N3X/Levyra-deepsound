@@ -88,6 +88,8 @@ class LibraryStoreTest {
         assertEquals(2, history.size)
         assertEquals("abc", history.first().track.id)
         assertEquals(30L, history.first().playedAt)
+        assertEquals(2, history.first().playCount)
+        assertEquals(1, history.last().playCount)
 
         store.clearHistory()
         assertTrue(store.current.history.isEmpty())
