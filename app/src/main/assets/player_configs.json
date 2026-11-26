@@ -513,6 +513,8 @@
     "4ee2dbc0": { "sig": "RA(18,7746,INPUT)", "nClass": "ed", "sts": 20780, "aliases": [] },
     "92eef845": { "sig": "RA(18,7746,INPUT)", "nClass": "ed", "sts": 20780, "aliases": ["6710872b"] },
     "ffd0c196": { "sig": "dn(18,7746,INPUT)", "nClass": "Bp", "sts": 20780, "aliases": ["32befa38"] },
-    "559b6b76": { "sig": "Zd(18,7746,INPUT)", "nClass": "Tb", "sts": 20780, "aliases": ["70d8eb43"] }
+    "559b6b76": { "sig": "Zd(18,7746,INPUT)", "nClass": "Tb", "sts": 20780, "aliases": ["70d8eb43"] },
+    "e5835c8a": { "sig": "od(18,7746,INPUT)", "nClass": "nd", "sts": 20780, "aliases": ["d7694e54"] },
+    "9244921b": { "sig": "od(18,7746,INPUT)", "nClass": "nd", "sts": 20780, "aliases": ["de68a001"] }
   }
 }
