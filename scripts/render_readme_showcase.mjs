@@ -42,16 +42,12 @@ const cards = [
   ['08_acoustic_precision', 'AUDIO', ['Your sound'], ['Output, quality & audio options.']],
   ['09_keep_it_personal', 'LIBRARY', ['One library'], ['Local files meet streamed music.']],
   ['05b_explore_charts', 'EXPLORE', ['Explore charts'], ['Top 100, city charts & moods.']],
-  ['07_every_genre', 'IMPORT', ['Import playlists'], ['Links, files & track review.']],
   ['13_tailor_every_detail', 'PERSONALIZATION', ['Make it yours'], ['Skins, themes & studios.']],
-  ['17_sing_along', 'SETTINGS', ['Settings & studios'], ['Customize skins, themes & playback.']],
+  ['21_spotify_style', 'LEVYRA SKINS', ['Spotify Style'], ['Browse genres & new releases.']],
+  ['22_apple_music_style', 'UPDATES', ['In-app updates'], ['Changelogs & one-tap updates.']],
   ['11_your_rhythm', 'INSIGHTS', ['Listening insights'], ['Stats calculated on your device.']],
   ['16_listen_together', 'JAM', ['Listen together'], ['One queue. The same Wi-Fi.']],
   ['20_your_year_in_music', 'YOUR YEAR', ['Your year in music'], ['Your listening story, on device.']],
-  ['21_spotify_style', 'LEVYRA SKINS', ['Spotify Style'], ['Browse genres & new releases.']],
-  ['22_apple_music_style', 'UPDATES', ['In-app updates'], ['Changelogs & one-tap updates.']],
-  ['14_fresh_off_the_stage', 'LIVE RADIO', ['Live radio'], ['Tune in to stations worldwide.']],
-  ['24_qobuz_style', 'PLAYER DECK', ['Player Deck'], ['Player styles & live backgrounds.']],
 ];
 
 function phoneGeometry(outerWidth, angle, x, y) {
@@ -380,7 +376,6 @@ const rowSlices = [
   [8, 12],
   [12, 16],
   [16, 20],
-  [20, 24],
 ];
 for (const [row, [start, end]] of rowSlices.entries()) {
   const set = rendered.slice(start, end);
