@@ -3,6 +3,10 @@ package com.luc4n3x.levyra.desktop.app.di
 import com.luc4n3x.levyra.desktop.app.state.CatalogController
 import com.luc4n3x.levyra.desktop.app.state.DesktopUpdateController
 import com.luc4n3x.levyra.desktop.app.state.DiscoverController
+import com.luc4n3x.levyra.desktop.app.state.DiscoveryDeckController
+import com.luc4n3x.levyra.desktop.core.storage.JsonFileStore
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
 import com.luc4n3x.levyra.desktop.app.state.LocalMusicController
 import com.luc4n3x.levyra.desktop.app.state.LyricsController
@@ -156,7 +160,32 @@ class AppContainer {
         lyricsController = lyricsController,
         playbackController = playbackController,
         downloadController = downloadController,
-        localMusicController = localMusicController
+        localMusicController = localMusicController,
+        discoveryDeckController = DiscoveryDeckController(
+            scope = scope,
+            libraryStore = libraryStore,
+            dismissedStore = JsonFileStore(
+                file = paths.root.resolve("discovery-dismissed.json"),
+                serializer = ListSerializer(String.serializer()),
+                defaultValue = { emptyList() }
+            ),
+            previewUrl = { track ->
+                val settings = settingsStore.current
+                streamResolver.resolve(track, settings.audioQuality, settings.preferredCodec).url
+            },
+            playerFactory = ::createAudioPlayer,
+            pauseMain = {
+                if (playbackController.state.value.isPlaying) {
+                    playbackController.togglePlayPause()
+                    true
+                } else {
+                    false
+                }
+            },
+            resumeMain = { if (!playbackController.state.value.isPlaying) playbackController.togglePlayPause() },
+            playFullTrack = { track -> playbackController.playTrack(downloadController.completedTrack(track) ?: track) },
+            language = { settingsStore.current.language.tag }
+        )
     )
 
     init {
