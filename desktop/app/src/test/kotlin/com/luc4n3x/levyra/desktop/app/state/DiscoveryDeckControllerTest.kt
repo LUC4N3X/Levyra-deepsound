@@ -15,6 +15,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -89,6 +90,34 @@ class DiscoveryDeckControllerTest {
     }
 
     @Test
+    fun failedSaveKeepsTheCardAndReportsIt() {
+        val paths = AppPaths(temporary.newFolder().toPath()).prepare()
+        val library = LibraryStore.create(paths)
+        Files.createDirectories(paths.libraryFile.resolveSibling("${paths.libraryFile.fileName}.tmp"))
+        val controller = controller(library)
+        controller.open(listOf(pick("a"), pick("b")))
+        controller.save()
+        assertEquals("a", controller.deck.value.current?.track?.id)
+        assertFalse(controller.deck.value.canUndo)
+        assertEquals(DiscoveryNoticeKind.SaveFailed, controller.deck.value.notice?.kind)
+        assertTrue(library.current.playlists.none { it.id == controller.weeklyPlaylistId })
+    }
+
+    @Test
+    fun undoRemovesFromThePlaylistUsedBySave() {
+        val library = libraryStore()
+        var day = monday.plusDays(6)
+        val controller = controller(library, today = { day })
+        controller.open(listOf(pick("a"), pick("b")))
+        controller.save()
+        val savedWeek = controller.weeklyPlaylistId
+        day = day.plusDays(1)
+        controller.undo()
+        assertEquals("a", controller.deck.value.current?.track?.id)
+        assertTrue(library.current.playlists.single { it.id == savedWeek }.tracks.isEmpty())
+    }
+
+    @Test
     fun swipeDecisionForAnOlderCardIsIgnored() {
         val library = libraryStore()
         val controller = controller(library)
@@ -141,7 +170,11 @@ class DiscoveryDeckControllerTest {
 
     private fun libraryStore(): LibraryStore = LibraryStore.create(AppPaths(temporary.newFolder().toPath()).prepare())
 
-    private fun controller(library: LibraryStore, dismissedFile: java.nio.file.Path = temporary.root.toPath().resolve("d-${System.nanoTime()}.json")) =
+    private fun controller(
+        library: LibraryStore,
+        dismissedFile: java.nio.file.Path = temporary.root.toPath().resolve("d-${System.nanoTime()}.json"),
+        today: () -> LocalDate = { monday }
+    ) =
         DiscoveryDeckController(
             scope = scope,
             libraryStore = library,
@@ -152,7 +185,7 @@ class DiscoveryDeckControllerTest {
             resumeMain = {},
             playFullTrack = {},
             language = { "it" },
-            today = { monday },
+            today = today,
             io = Dispatchers.Unconfined
         )
 

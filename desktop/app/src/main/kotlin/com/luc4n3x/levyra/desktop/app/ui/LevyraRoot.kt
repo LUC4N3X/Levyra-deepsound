@@ -302,7 +302,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 DiscoveryDeckScreen(
                                                     deck = deck,
                                                     savedThisWeek = library.playlists.firstOrNull { it.id == weeklyId }?.tracks?.size ?: 0,
-                                                    loading = discover.loading || discover.freshCurrents.isEmpty() && discover.genres.isEmpty(),
+                                                    loading = discover.loading || discover.feedsLoading,
                                                     onBack = model::back,
                                                     onSave = model.discoveryDeckController::save,
                                                     onDismiss = model.discoveryDeckController::dismiss,

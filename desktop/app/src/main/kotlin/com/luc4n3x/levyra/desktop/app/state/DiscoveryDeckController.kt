@@ -14,6 +14,7 @@ import java.time.format.FormatStyle
 import java.time.temporal.IsoFields
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -42,7 +43,7 @@ data class DiscoveryPick(val track: Track, val reason: DiscoveryPickReason, val 
     val key: String get() = discoveryPickKey(track)
 }
 
-data class DiscoveryDeckStep(val pick: DiscoveryPick, val saved: Boolean)
+data class DiscoveryDeckStep(val pick: DiscoveryPick, val saved: Boolean, val playlistId: String = "")
 
 enum class DiscoveryPreviewStatus { Idle, Loading, Playing }
 
@@ -65,9 +66,9 @@ data class DiscoveryDeckState(
     fun previewStatusFor(pick: DiscoveryPick?): DiscoveryPreviewStatus =
         if (pick != null && pick.key == previewKey) previewStatus else DiscoveryPreviewStatus.Idle
 
-    fun decided(saved: Boolean): DiscoveryDeckState {
+    fun decided(saved: Boolean, playlistId: String = ""): DiscoveryDeckState {
         val pick = current ?: return this
-        return copy(index = index + 1, history = (history + DiscoveryDeckStep(pick, saved)).takeLast(MAX_HISTORY))
+        return copy(index = index + 1, history = (history + DiscoveryDeckStep(pick, saved, playlistId)).takeLast(MAX_HISTORY))
     }
 
     fun undone(): Pair<DiscoveryDeckState, DiscoveryDeckStep>? {
@@ -148,6 +149,7 @@ class DiscoveryDeckController(
     private var previewJob: Job? = null
     private var mainPausedByPreview = false
     private val noticeIds = AtomicLong()
+    private val writing = AtomicBoolean(false)
 
     val weeklyPlaylistId: String get() = discoveryWeekId(today())
 
@@ -167,21 +169,24 @@ class DiscoveryDeckController(
 
     fun save() {
         val pick = state.value.current ?: return
+        if (!writing.compareAndSet(false, true)) return
         val playlistId = weeklyPlaylistId
         val playlistName = weeklyPlaylistName()
         stopPreview()
-        state.update { it.decided(saved = true) }
-        notify(DiscoveryNoticeKind.Saved)
         diskWork.trySend {
-            runCatching {
+            val saved = runCatching {
                 libraryStore.ensurePlaylist(playlistId, playlistName)
                 libraryStore.addToPlaylist(playlistId, listOf(pick.track.asLibraryEntry()))
-            }.onFailure { notify(DiscoveryNoticeKind.SaveFailed) }
+            }.isSuccess
+            if (saved) state.update { if (it.current?.key == pick.key) it.decided(saved = true, playlistId = playlistId) else it }
+            writing.set(false)
+            notify(if (saved) DiscoveryNoticeKind.Saved else DiscoveryNoticeKind.SaveFailed)
         }
     }
 
     fun dismiss() {
         val pick = state.value.current ?: return
+        if (writing.get()) return
         rememberDismissed(dismissed - pick.key + pick.key)
         stopPreview()
         state.update { it.decided(saved = false) }
@@ -189,13 +194,22 @@ class DiscoveryDeckController(
 
     fun undo() {
         val (restored, step) = state.value.undone() ?: return
-        stopPreview()
         if (step.saved) {
-            val playlistId = weeklyPlaylistId
-            diskWork.trySend { runCatching { libraryStore.removeFromPlaylist(playlistId, step.pick.track.id) } }
-        } else {
-            rememberDismissed(dismissed - step.pick.key)
+            if (!writing.compareAndSet(false, true)) return
+            stopPreview()
+            diskWork.trySend {
+                val removed = runCatching { libraryStore.removeFromPlaylist(step.playlistId, step.pick.track.id) }.isSuccess
+                if (removed) {
+                    state.update { current -> current.undone()?.takeIf { it.second == step }?.first?.copy(notice = current.notice) ?: current }
+                }
+                writing.set(false)
+                if (!removed) notify(DiscoveryNoticeKind.SaveFailed)
+            }
+            return
         }
+        if (writing.get()) return
+        stopPreview()
+        rememberDismissed(dismissed - step.pick.key)
         state.update { restored.copy(notice = it.notice) }
     }
 

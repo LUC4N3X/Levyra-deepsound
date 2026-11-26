@@ -20,7 +20,8 @@ data class DiscoverUiState(
     val loading: Boolean = false,
     val error: String = "",
     val freshCurrents: List<Track> = emptyList(),
-    val genres: List<EditorialShelf> = emptyList()
+    val genres: List<EditorialShelf> = emptyList(),
+    val feedsLoading: Boolean = false
 )
 
 class DiscoverController(
@@ -46,6 +47,7 @@ class DiscoverController(
             tracks = current.tracks.takeIf { current.country == region }.orEmpty(),
             freshCurrents = current.freshCurrents.takeIf { previousContentCountry == contentCountry }.orEmpty(),
             loading = true,
+            feedsLoading = true,
             error = ""
         )
         job = scope.launch {
@@ -63,14 +65,17 @@ class DiscoverController(
                 val genres = charts.genres()
                 currentCoroutineContext().ensureActive()
                 state.update { current ->
-                    if (current.country != region) current else current.copy(freshCurrents = fresh, genres = genres)
+                    if (current.country != region) current else current.copy(freshCurrents = fresh, genres = genres, feedsLoading = false)
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
                 state.update { current ->
-                    if (current.country != region || !current.loading) current
-                    else current.copy(loading = false, error = error.message ?: EMPTY_ERROR)
+                    when {
+                        current.country != region -> current
+                        current.loading -> current.copy(loading = false, feedsLoading = false, error = error.message ?: EMPTY_ERROR)
+                        else -> current.copy(feedsLoading = false)
+                    }
                 }
             }
         }
