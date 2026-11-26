@@ -149,25 +149,45 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
 }
 
 
+const CHIP_ROSETTE = makeArcScallopPath(21, 18, 11.4, 14.2, 10)
+
+function makeRoundedCornersPath(x, y, w, h, [tl, tr, br, bl]) {
+  const x1 = x + w
+  const y1 = y + h
+  return [
+    `M ${(x + tl).toFixed(2)} ${y.toFixed(2)}`,
+    `H ${(x1 - tr).toFixed(2)}`,
+    `A ${tr} ${tr} 0 0 1 ${x1.toFixed(2)} ${(y + tr).toFixed(2)}`,
+    `V ${(y1 - br).toFixed(2)}`,
+    `A ${br} ${br} 0 0 1 ${(x1 - br).toFixed(2)} ${y1.toFixed(2)}`,
+    `H ${(x + bl).toFixed(2)}`,
+    `A ${bl} ${bl} 0 0 1 ${x.toFixed(2)} ${(y1 - bl).toFixed(2)}`,
+    `V ${(y + tl).toFixed(2)}`,
+    `A ${tl} ${tl} 0 0 1 ${(x + tl).toFixed(2)} ${y.toFixed(2)} Z`
+  ].join(' ')
+}
+
 function makeInfoBadge({ label, value, icon, mobile = false, light = false }) {
   const meta = {
-    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 94, mw: 86, dark: ['#FFB1C8', '#5E1133'], light: ['#FFD8E4', '#5E1133'] },
-    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 104, mw: 94, dark: ['#7CF7C4', '#003824'], light: ['#B6F7DB', '#003824'] },
-    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 84, mw: 77, dark: ['#FFD972', '#412D00'], light: ['#FFE08B', '#3F2E00'] }
+    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 102, mw: 92, corners: [18, 7, 18, 7], xform: 'translate(11.4 8.4) scale(0.80)', dark: ['#F6D2E0', '#5A2238'], light: ['#FCE4EE', '#5A2238'] },
+    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 112, mw: 101, corners: [18, 18, 18, 18], xform: 'translate(11.5 8.5) scale(0.79)', dark: ['#CBEFE0', '#144230'], light: ['#DCF6EB', '#144230'] },
+    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 92, mw: 83, corners: [7, 18, 7, 18], xform: 'translate(10.8 7.8) scale(0.85)', dark: ['#FAE3B4', '#4B3409'], light: ['#FDF0CF', '#4B3409'] }
   }
   const entry = meta[label]
   if (!entry) throw new Error(`Unknown information badge ${label}`)
   const [bg, fg] = entry[light ? 'light' : 'dark']
   const vw = entry.w
   const w = mobile ? entry.mw : vw
-  const h = mobile ? 29 : 32
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 32" role="img" aria-label="${escapeXml(entry.description)}">
+  const h = mobile ? 32 : 36
+  const body = makeRoundedCornersPath(0, 0, vw, 36, entry.corners)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 36" role="img" aria-label="${escapeXml(entry.description)}">
   <title>${escapeXml(entry.description)}</title>
-  <rect x="0" y="0" width="${vw}" height="32" rx="8" fill="${bg}"/>
-  <g transform="translate(9 7) scale(0.75)" style="color:${fg}">
+  <path d="${body}" fill="${bg}"/>
+  <path d="${CHIP_ROSETTE}" fill="${fg}" fill-opacity="0.11"/>
+  <g transform="${entry.xform}" style="color:${fg}">
     ${icon}
   </g>
-  <text x="33" y="20.8" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.1">${escapeXml(entry.display)}</text>
+  <text x="40" y="23" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.05">${escapeXml(entry.display)}</text>
 </svg>
 `
 }

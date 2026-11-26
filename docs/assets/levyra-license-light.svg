@@ -1,8 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="104" height="32" viewBox="0 0 104 32" role="img" aria-label="Levyra license GPL-3.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="36" viewBox="0 0 112 36" role="img" aria-label="Levyra license GPL-3.0">
   <title>Levyra license GPL-3.0</title>
-  <rect x="0" y="0" width="104" height="32" rx="8" fill="#B6F7DB"/>
-  <g transform="translate(9 7) scale(0.75)" style="color:#003824">
-    <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+  <path d="M 18.00 0.00 H 94.00 A 18 18 0 0 1 112.00 18.00 V 18.00 A 18 18 0 0 1 94.00 36.00 H 18.00 A 18 18 0 0 1 0.00 18.00 V 18.00 A 18 18 0 0 1 18.00 0.00 Z" fill="#DCF6EB"/>
+  <path d="M 17.48 7.16 A 3.53 3.53 0 0 1 24.52 7.16 A 3.53 3.53 0 0 1 30.22 11.30 A 3.53 3.53 0 0 1 32.40 18.00 A 3.53 3.53 0 0 1 30.22 24.70 A 3.53 3.53 0 0 1 24.52 28.84 A 3.53 3.53 0 0 1 17.48 28.84 A 3.53 3.53 0 0 1 11.78 24.70 A 3.53 3.53 0 0 1 9.60 18.00 A 3.53 3.53 0 0 1 11.78 11.30 A 3.53 3.53 0 0 1 17.48 7.16 Z" fill="#144230" fill-opacity="0.11"/>
+  <g style="color:#144230">
+    <g transform="translate(11.5 8.5) scale(0.79)"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></g>
   </g>
-  <text x="33" y="20.8" fill="#003824" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.1">GPL-3.0</text>
+  <text x="40" y="23" fill="#144230" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.05">GPL-3.0</text>
 </svg>
