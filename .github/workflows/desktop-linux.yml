@@ -165,7 +165,7 @@ jobs:
             if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
             android_notes=$(gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
             notes=$(mktemp)
-            printf 'Linux packages for Levyra %s, built from the Android release revision.\n\n' "$VERSION" > "$notes"
+            printf 'Linux packages for Levyra %s, built from commit %s.\n\n' "$VERSION" "$GITHUB_SHA" > "$notes"
             sed -n '/<!-- levyra-highlights/,/-->/p' <<< "$android_notes" >> "$notes"
             gh release create "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" --title "Levyra Linux $VERSION" --latest=false \

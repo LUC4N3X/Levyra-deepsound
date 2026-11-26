@@ -349,7 +349,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere le novità della release Android v$version" }
             $highlights = [regex]::Match(($androidNotes -join "`n"), '(?s)<!-- levyra-highlights.*?-->').Value
             $notesFile = Join-Path $env:RUNNER_TEMP "levyra-windows-release-notes.md"
-            @("Windows packages for Levyra $version, built from the Android release revision.", "", $highlights) |
+            @("Windows packages for Levyra $version, built from commit $env:GITHUB_SHA.", "", $highlights) |
               Set-Content -LiteralPath $notesFile -Encoding utf8
             gh release create $tag @assets --repo $repo --target $env:GITHUB_SHA --title "Levyra Windows $version" --notes-file $notesFile --latest=false @releaseFlags
             if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
