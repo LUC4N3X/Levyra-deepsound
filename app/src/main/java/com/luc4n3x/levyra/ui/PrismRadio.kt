@@ -76,6 +76,7 @@ import com.luc4n3x.levyra.feature.radio.CustomRadioError
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -115,6 +116,7 @@ internal fun PrismRadioScreen(
     val radioStrings = remember(languageCode) { LevyraLiveRadioCatalog.forCode(languageCode) }
     val libraryCopy = remember(languageCode) { radioLibraryCopy(languageCode) }
     val favoriteIds = remember(state.favorites) { state.favoriteIds }
+    val favoriteGroups = rememberRadioFavoriteGroups(state.favorites, state.favoriteSort, languageCode)
     var countryPickerOpen by remember { mutableStateOf(false) }
     var languagePickerOpen by remember { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
@@ -202,15 +204,26 @@ internal fun PrismRadioScreen(
             item(key = "prism-radio-custom-error", contentType = "prism-radio-note") { PrismRadioNote(libraryCopy.error(reason)) }
         }
         if (state.query.isBlank()) {
-            listOf("favorites" to (strings.favoritesPlain to state.favorites), "recent" to (strings.recent to state.recent)).forEach { (section, content) ->
-                val (sectionTitle, stations) = content
-                if (stations.isEmpty()) return@forEach
-                item(key = "prism-radio-$section", contentType = "prism-radio-presets") {
-                    Column {
-                        PrismRadioHeader(sectionTitle)
-                        LazyRow(contentPadding = PaddingValues(horizontal = PrismRadioGutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            items(stations, key = { "$section-${it.uuid}" }, contentType = { "PrismRadio-stations" }) { station ->
-                                PrismPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+            listOf(
+                Triple("favorites", strings.favoritesPlain, favoriteGroups),
+                Triple("recent", strings.recent, listOf(RadioFavoriteGroup("recent", null, state.recent)))
+            ).forEach { (section, sectionTitle, groups) ->
+                if (groups.none { it.items.isNotEmpty() }) return@forEach
+                item(key = "prism-radio-$section-title", contentType = "prism-radio-header") {
+                    PrismRadioHeader(sectionTitle) {
+                        if (section == "favorites") {
+                            RadioFavoriteSortButton(state.favoriteSort, languageCode, LevyraPink, LevyraText, PrismRadioHairline, viewModel::setFavoriteSort)
+                        }
+                    }
+                }
+                groups.forEach { group ->
+                    item(key = "prism-radio-$section-${group.key}", contentType = "prism-radio-presets") {
+                        Column {
+                            group.title?.let { RadioFavoriteGroupHeader(it, LevyraMuted, PrismRadioGutter) }
+                            LazyRow(contentPadding = PaddingValues(horizontal = PrismRadioGutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                items(group.items, key = { "$section-${it.uuid}" }, contentType = { "PrismRadio-stations" }) { station ->
+                                    PrismPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+                                }
                             }
                         }
                     }
@@ -496,11 +509,12 @@ private fun PrismRadioPlate(label: String, globe: Boolean, modifier: Modifier, o
 }
 
 @Composable
-private fun PrismRadioHeader(title: String) {
+private fun PrismRadioHeader(title: String, action: @Composable RowScope.() -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(horizontal = PrismRadioGutter).padding(top = 26.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(18.dp).height(3.dp).clip(CircleShape).background(PrismRadioEdge))
         Spacer(Modifier.width(10.dp))
-        Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+        Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() })
+        action()
     }
 }
 

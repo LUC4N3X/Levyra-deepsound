@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -91,6 +92,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
     val libraryCopy = remember(state.languageCode) { radioLibraryCopy(state.languageCode) }
     val stations = radioState.stations
     val grid = remember(radioState.favorites, stations) { appleRadioGrid(radioState.favorites, stations) }
+    val favoriteGroups = rememberRadioFavoriteGroups(radioState.favorites, radioState.favoriteSort, state.languageCode)
     val live = remember(stations, grid) { stations.filterNot { station -> grid.any { it.uuid == station.uuid } }.take(AppleRadioLiveLimit) }
     val popular = remember(stations, live, grid) { stations.filterNot { s -> live.any { it.uuid == s.uuid } || grid.any { it.uuid == s.uuid } }.take(AppleRadioRailLimit) }
     val country = stations.firstOrNull()?.country.orEmpty()
@@ -136,7 +138,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
         if (popular.isNotEmpty()) item(key = "apple-radio-popular") {
             AppleRadioRail(if (country.isBlank()) radioStrings.worldwide else radioStrings.popularIn(country), popular, play)
         }
-        appleRadioFavorites(radioState, libraryCopy.favorites, state.languageCode, radio, play)
+        appleRadioFavorites(radioState, favoriteGroups, libraryCopy.favorites, state.languageCode, radio, play)
     }
     if (countryPickerOpen) {
         RadioDirectoryDialog(
@@ -158,17 +160,21 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
 
 private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioFavorites(
     radioState: com.luc4n3x.levyra.feature.radio.LiveRadioUiState,
+    groups: List<RadioFavoriteGroup<RadioStation>>,
     title: String,
     languageCode: String,
     radio: LiveRadioViewModel,
     play: (RadioStation) -> Unit
 ) {
-    if (radioState.favorites.isEmpty()) return
+    if (groups.none { it.items.isNotEmpty() }) return
     val listMode = radioState.stationListMode
     item(key = "apple-radio-favorites-title") {
         val layoutCopy = remember(languageCode) { spotifyLibraryCopy(languageCode) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { AppleRadioSectionTitle(title) }
+            RadioFavoriteSortButton(
+                radioState.favoriteSort, languageCode, AppleMusicDesign.accent, AppleMusicDesign.label, AppleMusicDesign.fill, radio::setFavoriteSort
+            )
             IconButton(onClick = { radio.setStationListMode(!listMode) }, modifier = Modifier.padding(end = 8.dp)) {
                 Icon(
                     if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
@@ -178,12 +184,19 @@ private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioFavorites(
             }
         }
     }
-    if (listMode) {
-        items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }, contentType = { "AppleMusicRadio-favorites" }) { station ->
-            AppleRadioResultRow(station) { play(station) }
+    groups.forEach { group ->
+        group.title?.let { groupTitle ->
+            item(key = "apple-radio-favorites-group-${group.key}", contentType = "AppleMusicRadio-group") {
+                RadioFavoriteGroupHeader(groupTitle, AppleMusicDesign.secondaryLabel, AppleMusicDesign.gutter)
+            }
         }
-    } else {
-        item(key = "apple-radio-favorites") { AppleRadioRail(null, radioState.favorites, play) }
+        if (listMode) {
+            items(group.items, key = { "apple-radio-favorite-row-${it.uuid}" }, contentType = { "AppleMusicRadio-favorites" }) { station ->
+                AppleRadioResultRow(station) { play(station) }
+            }
+        } else {
+            item(key = "apple-radio-favorites-${group.key}") { AppleRadioRail(null, group.items, play) }
+        }
     }
 }
 

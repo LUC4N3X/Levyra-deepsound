@@ -51,6 +51,23 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteFacts
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroupLabels
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteSort
+import com.luc4n3x.levyra.feature.radio.radioFavoriteGroups
+import com.luc4n3x.levyra.ui.i18n.RadioFavoriteSortCopy
+import com.luc4n3x.levyra.ui.i18n.radioFavoriteSortCopy
 import java.util.Locale
 
 @Composable
@@ -62,6 +79,7 @@ internal fun RadioScreen(
     onCategory: (RadioCategory) -> Unit,
     onSearch: (String) -> Unit,
     onToggleFavorite: (SavedStation) -> Unit,
+    onFavoriteSort: (RadioFavoriteSort) -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -74,6 +92,22 @@ internal fun RadioScreen(
     }
     val favoriteIds = remember(state.favorites) { state.favorites.mapTo(HashSet()) { it.uuid } }
     val stationTracks = remember(state.stations) { state.stations.map { it.toTrack() } }
+    val sortCopy = remember(code) { radioFavoriteSortCopy(code) }
+    val favoriteGroups = remember(state.favorites, state.favoriteSort, code) {
+        val locale = Locale.forLanguageTag(code)
+        radioFavoriteGroups(
+            items = state.favorites,
+            sort = state.favoriteSort,
+            locale = locale,
+            labels = RadioFavoriteGroupLabels(
+                countryName = { region -> Locale.Builder().setRegion(region).build().getDisplayCountry(locale) },
+                genreName = copy::category,
+                unknownCountry = sortCopy.unknownCountry,
+                otherGenre = sortCopy.otherGenre
+            )
+        ) { saved -> RadioFavoriteFacts(saved.name, saved.countryCode, saved.country, saved.tags, saved.addedAt) }
+    }
+    val favoriteTracks = remember(favoriteGroups) { favoriteGroups.flatMap { group -> group.items.map { it.toTrack() } } }
 
     ScrollableColumn(
         modifier = modifier.fillMaxWidth(),
@@ -127,15 +161,38 @@ internal fun RadioScreen(
         if (state.favorites.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(strings.homeFavorites, style = MaterialTheme.typography.titleMedium, color = LevyraBrand.soft)
-                    StationGrid(
-                        rows = state.favorites.mapIndexed { index, saved -> StationRowData(saved, index + 1, saved.toTrack()) },
-                        favoriteIds = favoriteIds,
-                        currentTrackId = currentTrackId,
-                        ranked = false,
-                        onToggleFavorite = onToggleFavorite,
-                        onPlay = { index -> onPlay(state.favorites.map { it.toTrack() }, index) }
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(strings.homeFavorites, style = MaterialTheme.typography.titleMedium, color = LevyraBrand.soft, modifier = Modifier.weight(1f))
+                        RadioFavoriteSortSelector(state.favoriteSort, sortCopy, onFavoriteSort)
+                    }
+                    var offset = 0
+                    favoriteGroups.forEach { group ->
+                        val start = offset
+                        offset += group.items.size
+                        key(group.key) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                group.title?.let { title ->
+                                    Text(
+                                        title,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 6.dp).semantics { heading() }
+                                    )
+                                }
+                                StationGrid(
+                                    rows = group.items.mapIndexed { index, saved -> StationRowData(saved, start + index + 1, favoriteTracks[start + index]) },
+                                    favoriteIds = favoriteIds,
+                                    currentTrackId = currentTrackId,
+                                    ranked = false,
+                                    onToggleFavorite = onToggleFavorite,
+                                    onPlay = { index -> onPlay(favoriteTracks, start + index) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -164,6 +221,51 @@ internal fun RadioScreen(
             }
         }
         item { Spacer(Modifier.size(8.dp)) }
+    }
+}
+
+@Composable
+private fun RadioFavoriteSortSelector(sort: RadioFavoriteSort, copy: RadioFavoriteSortCopy, onSort: (RadioFavoriteSort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier.heightIn(min = 36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable(onClickLabel = copy.sortBy, role = Role.Button) { expanded = true }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(LevyraIcons.Tune, contentDescription = copy.sortBy, tint = LevyraBrand.soft, modifier = Modifier.size(16.dp))
+            Text(copy.label(sort), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(LevyraIcons.ChevronDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            RadioFavoriteSort.entries.forEach { option ->
+                if (option == RadioFavoriteSort.NameAscending || option == RadioFavoriteSort.Country) {
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                val active = option == sort
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            copy.label(option),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        if (!active) onSort(option)
+                    },
+                    modifier = Modifier.semantics { selected = active }
+                )
+            }
+        }
     }
 }
 

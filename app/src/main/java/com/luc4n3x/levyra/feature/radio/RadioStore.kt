@@ -19,20 +19,28 @@ import org.json.JSONObject
 internal class RadioStore(private val preferences: SharedPreferences) {
     constructor(context: Context) : this(context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE))
 
-    fun observeFavorites() = observe(KEY_FAVORITES)
+    fun observeFavorites() = observeStations(KEY_FAVORITES)
 
-    fun observeCustomStations() = observe(KEY_CUSTOM)
+    fun observeCustomStations() = observeStations(KEY_CUSTOM)
 
-    fun observeRecent() = observe(KEY_RECENT)
+    fun observeRecent() = observeStations(KEY_RECENT)
 
-    private fun observe(key: String) = callbackFlow {
+    fun observeFavoriteSort() = observe(KEY_FAVORITE_SORT) { RadioFavoriteSort.fromId(preferences.getString(KEY_FAVORITE_SORT, null)) }
+
+    suspend fun setFavoriteSort(sort: RadioFavoriteSort) = withContext(Dispatchers.IO) {
+        preferences.edit().putString(KEY_FAVORITE_SORT, sort.id).commit()
+    }
+
+    private fun observeStations(key: String) = observe(key) { decode(preferences.getString(key, null)) }
+
+    private fun <T> observe(key: String, read: () -> T) = callbackFlow {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, changed ->
             if (changed == key || changed == null) trySend(Unit)
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
         trySend(Unit)
         awaitClose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
-    }.conflate().map { decode(preferences.getString(key, null)) }.distinctUntilChanged().flowOn(Dispatchers.IO)
+    }.conflate().map { read() }.distinctUntilChanged().flowOn(Dispatchers.IO)
 
     suspend fun customStations(): List<RadioStation> = withContext(Dispatchers.IO) {
         decode(preferences.getString(KEY_CUSTOM, null)).filter(RadioStation::isCustom)
@@ -53,7 +61,7 @@ internal class RadioStore(private val preferences: SharedPreferences) {
             listOf(KEY_FAVORITES, KEY_RECENT, KEY_PLAYBACK_STATION).forEach { key ->
                 val records = decode(preferences.getString(key, null))
                 if (records.any { it.uuid == station.uuid }) {
-                    editor.putString(key, encode(records.map { if (it.uuid == station.uuid) station.copy(lastPlayedAt = it.lastPlayedAt) else it }))
+                    editor.putString(key, encode(records.map { if (it.uuid == station.uuid) station.copy(lastPlayedAt = it.lastPlayedAt, addedAt = it.addedAt) else it }))
                 }
             }
             if (!editor.commit()) throw CustomRadioException(CustomRadioError.Storage)
@@ -110,12 +118,12 @@ internal class RadioStore(private val preferences: SharedPreferences) {
         }
     }
 
-    suspend fun setFavorite(station: RadioStation, favorite: Boolean): List<RadioStation> = withContext(Dispatchers.IO) {
+    suspend fun setFavorite(station: RadioStation, favorite: Boolean, addedAt: Long): List<RadioStation> = withContext(Dispatchers.IO) {
         mutex.withLock {
             val current = decode(preferences.getString(KEY_FAVORITES, null)).toMutableList()
             val saved = currentStation(station)
             current.removeAll { it.uuid.equals(station.uuid, true) }
-            if (favorite && saved != null) current.add(0, saved.copy(lastPlayedAt = 0L))
+            if (favorite && saved != null) current.add(0, saved.copy(lastPlayedAt = 0L, addedAt = addedAt.coerceAtLeast(0L)))
             val result = current.take(MAX_FAVORITES)
             if (!preferences.edit().putString(KEY_FAVORITES, encode(result)).commit()) throw CustomRadioException(CustomRadioError.Storage)
             result
@@ -184,6 +192,7 @@ internal class RadioStore(private val preferences: SharedPreferences) {
         .put("clicks", clickCount)
         .put("ok", lastCheckOk)
         .put("playedAt", lastPlayedAt)
+        .put("addedAt", addedAt)
 
     private fun JSONObject.toStation(): RadioStation? {
         val uuid = optString("uuid").trim()
@@ -208,7 +217,8 @@ internal class RadioStore(private val preferences: SharedPreferences) {
             votes = optInt("votes", 0).coerceAtLeast(0),
             clickCount = optInt("clicks", 0).coerceAtLeast(0),
             lastCheckOk = optBoolean("ok", true),
-            lastPlayedAt = optLong("playedAt", 0L).coerceAtLeast(0L)
+            lastPlayedAt = optLong("playedAt", 0L).coerceAtLeast(0L),
+            addedAt = optLong("addedAt", 0L).coerceAtLeast(0L)
         ).takeIf { it.preferredStreamUrl.isNotBlank() }
     }
 
@@ -222,6 +232,7 @@ internal class RadioStore(private val preferences: SharedPreferences) {
         val mutex = Mutex()
         const val PREFERENCES = "levyra_live_radio"
         const val KEY_FAVORITES = "favorites"
+        const val KEY_FAVORITE_SORT = "favorite_sort"
         const val KEY_CUSTOM = "custom_stations"
         const val MAX_CUSTOM = 200
         const val KEY_RECENT = "recent"

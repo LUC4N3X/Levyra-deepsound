@@ -81,6 +81,7 @@ import com.luc4n3x.levyra.feature.radio.LiveRadioUiState
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.feature.radio.liveRadioArtworkHomepage
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
@@ -148,6 +149,7 @@ internal fun LiveRadioScreen(
     val favoriteIds = remember(state.favorites) {
         state.favorites.mapTo(hashSetOf()) { it.uuid.lowercase(Locale.ROOT) }
     }
+    val favoriteGroups = rememberRadioFavoriteGroups(state.favorites, state.favoriteSort, languageCode)
     var countryPickerOpen by remember { mutableStateOf(false) }
     var languagePickerOpen by remember { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
@@ -250,43 +252,62 @@ internal fun LiveRadioScreen(
 
             if (state.query.isBlank()) {
                 listOf(
-                    "favorites" to (strings.favoritesPlain to state.favorites),
-                    "recent" to (strings.recent to state.recent)
-                ).forEach { (section, content) ->
-                    val (title, stations) = content
-                    if (stations.isEmpty()) return@forEach
+                    Triple("favorites", strings.favoritesPlain, favoriteGroups),
+                    Triple("recent", strings.recent, listOf(RadioFavoriteGroup("recent", null, state.recent)))
+                ).forEach { (section, title, groups) ->
+                    if (groups.none { it.items.isNotEmpty() }) return@forEach
                     item(key = "live-radio-$section-title") {
                         RadioSectionTitle(title) {
-                            RadioLayoutToggle(
-                                listMode = state.stationListMode,
-                                code = languageCode,
-                                onToggle = { viewModel.setStationListMode(!state.stationListMode) }
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (section == "favorites") {
+                                    RadioFavoriteSortButton(
+                                        sort = state.favoriteSort,
+                                        languageCode = languageCode,
+                                        accent = LevyraCyan,
+                                        content = LevyraText,
+                                        container = LevyraPanelSoft,
+                                        onSort = viewModel::setFavoriteSort
+                                    )
+                                }
+                                RadioLayoutToggle(
+                                    listMode = state.stationListMode,
+                                    code = languageCode,
+                                    onToggle = { viewModel.setStationListMode(!state.stationListMode) }
+                                )
+                            }
                         }
                     }
-                    if (state.stationListMode) {
-                        itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }, contentType = { _, _ -> "LiveRadioScreen-stations" }) { index, station ->
-                            RadioStationRow(
-                                index, stations.size, station, station.uuid.lowercase(Locale.ROOT) in favoriteIds,
-                                currentStationId == station.uuid && isPlaying,
-                                radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
-                                onPlay = { onPlay(station) }, onFavorite = { viewModel.toggleFavorite(station) }
-                            )
+                    groups.forEach { group ->
+                        val stations = group.items
+                        group.title?.let { groupTitle ->
+                            item(key = "live-radio-$section-group-${group.key}", contentType = "LiveRadioScreen-group") {
+                                RadioFavoriteGroupHeader(groupTitle, LevyraMuted, 24.dp)
+                            }
                         }
-                    } else {
-                        item(key = "live-radio-$section") {
-                            RadioStationRail(
-                                stations = stations,
-                                favoriteIds = favoriteIds,
-                                currentStationId = currentStationId,
-                                isPlaying = isPlaying,
-                                live = radioStrings.live,
-                                playLabel = strings.play,
-                                addFavoriteLabel = strings.addToFavorites,
-                                removeFavoriteLabel = strings.removeFromFavorites,
-                                onPlay = onPlay,
-                                onFavorite = viewModel::toggleFavorite
-                            )
+                        if (state.stationListMode) {
+                            itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }, contentType = { _, _ -> "LiveRadioScreen-stations" }) { index, station ->
+                                RadioStationRow(
+                                    index, stations.size, station, station.uuid.lowercase(Locale.ROOT) in favoriteIds,
+                                    currentStationId == station.uuid && isPlaying,
+                                    radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
+                                    onPlay = { onPlay(station) }, onFavorite = { viewModel.toggleFavorite(station) }
+                                )
+                            }
+                        } else {
+                            item(key = "live-radio-$section-${group.key}") {
+                                RadioStationRail(
+                                    stations = stations,
+                                    favoriteIds = favoriteIds,
+                                    currentStationId = currentStationId,
+                                    isPlaying = isPlaying,
+                                    live = radioStrings.live,
+                                    playLabel = strings.play,
+                                    addFavoriteLabel = strings.addToFavorites,
+                                    removeFavoriteLabel = strings.removeFromFavorites,
+                                    onPlay = onPlay,
+                                    onFavorite = viewModel::toggleFavorite
+                                )
+                            }
                         }
                     }
                 }

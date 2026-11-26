@@ -28,7 +28,8 @@ data class RadioStation(
     val votes: Int,
     val clickCount: Int,
     val lastCheckOk: Boolean,
-    val lastPlayedAt: Long = 0L
+    val lastPlayedAt: Long = 0L,
+    val addedAt: Long = 0L
 ) {
     val isCustom: Boolean get() = uuid.startsWith("custom:")
 

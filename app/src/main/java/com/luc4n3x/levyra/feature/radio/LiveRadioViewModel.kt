@@ -40,7 +40,8 @@ internal data class LiveRadioUiState(
     val canLoadMore: Boolean = true,
     val showingCachedCatalog: Boolean = false,
     val error: String? = null,
-    val stationListMode: Boolean = false
+    val stationListMode: Boolean = false,
+    val favoriteSort: RadioFavoriteSort = RadioFavoriteSort.Default
 ) {
     val favoriteIds: Set<String> get() = favorites.mapTo(hashSetOf()) { it.uuid.lowercase(Locale.ROOT) }
 }
@@ -61,6 +62,7 @@ internal class LiveRadioViewModel(
         viewModelScope.launch { repository.observeFavorites().collect { favorites -> _state.update { it.copy(favorites = favorites) } } }
         viewModelScope.launch { repository.observeCustomStations().collect { stations -> _state.update { it.copy(customStations = stations) } } }
         viewModelScope.launch { repository.observeRecent().collect { stations -> _state.update { it.copy(recent = stations) } } }
+        viewModelScope.launch { repository.observeFavoriteSort().collect { sort -> _state.update { it.copy(favoriteSort = sort) } } }
     }
 
     fun activate(levyraLanguageCode: String) {
@@ -244,6 +246,12 @@ internal class LiveRadioViewModel(
 
     fun setStationListMode(enabled: Boolean) {
         _state.update { it.copy(stationListMode = enabled) }
+    }
+
+    fun setFavoriteSort(sort: RadioFavoriteSort) {
+        if (_state.value.favoriteSort == sort) return
+        _state.update { it.copy(favoriteSort = sort) }
+        viewModelScope.launch { repository.setFavoriteSort(sort) }
     }
 
     fun toggleFavorite(station: RadioStation) {

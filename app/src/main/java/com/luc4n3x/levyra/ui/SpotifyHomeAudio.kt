@@ -27,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -64,6 +67,8 @@ import com.luc4n3x.levyra.feature.podcast.PodcastLibraryViewModel
 import com.luc4n3x.levyra.feature.podcast.PodcastShowState
 import com.luc4n3x.levyra.feature.podcast.resumePositionMs
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteSort
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -317,6 +322,7 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
     LaunchedEffect(state.languageCode) { radio.activate(state.languageCode) }
     val radioStrings = remember(state.languageCode) { LevyraLiveRadioCatalog.forCode(state.languageCode) }
     val library = remember(state.languageCode) { radioLibraryCopy(state.languageCode) }
+    val favoriteGroups = rememberRadioFavoriteGroups(radioState.favorites, radioState.favoriteSort, state.languageCode)
     val strings = LocalLevyraStrings.current
     val currentId = state.currentTrack?.id?.removePrefix("live-radio:")
     var countryOpen by remember { mutableStateOf(false) }
@@ -332,7 +338,9 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
         }
         SpotifyRadioCategories(radioState.category, radioStrings, radio::selectCategory)
         if (radioState.query.isBlank()) {
-            if (radioState.favorites.isNotEmpty()) SpotifyStationShelf(library.favorites, radioState.favorites, currentId, play)
+            if (radioState.favorites.isNotEmpty()) {
+                SpotifyFavoriteStations(library.favorites, favoriteGroups, radioState.favoriteSort, state.languageCode, currentId, play, radio::setFavoriteSort)
+            }
             SpotifyCustomStationShelf(library.custom, library.add, radioState.customStations, currentId, play) { editorOpen = true }
             if (radioState.recent.isNotEmpty()) SpotifyStationShelf(strings.recent, radioState.recent, currentId, play)
         }
@@ -515,6 +523,36 @@ private fun SpotifyCustomStationShelf(
 private fun SpotifyStationShelf(title: String, stations: List<RadioStation>, currentId: String?, onPlay: (RadioStation) -> Unit) {
     SpotifyHomeShelf(title) {
         items(stations, key = { "station-$title-${it.uuid}" }, contentType = { "SpotifyHomeAudio-stations" }) { station -> SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) } }
+    }
+}
+
+@Composable
+private fun SpotifyFavoriteStations(
+    title: String,
+    groups: List<RadioFavoriteGroup<RadioStation>>,
+    sort: RadioFavoriteSort,
+    languageCode: String,
+    currentId: String?,
+    onPlay: (RadioStation) -> Unit,
+    onSort: (RadioFavoriteSort) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { SpotifyHomeHeading(title) }
+            RadioFavoriteSortButton(sort, languageCode, SpotifyDesign.greenText, SpotifyDesign.text, SpotifyDesign.chip, onSort, Modifier.padding(end = 8.dp))
+        }
+        groups.forEach { group ->
+            key(group.key) {
+                Column {
+                    group.title?.let { RadioFavoriteGroupHeader(it, SpotifyDesign.subdued, 16.dp) }
+                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        items(group.items, key = { "station-favorite-${it.uuid}" }, contentType = { "SpotifyHomeAudio-stations" }) { station ->
+                            SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
