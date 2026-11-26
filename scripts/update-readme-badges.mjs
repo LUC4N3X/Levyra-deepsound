@@ -123,11 +123,11 @@ const makeExpressivePillPath = (w, h, rLarge = 15.5, rSmall = 6.0) => {
 const PILL_SCALLOP = makeArcScallopPath(16, 16, 9.2, 12.2, 10)
 
 const icons = {
-  latest: '<path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>',
+  latest: '<path fill="currentColor" d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/>',
   downloads: '<path d="M0 -6 v11 m0 0 l4 -4 m-4 4 l-4 -4 M-6 8 h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
-  license: '<path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  license: '<path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
   stars: '<path d="M0 -8 l2.5 5 5.5 .8 -4 3.8 1 5.4 -5 -2.6 -5 2.6 1 -5.4 -4 -3.8 5.5 -.8 Z" fill="currentColor"/>',
-  docs: '<path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  docs: '<path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>'
 }
 
 const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
@@ -151,30 +151,23 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
 
 function makeInfoBadge({ label, value, icon, mobile = false, light = false }) {
   const meta = {
-    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 94, mw: 86, highlighted: true },
-    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 104, mw: 94, highlighted: false },
-    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 86, mw: 78, highlighted: false }
+    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 94, mw: 86, dark: ['#FFB1C8', '#5E1133'], light: ['#FFD8E4', '#5E1133'] },
+    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 104, mw: 94, dark: ['#7CF7C4', '#003824'], light: ['#B6F7DB', '#003824'] },
+    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 84, mw: 77, dark: ['#FFD972', '#412D00'], light: ['#FFE08B', '#3F2E00'] }
   }
   const entry = meta[label]
   if (!entry) throw new Error(`Unknown information badge ${label}`)
-  const tertiaryContainer = light ? '#FAD8FD' : '#573E5C'
-  const onTertiaryContainer = light ? '#28132E' : '#FAD8FD'
-  const outlineVariant = light ? '#C4C6D0' : '#44474E'
-  const onSurfaceVariant = light ? '#44474E' : '#C4C6D0'
+  const [bg, fg] = entry[light ? 'light' : 'dark']
   const vw = entry.w
   const w = mobile ? entry.mw : vw
   const h = mobile ? 29 : 32
-  const rect = entry.highlighted
-    ? `<rect x="0" y="0" width="${vw}" height="32" rx="8" fill="${tertiaryContainer}"/>`
-    : `<rect x="0.5" y="0.5" width="${vw - 1}" height="31" rx="8" fill="none" stroke="${outlineVariant}" stroke-width="1"/>`
-  const fg = entry.highlighted ? onTertiaryContainer : onSurfaceVariant
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 32" role="img" aria-label="${escapeXml(entry.description)}">
   <title>${escapeXml(entry.description)}</title>
-  ${rect}
-  <g transform="translate(17 16) scale(0.95)" style="color:${fg}">
+  <rect x="0" y="0" width="${vw}" height="32" rx="8" fill="${bg}"/>
+  <g transform="translate(9 7) scale(0.75)" style="color:${fg}">
     ${icon}
   </g>
-  <text x="34" y="20.8" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">${escapeXml(entry.display)}</text>
+  <text x="33" y="20.8" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.1">${escapeXml(entry.display)}</text>
 </svg>
 `
 }

@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="94" height="32" viewBox="0 0 94 32" role="img" aria-label="Latest Levyra release v3.2.5">
   <title>Latest Levyra release v3.2.5</title>
-  <rect x="0" y="0" width="94" height="32" rx="8" fill="#FAD8FD"/>
-  <g transform="translate(17 16) scale(0.95)" style="color:#28132E">
-    <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
+  <rect x="0" y="0" width="94" height="32" rx="8" fill="#FFD8E4"/>
+  <g transform="translate(9 7) scale(0.75)" style="color:#5E1133">
+    <path fill="currentColor" d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/>
   </g>
-  <text x="34" y="20.8" fill="#28132E" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">v3.2.5</text>
+  <text x="33" y="20.8" fill="#5E1133" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.1">v3.2.5</text>
 </svg>

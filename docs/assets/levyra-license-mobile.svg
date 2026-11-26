@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="94" height="29" viewBox="0 0 104 32" role="img" aria-label="Levyra license GPL-3.0">
   <title>Levyra license GPL-3.0</title>
-  <rect x="0.5" y="0.5" width="103" height="31" rx="8" fill="none" stroke="#44474E" stroke-width="1"/>
-  <g transform="translate(17 16) scale(0.95)" style="color:#C4C6D0">
-    <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="0" y="0" width="104" height="32" rx="8" fill="#7CF7C4"/>
+  <g transform="translate(9 7) scale(0.75)" style="color:#003824">
+    <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
   </g>
-  <text x="34" y="20.8" fill="#C4C6D0" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">GPL-3.0</text>
+  <text x="33" y="20.8" fill="#003824" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.1">GPL-3.0</text>
 </svg>
