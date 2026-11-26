@@ -226,7 +226,7 @@ private fun DiscoveryStage(
         Box(
             Modifier.graphicsLayer {
                 translationX = offset.value
-                rotationZ = (offset.value / threshold) * 9f
+                rotationZ = offset.value / threshold * 9f
             }.pointerInput(current.key) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
