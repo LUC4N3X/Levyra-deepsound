@@ -515,6 +515,7 @@
     "ffd0c196": { "sig": "dn(18,7746,INPUT)", "nClass": "Bp", "sts": 20780, "aliases": ["32befa38"] },
     "559b6b76": { "sig": "Zd(18,7746,INPUT)", "nClass": "Tb", "sts": 20780, "aliases": ["70d8eb43"] },
     "e5835c8a": { "sig": "od(18,7746,INPUT)", "nClass": "nd", "sts": 20780, "aliases": ["d7694e54"] },
-    "9244921b": { "sig": "od(18,7746,INPUT)", "nClass": "nd", "sts": 20780, "aliases": ["de68a001"] }
+    "9244921b": { "sig": "od(18,7746,INPUT)", "nClass": "nd", "sts": 20780, "aliases": ["de68a001"] },
+    "ae49f2ee": { "sig": "Mg(18,7746,INPUT)", "nClass": "bx", "sts": 20780, "aliases": ["426efd1d"] }
   }
 }
