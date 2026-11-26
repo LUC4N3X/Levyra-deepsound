@@ -361,6 +361,7 @@ class LevyraPlayer(context: Context) {
 
     private fun updateLiveRadioStallWatchdog(active: Player) {
         val stalled = loadedTrack?.isLiveRadio() == true &&
+            !PlaybackService.gentleWakeRuntimeStateFlow.value.active &&
             active.playWhenReady &&
             active.playbackState == Player.STATE_BUFFERING
         if (!stalled) {
@@ -375,6 +376,7 @@ class LevyraPlayer(context: Context) {
             val current = controller ?: return@launch
             if (generation != playbackGeneration || identity != loadedStreamIdentity) return@launch
             if (recoveryInFlight || !current.playWhenReady || current.playbackState != Player.STATE_BUFFERING) return@launch
+            if (PlaybackService.gentleWakeRuntimeStateFlow.value.active) return@launch
             val track = loadedTrack?.takeIf { it.isLiveRadio() } ?: return@launch
             liveRadioStallJob = null
             Timber.w("live radio stalled while buffering for %d ms", LIVE_RADIO_STALL_TIMEOUT_MS)
