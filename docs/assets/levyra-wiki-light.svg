@@ -2,8 +2,8 @@
   <title>Read Levyra documentation</title>
   <path d="M 7.00 0.00 H 74.00 A 18 18 0 0 1 92.00 18.00 V 29.00 A 7 7 0 0 1 85.00 36.00 H 18.00 A 18 18 0 0 1 0.00 18.00 V 7.00 A 7 7 0 0 1 7.00 0.00 Z" fill="#FDF0CF"/>
   <path d="M 17.48 7.16 A 3.53 3.53 0 0 1 24.52 7.16 A 3.53 3.53 0 0 1 30.22 11.30 A 3.53 3.53 0 0 1 32.40 18.00 A 3.53 3.53 0 0 1 30.22 24.70 A 3.53 3.53 0 0 1 24.52 28.84 A 3.53 3.53 0 0 1 17.48 28.84 A 3.53 3.53 0 0 1 11.78 24.70 A 3.53 3.53 0 0 1 9.60 18.00 A 3.53 3.53 0 0 1 11.78 11.30 A 3.53 3.53 0 0 1 17.48 7.16 Z" fill="#4B3409" fill-opacity="0.11"/>
-  <g style="color:#4B3409">
-    <g transform="translate(10.8 7.8) scale(0.85)"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></g>
+  <g transform="translate(10.8 7.8) scale(0.85)" style="color:#4B3409">
+    <path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
   </g>
   <text x="40" y="23" fill="#4B3409" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.05">Docs</text>
 </svg>
