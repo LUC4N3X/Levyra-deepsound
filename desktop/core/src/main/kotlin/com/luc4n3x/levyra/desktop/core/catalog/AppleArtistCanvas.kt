@@ -15,6 +15,7 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 
 object AppleArtistCanvas {
@@ -50,7 +51,8 @@ object AppleArtistCanvas {
         val response = json(Request.Builder().url(url).build()) ?: return null
         val responseToken = response.optString("dev_token").ifBlank { response.optString("token") }
         if (!TOKEN.matches(responseToken)) return null
-        cachedToken = (now + TimeUnit.MINUTES.toMillis(25)) to responseToken
+        val expiresAt = now + TimeUnit.MINUTES.toMillis(25)
+        cachedToken = expiresAt to responseToken
         return responseToken
     }
 
@@ -115,7 +117,7 @@ object AppleArtistCanvas {
             }.maxWithOrNull(compareBy<Triple<Int, Long, HttpUrl>> { it.first }.thenBy { it.second })?.third
         }
 
-    private fun downloadLoop(master: HttpUrl): Path? {
+    private fun canvasMediaPlaylist(master: HttpUrl): Pair<HttpUrl, List<String>>? {
         val (masterUrl, masterLines) = playlist(master) ?: return null
         val rendition = masterLines.indices.mapNotNull { index ->
             val line = masterLines[index]
@@ -127,7 +129,11 @@ object AppleArtistCanvas {
         }.sortedBy { it.first }
         val selected = rendition.lastOrNull { it.first <= 640 } ?: rendition.firstOrNull { it.first <= 1080 }
         if (rendition.isNotEmpty() && selected == null) return null
-        val (url, lines) = selected?.let { playlist(it.second) ?: return null } ?: (masterUrl to masterLines)
+        return if (selected == null) masterUrl to masterLines else playlist(selected.second)
+    }
+
+    private fun downloadLoop(master: HttpUrl): Path? {
+        val (url, lines) = canvasMediaPlaylist(master) ?: return null
         if (lines.none { it == "#EXT-X-ENDLIST" } || lines.any { it.startsWith("#EXT-X-KEY") }) return null
         val segments = parseSegments(url, lines) ?: return null
         if (segments.size !in 1..16) return null
@@ -219,18 +225,24 @@ object AppleArtistCanvas {
             }.build()
             val redirect = client.newCall(request).execute().use { response ->
                 if (response.isRedirect) return@use response.header("Location") ?: return null
-                if (!response.isSuccessful) return null
-                if (range != null && (response.code != 206 || response.header("Content-Range")?.startsWith("bytes ${range.first}-${range.last}/") != true)) return null
-                val mime = response.body.contentType()?.toString()?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
-                if (manifest && mime !in MANIFEST_TYPES || !manifest && mime !in SEGMENT_TYPES) return null
-                val bytes = response.peekBody(maxBytes + 1).bytes()
-                return (current to bytes).takeIf {
-                    bytes.isNotEmpty() && bytes.size <= maxBytes && (range == null || bytes.size.toLong() == range.last - range.first + 1)
-                }
+                val bytes = readMediaBody(response, maxBytes, manifest, range) ?: return null
+                return current to bytes
             }
             current = current.resolve(redirect) ?: return null
         }
         return null
+    }
+
+    private fun readMediaBody(response: Response, maxBytes: Long, manifest: Boolean, range: LongRange?): ByteArray? {
+        if (!response.isSuccessful) return null
+        if (range != null && (response.code != 206 || response.header("Content-Range")?.startsWith("bytes ${range.first}-${range.last}/") != true)) return null
+        val mime = response.body.contentType()?.toString()?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT)
+        val acceptedTypes = if (manifest) MANIFEST_TYPES else SEGMENT_TYPES
+        if (mime !in acceptedTypes) return null
+        val bytes = response.peekBody(maxBytes + 1).bytes()
+        return bytes.takeIf {
+            it.isNotEmpty() && it.size <= maxBytes && (range == null || it.size.toLong() == range.last - range.first + 1)
+        }
     }
 
     private fun json(request: Request): JSONObject? = client.newCall(request).execute().use { response ->

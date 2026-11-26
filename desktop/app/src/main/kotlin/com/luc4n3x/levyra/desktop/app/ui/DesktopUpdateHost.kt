@@ -14,14 +14,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.desktop.app.generated.resources.Res
 import com.luc4n3x.levyra.desktop.app.generated.resources.onboarding_levyra_brand
 import com.luc4n3x.levyra.desktop.app.state.DesktopUpdateController
@@ -56,17 +63,44 @@ internal fun DesktopUpdateHost(
         if (enabled) controller.check()
     }
 
-    if (enabled && state.release != null && state.phase !in setOf(DesktopUpdatePhase.IDLE, DesktopUpdatePhase.CHECKING)) {
-        LevyraTheme(themeMode) {
-            DesktopUpdateScreen(
-                state,
-                language,
-                onUpdate = { controller.install(onInstallReady) },
-                onLater = controller::dismiss
+    DesktopUpdatePresentation(
+        state = state.takeIf { enabled } ?: DesktopUpdateUiState(),
+        language = language,
+        themeMode = themeMode,
+        onUpdate = { controller.install(onInstallReady) },
+        onLater = controller::dismiss,
+        content = content
+    )
+}
+
+@Composable
+internal fun DesktopUpdatePresentation(
+    state: DesktopUpdateUiState,
+    language: AppLanguage,
+    themeMode: ThemeMode,
+    onUpdate: () -> Unit,
+    onLater: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    content()
+    if (state.release == null || state.phase == DesktopUpdatePhase.IDLE || state.phase == DesktopUpdatePhase.CHECKING) return
+    val canDismiss = state.phase == DesktopUpdatePhase.AVAILABLE || state.phase == DesktopUpdatePhase.FAILED
+    val direction = if (language.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
+    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+        Dialog(
+            onDismissRequest = onLater,
+            properties = DialogProperties(
+                dismissOnBackPress = canDismiss,
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false,
+                usePlatformInsets = false,
+                scrimColor = Color.Transparent
             )
+        ) {
+            LevyraTheme(themeMode) {
+                DesktopUpdateScreen(state, language, onUpdate, onLater)
+            }
         }
-    } else {
-        content()
     }
 }
 
@@ -85,6 +119,7 @@ internal fun DesktopUpdateScreen(
     }
     val meta = remember(release, language) { updateMetaLine(release.publishedAtEpochMs, release.installer.size, language.tag) }
     val colors = MaterialTheme.colorScheme
+    val backScale = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
     val footer: (@Composable () -> Unit)? = if (state.phase == DesktopUpdatePhase.AVAILABLE) {
         null
     } else {
@@ -119,7 +154,11 @@ internal fun DesktopUpdateScreen(
         },
         backButton = {
             FilledTonalIconButton(onClick = onLater, modifier = it) {
-                Icon(LevyraIcons.ChevronLeft, contentDescription = strings.later)
+                Icon(
+                    LevyraIcons.ChevronLeft,
+                    contentDescription = strings.later,
+                    modifier = Modifier.graphicsLayer { scaleX = backScale }
+                )
             }
         },
         updateIcon = { Icon(OfflineIcons.Download, contentDescription = null, modifier = it) },

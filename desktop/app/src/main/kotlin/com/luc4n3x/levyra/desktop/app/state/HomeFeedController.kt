@@ -89,13 +89,14 @@ class HomeFeedController(
 
     @Synchronized
     fun loadCuratedCollections(language: String, country: String) {
-        if (curatedRegion != (language to country)) load(country, language)
+        val locale = language to country
+        if (curatedRegion != locale) load(country, language)
         if (curatedState.value.collections != null || collectionsJob?.isActive == true) return
         curatedState.update { it.copy(loading = true) }
         collectionsJob = scope.launch {
             val collections = safely { moods.curatedCollections(language, country) }
             synchronized(this@HomeFeedController) {
-                if (curatedRegion != (language to country)) return@synchronized
+                if (curatedRegion != locale) return@synchronized
                 curatedState.update { it.copy(collections = collections?.takeIf { it.categories.isNotEmpty() || it.decades.isNotEmpty() || it.everyday.isNotEmpty() }, loading = false) }
                 collections?.categories?.firstOrNull()?.let { selectCuratedCategory(it.params) }
             }
@@ -104,7 +105,8 @@ class HomeFeedController(
 
     @Synchronized
     fun selectCuratedCategory(params: String) {
-        val (language, country) = curatedRegion ?: return
+        val locale = curatedRegion ?: return
+        val (language, country) = locale
         val current = curatedState.value
         if (current.category == params && (current.categoryLoading || current.playlists.isNotEmpty())) return
         categoryJob?.cancel()
@@ -114,7 +116,7 @@ class HomeFeedController(
         categoryJob = scope.launch {
             val playlists = safely { moods.curatedCategory(params, language, country) }.orEmpty()
             synchronized(this@HomeFeedController) {
-                if (curatedRegion != (language to country) || curatedState.value.category != params) return@synchronized
+                if (curatedRegion != locale || curatedState.value.category != params) return@synchronized
                 if (playlists.isNotEmpty()) categories[params] = playlists
                 curatedState.update { it.copy(categoryLoading = false, playlists = playlists) }
             }

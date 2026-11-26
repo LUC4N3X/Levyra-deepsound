@@ -77,6 +77,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.levyraLogoPainter
 import androidx.compose.foundation.lazy.LazyListScope
 import com.luc4n3x.levyra.ui.i18n.HomeSectionSubtitles
 import com.luc4n3x.levyra.desktop.app.ui.components.rememberArtworkRequest
+import com.luc4n3x.levyra.desktop.app.state.DailyPick
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
@@ -160,7 +161,7 @@ fun HomeScreen(
             .take(DAILY_LIMIT)
     }
     val dailyPicks = remember(feed.daily, dailyFallback, library.excludedArtists) {
-        feed.daily.filterNot { pick -> excluded.any { artistCreditMatches(pick.track.artist, it) || artistCreditMatches(pick.seed.artist, it) } }.ifEmpty { dailyFallback.map { com.luc4n3x.levyra.desktop.app.state.DailyPick(it, it) } }
+        feed.daily.filterNot { pick -> excluded.any { artistCreditMatches(pick.track.artist, it) || artistCreditMatches(pick.seed.artist, it) } }.ifEmpty { dailyFallback.map { DailyPick(it, it) } }
     }
     val dailyTracks = remember(dailyPicks) { dailyPicks.map { it.track } }
     val trendingArtists = remember(suggestedTracks) {
@@ -177,47 +178,10 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
         item(key = "soundtrack") {
-            val soundtrackTracks = remember(soundtrack.tracks, library.excludedArtists) {
-                soundtrack.tracks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
-            }
-            val soundtrackQueue = remember(soundtrackTracks, quickPicks, library.excludedArtists) {
-                soundtrackTracks.ifEmpty {
-                    quickPicks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
-                }.distinctBy(::trackIdentity)
-            }
-            val leadArtists = remember(soundtrackQueue) {
-                soundtrackQueue.map { soundtrackPrimaryArtist(it.artist) }
-                    .filter(String::isNotBlank)
-                    .distinctBy { it.lowercase() }
-                    .take(3)
-            }
-            val companions = remember(soundtrackQueue) {
-                soundtrackQueue.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
-            }
-            val heroPlaying = isPlaying && currentTrack != null && soundtrackQueue.any { it.id == currentTrack.id }
-            Box(Modifier.horizontalShelfBleed(Gutter)) {
-                SoundtrackHero(
-                    overline = strings.homeGreeting,
-                    overlineHighlight = displayName,
-                    title = shared.homeSoundtrackTodayTitle,
-                    lead = remember(leadArtists, shared) { shared.homeSoundtrackLead(leadArtists) },
-                    portraitUrl = soundtrack.portraitUrl.takeIf { soundtrackTracks.isNotEmpty() }.orEmpty(),
-                    fallbackArtworkUrl = soundtrackQueue.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty(),
-                    companionArtworkUrls = companions,
-                    playing = heroPlaying,
-                    loading = soundtrack.loading && soundtrackQueue.isEmpty(),
-                    playLabel = strings.playAll,
-                    enabled = soundtrackQueue.isNotEmpty(),
-                    onPlay = { if (heroPlaying) onTogglePlayback() else actions.onPlay(soundtrackQueue, 0) }
-                )
-                HomeTopBar(
-                    moodLabel = remember(code) { exploreLocalizationEntries(code).values.firstOrNull().orEmpty() },
-                    podcastLabel = remember(code) { com.luc4n3x.levyra.ui.i18n.podcastCopy(code).title },
-                    onOpenMoods = onOpenMoods,
-                    onOpenPodcast = onOpenPodcast,
-                    modifier = Modifier.padding(start = Gutter, top = 22.dp)
-                )
-            }
+            HomeSoundtrack(
+                soundtrack, quickPicks, library.excludedArtists, currentTrack, isPlaying, displayName,
+                actions, onTogglePlayback, onOpenMoods, onOpenPodcast
+            )
         }
 
         if (library.pinnedArtists.isNotEmpty()) {
@@ -298,38 +262,7 @@ fun HomeScreen(
             }
         }
 
-        if (dailyTracks.isNotEmpty()) {
-            item(key = "daily") {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ExpressiveSectionHeader(
-                        LevyraIcons.Radio,
-                        SectionTints.Sky,
-                        remember(code) { LevyraYouTubeMusicSkinStrings.forCode(code).dailyDiscovery },
-                        subtitles.dailyDiscover
-                    ) { SectionPlayButton(strings.playAll) { actions.onPlay(dailyTracks, 0) } }
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(dailyPicks, key = { "daily-${it.track.id}" }) { pick ->
-                            val copy = remember(code) { discoveryCopy(code) }
-                            PosterCard(
-                                pick.track,
-                                reason = when {
-                                    pick.seed.id != pick.track.id && pick.seed.artist.isNotBlank() ->
-                                        copy.reasonSimilarTo(pick.seed.title, soundtrackPrimaryArtist(pick.seed.artist))
-                                    pick.track.artist.isNotBlank() ->
-                                        copy.reasonForFansOf(soundtrackPrimaryArtist(pick.track.artist))
-                                    else -> null
-                                },
-                                onClick = { actions.onPlay(dailyTracks, dailyTracks.indexOf(pick.track).coerceAtLeast(0)) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        dailyDiscovery(dailyPicks, dailyTracks, subtitles.dailyDiscover, actions)
 
         if (quickPicks.isNotEmpty()) {
             item(key = "quick") {
@@ -343,6 +276,108 @@ fun HomeScreen(
         }
 
         homeCatalogSections(discover, feed, actions, artistPortraits, trendingArtists, code, strings, shared, subtitles, onOpenArtist, onOpenDiscover, onOpenNewReleases)
+    }
+}
+
+@Composable
+private fun HomeSoundtrack(
+    soundtrack: SoundtrackUiState,
+    quickPicks: List<Track>,
+    excludedArtists: Map<String, String>,
+    currentTrack: Track?,
+    isPlaying: Boolean,
+    displayName: String,
+    actions: TrackActions,
+    onTogglePlayback: () -> Unit,
+    onOpenMoods: () -> Unit,
+    onOpenPodcast: () -> Unit
+) {
+    val strings = LocalStrings.current
+    val code = strings.languageCode
+    val shared = remember(code) { SharedStrings.forCode(code) }
+    val excluded = excludedArtists.values
+    val soundtrackTracks = remember(soundtrack.tracks, excludedArtists) {
+        soundtrack.tracks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
+    }
+    val soundtrackQueue = remember(soundtrackTracks, quickPicks, excludedArtists) {
+        soundtrackTracks.ifEmpty {
+            quickPicks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
+        }.distinctBy(::trackIdentity)
+    }
+    val leadArtists = remember(soundtrackQueue) {
+        soundtrackQueue.map { soundtrackPrimaryArtist(it.artist) }
+            .filter(String::isNotBlank)
+            .distinctBy { it.lowercase() }
+            .take(3)
+    }
+    val companions = remember(soundtrackQueue) {
+        soundtrackQueue.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
+    }
+    val heroPlaying = isPlaying && currentTrack != null && soundtrackQueue.any { it.id == currentTrack.id }
+    Box(Modifier.horizontalShelfBleed(Gutter)) {
+        SoundtrackHero(
+            overline = strings.homeGreeting,
+            overlineHighlight = displayName,
+            title = shared.homeSoundtrackTodayTitle,
+            lead = remember(leadArtists, shared) { shared.homeSoundtrackLead(leadArtists) },
+            portraitUrl = soundtrack.portraitUrl.takeIf { soundtrackTracks.isNotEmpty() }.orEmpty(),
+            fallbackArtworkUrl = soundtrackQueue.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty(),
+            companionArtworkUrls = companions,
+            playing = heroPlaying,
+            loading = soundtrack.loading && soundtrackQueue.isEmpty(),
+            playLabel = strings.playAll,
+            enabled = soundtrackQueue.isNotEmpty(),
+            onPlay = { if (heroPlaying) onTogglePlayback() else actions.onPlay(soundtrackQueue, 0) }
+        )
+        HomeTopBar(
+            moodLabel = remember(code) { exploreLocalizationEntries(code).values.firstOrNull().orEmpty() },
+            podcastLabel = remember(code) { com.luc4n3x.levyra.ui.i18n.podcastCopy(code).title },
+            onOpenMoods = onOpenMoods,
+            onOpenPodcast = onOpenPodcast,
+            modifier = Modifier.padding(start = Gutter, top = 22.dp)
+        )
+    }
+}
+
+private fun LazyListScope.dailyDiscovery(
+    dailyPicks: List<DailyPick>,
+    dailyTracks: List<Track>,
+    subtitle: String,
+    actions: TrackActions
+) {
+    if (dailyTracks.isNotEmpty()) {
+        item(key = "daily") {
+            val strings = LocalStrings.current
+            val code = strings.languageCode
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ExpressiveSectionHeader(
+                    LevyraIcons.Radio,
+                    SectionTints.Sky,
+                    remember(code) { LevyraYouTubeMusicSkinStrings.forCode(code).dailyDiscovery },
+                    subtitle
+                ) { SectionPlayButton(strings.playAll) { actions.onPlay(dailyTracks, 0) } }
+                ShelfRow(
+                    modifier = Modifier.horizontalShelfBleed(Gutter),
+                    contentPadding = PaddingValues(horizontal = Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(dailyPicks, key = { "daily-${it.track.id}" }) { pick ->
+                        val copy = remember(code) { discoveryCopy(code) }
+                        PosterCard(
+                            pick.track,
+                            reason = when {
+                                pick.seed.id != pick.track.id && pick.seed.artist.isNotBlank() ->
+                                    copy.reasonSimilarTo(pick.seed.title, soundtrackPrimaryArtist(pick.seed.artist))
+                                pick.track.artist.isNotBlank() ->
+                                    copy.reasonForFansOf(soundtrackPrimaryArtist(pick.track.artist))
+                                else -> null
+                            },
+                            onClick = { actions.onPlay(dailyTracks, dailyTracks.indexOf(pick.track).coerceAtLeast(0)) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -517,10 +552,11 @@ private fun DiscoveryArtwork(covers: List<String>, accent: Color, width: Dp, com
                 url,
                 Modifier.size(size).zIndex(if (top) 1f else 0f).graphicsLayer {
                     val offset = if (moving) {
-                        ((index - turn.value + 19.5f) % 3f) - 1.5f
+                        (index - turn.value + 19.5f) % 3f - 1.5f
                     } else if (index == 0) 0f else -1f
                     val distance = abs(offset).coerceIn(0f, 1f)
-                    val movement = size * (if (compact) 0.24f else 0.54f)
+                    val travelFraction = if (compact) 0.24f else 0.54f
+                    val movement = size * travelFraction
                     translationX = movement.toPx() * offset
                     translationY = (9.dp * distance - 5.dp * lift() * (1f - distance)).toPx()
                     val scale = 1f - distance * 0.25f + lift() * (1f - distance) * 0.03f

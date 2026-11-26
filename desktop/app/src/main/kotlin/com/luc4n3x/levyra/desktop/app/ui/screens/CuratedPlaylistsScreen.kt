@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -129,18 +130,7 @@ fun CuratedPlaylistsScreen(
                     }
                 }
                 item(key = "curated-hero") {
-                    Column {
-                        if (covers.isNotEmpty()) CuratedMosaic(covers, total)
-                        if (total > 0) {
-                            Text(
-                                "$total · ${shared.playlistsPlain}".uppercase(),
-                                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.4.sp, fontWeight = FontWeight.Bold),
-                                color = LevyraBrand.soft,
-                                modifier = Modifier.padding(top = 22.dp)
-                            )
-                        }
-                        Text(title, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
+                    CuratedHeader(title, covers, total, shared.playlistsPlain)
                 }
                 if (visibleGroups.size > 1) {
                     item(key = "curated-jumps") {
@@ -163,35 +153,68 @@ fun CuratedPlaylistsScreen(
                         Text(shared.exploreEmpty, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 48.dp))
                     }
                 }
-                visibleGroups.forEachIndexed { group, shelf ->
-                    val picker = group == groups.size && categories.isNotEmpty()
-                    item(key = "curated-head-$group-${shelf.title}") { GroupHeader(group, shelf, shared.playlistsPlain) }
-                    if (picker) {
-                        item(key = "curated-picker") {
-                            CuratedCategoryPicker(categories, page.category, browseCopy.decadesTitle, onSelectCategory)
-                        }
-                    }
-                    val rows = shelf.playlists.chunked(columns)
-                    rows.forEachIndexed { rowIndex, row ->
-                        item(key = "curated-row-$group-$rowIndex") {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CellGap)) {
-                                row.forEach { playlist ->
-                                    CuratedCard(
-                                        playlist.title,
-                                        playlist.subtitle,
-                                        playlist.artworkUrl,
-                                        Modifier.weight(1f)
-                                    ) { onOpen(playlist.toCollectionRef()) }
-                                }
-                                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                            }
-                        }
-                    }
-                }
+                curatedGroupItems(
+                    visibleGroups, groups.size, columns, categories, page.category,
+                    browseCopy.decadesTitle, shared.playlistsPlain, onSelectCategory, onOpen
+                )
                 if (page.loading || page.categoryLoading) {
                     item(key = "curated-loading") { LoadingRow(LocalStrings.current.loading) }
                 } else if (categories.isNotEmpty() && browse.isEmpty()) {
                     item(key = "curated-browse-empty") { Text(shared.exploreEmpty) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CuratedHeader(title: String, covers: List<String>, total: Int, playlistsLabel: String) {
+    Column {
+        if (covers.isNotEmpty()) CuratedMosaic(covers, total)
+        if (total > 0) {
+            Text(
+                "$total · $playlistsLabel".uppercase(),
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.4.sp, fontWeight = FontWeight.Bold),
+                color = LevyraBrand.soft,
+                modifier = Modifier.padding(top = 22.dp)
+            )
+        }
+        Text(title, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold), maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun LazyListScope.curatedGroupItems(
+    visibleGroups: List<MoodShelf>,
+    categoryGroupIndex: Int,
+    columns: Int,
+    categories: List<MoodCategory>,
+    selectedCategory: String,
+    decadesTitle: String,
+    playlistsLabel: String,
+    onSelectCategory: (String) -> Unit,
+    onOpen: (CollectionRef) -> Unit
+) {
+    visibleGroups.forEachIndexed { group, shelf ->
+        val picker = group == categoryGroupIndex && categories.isNotEmpty()
+        item(key = "curated-head-$group-${shelf.title}") { GroupHeader(group, shelf, playlistsLabel) }
+        if (picker) {
+            item(key = "curated-picker") {
+                CuratedCategoryPicker(categories, selectedCategory, decadesTitle, onSelectCategory)
+            }
+        }
+        val rows = shelf.playlists.chunked(columns)
+        rows.forEachIndexed { rowIndex, row ->
+            item(key = "curated-row-$group-$rowIndex") {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CellGap)) {
+                    row.forEach { playlist ->
+                        CuratedCard(
+                            playlist.title,
+                            playlist.subtitle,
+                            playlist.artworkUrl,
+                            Modifier.weight(1f)
+                        ) { onOpen(playlist.toCollectionRef()) }
+                    }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

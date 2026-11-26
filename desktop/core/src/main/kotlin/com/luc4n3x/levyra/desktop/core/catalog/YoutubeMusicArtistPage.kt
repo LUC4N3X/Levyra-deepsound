@@ -95,16 +95,22 @@ internal object YoutubeMusicArtistPage {
                 artistObjects(row.optJSONArray("fixedColumns"), "musicResponsiveListItemFixedColumnRenderer")
             val lines = columns.drop(1).flatMap { column -> artistText(column, "text").split(" • ", " · ") }
             val credits = if (videos) artistText(row, "subtitle").substringBefore(" • ") else lines.firstOrNull().orEmpty()
-            val duration = lines.firstOrNull(ArtistDuration::matches).orEmpty()
-            val seconds = duration.split(':').mapNotNull(String::toLongOrNull).fold(0L) { total, part -> total * 60 + part }
             val metadata = if (videos) artistText(row, "subtitle").split(" • ").drop(1) else lines.drop(1)
-            val views = metadata.firstNotNullOfOrNull { label ->
-                parseCompactViewCount(label).takeIf { it >= 0L && ViewCountLabel.containsMatchIn(label) }
-            } ?: 0L
             Track(id, title, credits.ifBlank { artist }, videoUrl = Track.watchUrlOf(id), artworkUrl = artistArt(row),
-                durationMs = seconds * 1000L, musicVideo = videos, viewCount = views)
+                durationMs = trackDurationMs(lines), musicVideo = videos, viewCount = trackViewCount(metadata))
         }.distinctBy { it.id }
     }
+
+    private fun trackDurationMs(lines: List<String>): Long {
+        val duration = lines.firstOrNull(ArtistDuration::matches).orEmpty()
+        return duration.split(':').mapNotNull(String::toLongOrNull)
+            .fold(0L) { total, part -> total * 60 + part } * 1000L
+    }
+
+    private fun trackViewCount(metadata: List<String>): Long =
+        metadata.firstNotNullOfOrNull { label ->
+            parseCompactViewCount(label).takeIf { it >= 0L && ViewCountLabel.containsMatchIn(label) }
+        } ?: 0L
 
     private fun collections(root: JSONObject, kind: CollectionKind): List<CollectionRef> =
         artistObjects(root, "musicTwoRowItemRenderer").mapNotNull { card ->

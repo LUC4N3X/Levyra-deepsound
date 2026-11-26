@@ -136,28 +136,7 @@ internal fun ArtistScreen(
                 onExclude = { onToggleExclude(ref) }
             )
         }
-        if (latest != null) {
-            item(key = "artist-latest") {
-                Surface(
-                    modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clickable { onOpen(latest) },
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer
-                ) {
-                    Row(
-                        Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Artwork(latest.artworkUrl, Modifier.width(72.dp).height(72.dp), cornerRadius = 16.dp)
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(copy.latestRelease, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                            Text(latest.title, style = MaterialTheme.typography.titleMedium)
-                            if (latest.subtitle.isNotBlank()) Text(latest.subtitle, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-            }
-        }
+        artistLatestRelease(latest, copy.latestRelease, onOpen)
         if (favorites.isNotEmpty()) {
             item(key = "artist-favorites-title") { ArtistSectionTitle(strings.favorites) }
             itemsIndexed(if (showFavorites) favorites else favorites.take(4), key = { _, track -> "liked-${track.id}" }) { index, _ ->
@@ -172,30 +151,7 @@ internal fun ArtistScreen(
             }
         }
 
-        if (artist.tracks.isNotEmpty()) {
-            item(key = "artist-popular") {
-                Column {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(strings.popularTracks, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        TextButton(onClick = playAll) { Text(strings.artistCatalogCopy().playAllSongs) }
-                    }
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        val width = if (artist.tracks.size <= PopularPageRows) maxWidth - 32.dp
-                            else (maxWidth - 56.dp).coerceAtMost(520.dp)
-                        val pages = remember(artist.tracks) { artist.tracks.chunked(PopularPageRows) }
-                        ShelfRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            itemsIndexed(pages, key = { _, tracks -> tracks.first().id }) { page, tracks ->
-                                Column(Modifier.width(width)) {
-                                    tracks.indices.forEach { index ->
-                                        ArtistTrackRow(artist.tracks, page * PopularPageRows + index, actions, ranked = true)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        artistPopularTracks(artist.tracks, actions, strings, playAll)
 
         artistShelf("albums", strings.albumsPlain, artist.albums, onOpen)
         artistShelf("singles", strings.singlesAndEps, artist.singles, onOpen)
@@ -203,29 +159,94 @@ internal fun ArtistScreen(
         artistShelf("playlists", strings.playlists, artist.playlists, onOpen)
         artistShelf("featured", searchDiscographyCopy(strings.code).featuredOn, artist.featuredPlaylists, onOpen)
 
-        if (artist.videos.isNotEmpty()) {
-            item(key = "artist-videos") {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ArtistSectionTitle(strings.video)
-                    ShelfRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        itemsIndexed(artist.videos.take(20), key = { _, track -> track.id }) { index, track ->
-                            VideoCard(
-                                track,
-                                strings.code,
-                                strings.pulsePlays,
-                                menu = { ArtistVideoMenu(track, actions, strings) }
-                            ) { actions.onPlay(artist.videos, index) }
-                        }
-                    }
-                }
-            }
-        }
+        artistVideos(artist.videos, actions, strings)
         if (artist.biography.isNotBlank()) {
             item(key = "artist-about") { ArtistBiography(artist, copy.aboutArtist, strings) }
         }
         artistShelf("related", strings.similarArtists, artist.relatedArtists, onOpen)
         if (!artist.hasContent) {
             item(key = "artist-empty") { EmptyState(icon = LevyraIcons.Disc, title = strings.artistProfileUnavailable) }
+        }
+    }
+}
+
+private fun LazyListScope.artistLatestRelease(
+    latest: CollectionRef?,
+    label: String,
+    onOpen: (CollectionRef) -> Unit
+) {
+    if (latest != null) {
+        item(key = "artist-latest") {
+            Surface(
+                modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clickable { onOpen(latest) },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
+            ) {
+                Row(
+                    Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Artwork(latest.artworkUrl, Modifier.width(72.dp).height(72.dp), cornerRadius = 16.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text(latest.title, style = MaterialTheme.typography.titleMedium)
+                        if (latest.subtitle.isNotBlank()) Text(latest.subtitle, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.artistPopularTracks(
+    popularTracks: List<Track>,
+    actions: TrackActions,
+    strings: LevyraStrings,
+    playAll: () -> Unit
+) {
+    if (popularTracks.isNotEmpty()) {
+        item(key = "artist-popular") {
+            Column {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(strings.popularTracks, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = playAll) { Text(strings.artistCatalogCopy().playAllSongs) }
+                }
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val width = if (popularTracks.size <= PopularPageRows) maxWidth - 32.dp
+                        else (maxWidth - 56.dp).coerceAtMost(520.dp)
+                    val pages = remember(popularTracks) { popularTracks.chunked(PopularPageRows) }
+                    ShelfRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        itemsIndexed(pages, key = { _, tracks -> tracks.first().id }) { page, tracks ->
+                            Column(Modifier.width(width)) {
+                                tracks.indices.forEach { index ->
+                                    ArtistTrackRow(popularTracks, page * PopularPageRows + index, actions, ranked = true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.artistVideos(videos: List<Track>, actions: TrackActions, strings: LevyraStrings) {
+    if (videos.isNotEmpty()) {
+        item(key = "artist-videos") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ArtistSectionTitle(strings.video)
+                ShelfRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    itemsIndexed(videos.take(20), key = { _, track -> track.id }) { index, track ->
+                        VideoCard(
+                            track,
+                            strings.code,
+                            strings.pulsePlays,
+                            menu = { ArtistVideoMenu(track, actions, strings) }
+                        ) { actions.onPlay(videos, index) }
+                    }
+                }
+            }
         }
     }
 }
