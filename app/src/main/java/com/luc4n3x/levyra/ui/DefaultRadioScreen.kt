@@ -109,6 +109,7 @@ import com.luc4n3x.levyra.feature.radio.LiveRadioUiState
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
@@ -150,6 +151,7 @@ internal fun DefaultRadioScreen(
         defaultRadioOnAir(state, currentStationId)
     }
     val favoriteIds = remember(state.favorites) { state.favoriteIds }
+    val favoriteGroups = rememberRadioFavoriteGroups(state.favorites, state.favoriteSort, languageCode)
     val tuning = remember(currentStationId, isPlaying, favoriteIds, onPlay, viewModel) {
         DefaultRadioTuning(currentStationId, isPlaying, favoriteIds, onPlay, viewModel::toggleFavorite)
     }
@@ -190,7 +192,17 @@ internal fun DefaultRadioScreen(
                 item(key = "default-radio-custom-error", contentType = "default-radio-notice") { RadioNotice(libraryCopy.error(reason), Icons.Rounded.Podcasts) }
             }
             if (state.query.isBlank()) {
-                defaultRadioPresets(strings.favoritesPlain, strings.removeFromFavorites, state.favorites, tuning)
+                defaultRadioPresets(strings.favoritesPlain, strings.removeFromFavorites, favoriteGroups, tuning) {
+                    RadioFavoriteSortButton(
+                        sort = state.favoriteSort,
+                        languageCode = languageCode,
+                        accent = MaterialTheme.colorScheme.primary,
+                        content = MaterialTheme.colorScheme.onSurface,
+                        container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        onSort = viewModel::setFavoriteSort,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                }
                 defaultRadioRecent(strings.recent, state.recent, strings, tuning)
                 defaultRadioCustomStations(state.customStations, libraryCopy.custom, libraryCopy.edit, strings, tuning, openEditor) { deletingId = it }
             }
@@ -475,14 +487,28 @@ private fun DefaultRadioSectionTitle(title: String) {
     )
 }
 
-private fun LazyListScope.defaultRadioPresets(title: String, removeLabel: String, stations: List<RadioStation>, tuning: DefaultRadioTuning) {
-    if (stations.isEmpty()) return
-    item(key = "default-radio-presets", contentType = "default-radio-presets") {
-        Column {
-            DefaultRadioSectionTitle(title)
-            LazyRow(contentPadding = PaddingValues(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(stations, key = { _, station -> "preset-${station.uuid}" }, contentType = { _, _ -> "default-radio-preset" }) { index, station ->
-                    DefaultRadioPreset(index + 1, station, tuning.isLive(station), removeLabel, { tuning.onFavorite(station) }) { tuning.onPlay(station) }
+private fun LazyListScope.defaultRadioPresets(
+    title: String,
+    removeLabel: String,
+    groups: List<RadioFavoriteGroup<RadioStation>>,
+    tuning: DefaultRadioTuning,
+    sortAction: @Composable () -> Unit
+) {
+    if (groups.none { it.items.isNotEmpty() }) return
+    item(key = "default-radio-presets-title", contentType = "default-radio-presets-title") {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.weight(1f)) { DefaultRadioSectionTitle(title) }
+            sortAction()
+        }
+    }
+    groups.forEach { group ->
+        item(key = "default-radio-presets-${group.key}", contentType = "default-radio-presets") {
+            Column {
+                group.title?.let { RadioFavoriteGroupHeader(it, MaterialTheme.colorScheme.onSurfaceVariant, DefaultRadioGutter) }
+                LazyRow(contentPadding = PaddingValues(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    itemsIndexed(group.items, key = { _, station -> "preset-${station.uuid}" }, contentType = { _, _ -> "default-radio-preset" }) { index, station ->
+                        DefaultRadioPreset(index + 1, station, tuning.isLive(station), removeLabel, { tuning.onFavorite(station) }) { tuning.onPlay(station) }
+                    }
                 }
             }
         }

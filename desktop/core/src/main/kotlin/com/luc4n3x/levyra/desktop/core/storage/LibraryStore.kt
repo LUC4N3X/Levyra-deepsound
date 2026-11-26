@@ -60,6 +60,11 @@ class LibraryStore(
         return id
     }
 
+    fun ensurePlaylist(playlistId: String, name: String) = mutate { data ->
+        if (data.playlists.any { it.id == playlistId }) data
+        else data.copy(playlists = data.playlists + LocalPlaylist(id = playlistId, name = name.trim(), createdAt = nowMillis()))
+    }
+
     fun renamePlaylist(playlistId: String, name: String) = mutate { data ->
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@mutate data

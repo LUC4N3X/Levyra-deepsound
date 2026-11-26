@@ -35,7 +35,8 @@ enum class Destination {
     MOODS,
     PODCAST,
     RADIO,
-    CURATED
+    CURATED,
+    FOR_YOU
 }
 
 class LevyraAppModel internal constructor(
@@ -54,7 +55,8 @@ class LevyraAppModel internal constructor(
     val lyricsController: LyricsController,
     val playbackController: PlaybackController,
     val downloadController: OfflineDownloadController,
-    val localMusicController: LocalMusicController
+    val localMusicController: LocalMusicController,
+    val discoveryDeckController: DiscoveryDeckController
 ) {
     private val destinationState = MutableStateFlow(Destination.HOME)
     private val previousDestination = MutableStateFlow(Destination.HOME)
@@ -94,10 +96,16 @@ class LevyraAppModel internal constructor(
         scope.launch {
             playbackController.messages.collect { message -> noticeFlow.tryEmit(message) }
         }
+        scope.launch {
+            playbackController.state.map { it.isPlaying }.distinctUntilChanged().collect { playing ->
+                if (playing) discoveryDeckController.onMainPlaybackStarted()
+            }
+        }
     }
 
     fun navigate(destination: Destination) {
         if (destinationState.value == destination) return
+        if (destinationState.value == Destination.FOR_YOU) discoveryDeckController.close()
         if (destinationState.value == Destination.COLLECTION) {
             catalogController.clearCollectionHistory()
         }
@@ -111,7 +119,13 @@ class LevyraAppModel internal constructor(
                 return
             }
         }
+        if (destinationState.value == Destination.FOR_YOU) discoveryDeckController.close()
         destinationState.value = previousDestination.value
+    }
+
+    fun openDiscoveryDeck(picks: List<DiscoveryPick>) {
+        discoveryDeckController.open(picks)
+        navigate(Destination.FOR_YOU)
     }
 
     fun toggleQueue() {

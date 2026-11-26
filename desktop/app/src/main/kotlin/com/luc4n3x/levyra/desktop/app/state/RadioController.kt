@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.desktop.core.radio.SavedStation
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import com.luc4n3x.levyra.desktop.core.storage.JsonFileStore
 import com.luc4n3x.levyra.feature.radio.RadioCategory
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteSort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 
 internal data class RadioUiState(
     val category: RadioCategory = RadioCategory.Popular,
@@ -25,20 +27,27 @@ internal data class RadioUiState(
     val stations: List<RadioStation> = emptyList(),
     val favorites: List<SavedStation> = emptyList(),
     val loading: Boolean = false,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val favoriteSort: RadioFavoriteSort = RadioFavoriteSort.Default
 )
 
 internal class RadioController(
     private val scope: CoroutineScope,
     paths: AppPaths,
-    private val browser: RadioBrowser = RadioBrowser()
+    private val browser: RadioBrowser = RadioBrowser(),
+    private val now: () -> Long = System::currentTimeMillis
 ) {
     private val store = JsonFileStore<List<SavedStation>>(
         file = paths.root.resolve("radio.json"),
         serializer = ListSerializer(SavedStation.serializer()),
         defaultValue = { emptyList() }
     )
-    private val state = MutableStateFlow(RadioUiState(favorites = store.read()))
+    private val sortStore = JsonFileStore(
+        file = paths.root.resolve("radio-sort.json"),
+        serializer = String.serializer(),
+        defaultValue = { RadioFavoriteSort.Default.id }
+    )
+    private val state = MutableStateFlow(RadioUiState(favorites = store.read(), favoriteSort = RadioFavoriteSort.fromId(sortStore.read())))
     val radio: StateFlow<RadioUiState> = state.asStateFlow()
     private var job: Job? = null
 
@@ -66,9 +75,19 @@ internal class RadioController(
 
     fun toggleFavorite(station: SavedStation) {
         val current = state.value.favorites
-        val updated = if (current.any { it.uuid == station.uuid }) current.filterNot { it.uuid == station.uuid } else listOf(station) + current
+        val updated = if (current.any { it.uuid == station.uuid }) {
+            current.filterNot { it.uuid == station.uuid }
+        } else {
+            listOf(station.copy(addedAt = now())) + current
+        }
         state.update { it.copy(favorites = updated) }
         scope.launch { runCatching { store.write(updated) } }
+    }
+
+    fun setFavoriteSort(sort: RadioFavoriteSort) {
+        if (state.value.favoriteSort == sort) return
+        state.update { it.copy(favoriteSort = sort) }
+        scope.launch { runCatching { sortStore.write(sort.id) } }
     }
 
     private fun reload() {

@@ -80,6 +80,7 @@ import com.luc4n3x.levyra.feature.radio.CustomRadioError
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -123,6 +124,7 @@ internal fun AtelierRadioScreen(
     val radioStrings = remember(languageCode) { LevyraLiveRadioCatalog.forCode(languageCode) }
     val libraryCopy = remember(languageCode) { radioLibraryCopy(languageCode) }
     val favoriteIds = remember(state.favorites) { state.favoriteIds }
+    val favoriteGroups = rememberRadioFavoriteGroups(state.favorites, state.favoriteSort, languageCode)
     var countryPickerOpen by remember { mutableStateOf(false) }
     var languagePickerOpen by remember { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
@@ -188,17 +190,27 @@ internal fun AtelierRadioScreen(
         }
         if (state.query.isBlank()) {
             listOf(
-                "favorites" to (strings.favoritesPlain to state.favorites),
-                "recent" to (strings.recent to state.recent)
-            ).forEach { (section, content) ->
-                val (sectionTitle, stations) = content
-                if (stations.isEmpty()) return@forEach
-                item(key = "atelier-radio-presets-$section", contentType = "atelier-radio-presets") {
-                    Column {
-                        AtelierSectionLabel(sectionTitle)
-                        LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                            itemsIndexed(stations, key = { _, station -> "$section-${station.uuid}" }, contentType = { _, _ -> "atelier-radio-preset" }) { index, station ->
-                                AtelierRadioPreset(index + 1, station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+                Triple("favorites", strings.favoritesPlain, favoriteGroups),
+                Triple("recent", strings.recent, listOf(RadioFavoriteGroup("recent", null, state.recent)))
+            ).forEach { (section, sectionTitle, groups) ->
+                if (groups.none { it.items.isNotEmpty() }) return@forEach
+                item(key = "atelier-radio-presets-$section-title", contentType = "atelier-label") {
+                    AtelierSectionLabel(sectionTitle) {
+                        if (section == "favorites") {
+                            RadioFavoriteSortButton(
+                                state.favoriteSort, languageCode, AtelierDesign.accent, AtelierDesign.text, AtelierDesign.panelRaised, viewModel::setFavoriteSort
+                            )
+                        }
+                    }
+                }
+                groups.forEach { group ->
+                    item(key = "atelier-radio-presets-$section-${group.key}", contentType = "atelier-radio-presets") {
+                        Column {
+                            group.title?.let { RadioFavoriteGroupHeader(it, AtelierDesign.textSecondary, AtelierDesign.gutter) }
+                            LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                                itemsIndexed(group.items, key = { _, station -> "$section-${station.uuid}" }, contentType = { _, _ -> "atelier-radio-preset" }) { index, station ->
+                                    AtelierRadioPreset(index + 1, station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+                                }
                             }
                         }
                     }

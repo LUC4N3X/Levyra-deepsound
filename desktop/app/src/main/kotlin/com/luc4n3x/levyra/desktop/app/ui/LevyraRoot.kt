@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
 import com.luc4n3x.levyra.desktop.app.ui.screens.ArtistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.CuratedPlaylistsScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.DiscoveryDeckScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.ExploreScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LibraryScreen
@@ -288,12 +289,32 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     model.catalogController.submit(strings.homeNewReleasesQuery)
                                                     model.navigate(Destination.SEARCH)
                                                 },
-                                                onPlayMix = { tracks ->
-                                                    model.playbackController.playShuffled(
-                                                        tracks.map { model.downloadController.completedTrack(it) ?: it }
-                                                    )
-                                                }
+                                                onOpenForYou = model::openDiscoveryDeck
                                             )
+
+                                            Destination.FOR_YOU -> {
+                                                val deck by model.discoveryDeckController.deck.collectAsState()
+                                                val forYouPicks = remember(discover, homeFeed, library) {
+                                                    com.luc4n3x.levyra.desktop.app.state.homeDiscoveryPicks(discover, homeFeed, library)
+                                                }
+                                                LaunchedEffect(forYouPicks) { model.discoveryDeckController.append(forYouPicks) }
+                                                val weeklyId = model.discoveryDeckController.weeklyPlaylistId
+                                                DiscoveryDeckScreen(
+                                                    deck = deck,
+                                                    savedThisWeek = library.playlists.firstOrNull { it.id == weeklyId }?.tracks?.size ?: 0,
+                                                    loading = discover.loading || discover.feedsLoading,
+                                                    onBack = model::back,
+                                                    onSave = model.discoveryDeckController::save,
+                                                    onDismiss = model.discoveryDeckController::dismiss,
+                                                    onSwipe = model.discoveryDeckController::decide,
+                                                    onUndo = model.discoveryDeckController::undo,
+                                                    onTogglePreview = model.discoveryDeckController::togglePreview,
+                                                    onPlayFull = model.discoveryDeckController::playFull,
+                                                    onOpenSaved = { model.openPlaylist(weeklyId) },
+                                                    onRefresh = model::refreshDiscover,
+                                                    onConsumeNotice = model.discoveryDeckController::consumeNotice
+                                                )
+                                            }
 
                                             Destination.CURATED -> {
                                                 val curatedPage by model.homeFeedController.curatedPage.collectAsState()
@@ -664,6 +685,7 @@ private fun RadioHost(model: LevyraAppModel, contentCountry: String, currentTrac
         onCategory = model.radioController::selectCategory,
         onSearch = model.radioController::search,
         onToggleFavorite = model.radioController::toggleFavorite,
+        onFavoriteSort = model.radioController::setFavoriteSort,
         onPlay = { tracks, index -> model.playbackController.playTracks(tracks, index) }
     )
 }

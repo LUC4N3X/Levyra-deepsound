@@ -20,7 +20,8 @@ data class RadioStation(
     val country: String,
     val tags: List<String>,
     val codec: String,
-    val bitrate: Int
+    val bitrate: Int,
+    val countryCode: String = ""
 ) {
     fun toTrack(): Track = Track(
         id = "radio:$uuid",
@@ -45,12 +46,16 @@ data class SavedStation(
     val name: String,
     val streamUrl: String,
     val favicon: String = "",
-    val details: String = ""
+    val details: String = "",
+    val country: String = "",
+    val countryCode: String = "",
+    val tags: List<String> = emptyList(),
+    val addedAt: Long = 0L
 ) {
     fun toTrack(): Track = Track(id = "radio:$uuid", title = name, artist = details, videoUrl = streamUrl, artworkUrl = favicon, live = true)
 }
 
-fun RadioStation.toSaved(): SavedStation = SavedStation(uuid, name, streamUrl, favicon, details)
+fun RadioStation.toSaved(): SavedStation = SavedStation(uuid, name, streamUrl, favicon, details, country, countryCode, tags)
 
 class RadioBrowser(
     private val client: OkHttpClient = ExtractorHttp.client,
@@ -121,7 +126,8 @@ class RadioBrowser(
                     country = item.optString("country").trim(),
                     tags = item.optString("tags").split(',').map(String::trim).filter(String::isNotEmpty).take(3),
                     codec = item.optString("codec").trim(),
-                    bitrate = item.optInt("bitrate", 0)
+                    bitrate = item.optInt("bitrate", 0),
+                    countryCode = item.optString("countrycode").trim().uppercase(Locale.ROOT).take(2)
                 )
             }.distinctBy { it.uuid }
         }

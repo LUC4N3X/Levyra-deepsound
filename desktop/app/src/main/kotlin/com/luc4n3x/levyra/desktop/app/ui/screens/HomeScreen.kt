@@ -120,7 +120,7 @@ fun HomeScreen(
     onOpenCuratedAll: () -> Unit,
     onOpenPodcast: () -> Unit,
     onOpenNewReleases: () -> Unit,
-    onPlayMix: (List<Track>) -> Unit,
+    onOpenForYou: (List<com.luc4n3x.levyra.desktop.app.state.DiscoveryPick>) -> Unit,
     onOpenCollection: (com.luc4n3x.levyra.desktop.core.model.CollectionRef) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -216,7 +216,7 @@ fun HomeScreen(
                     covers = remember(discoveryTracks) {
                         discoveryTracks.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
                     },
-                    onStart = { onPlayMix(discoveryTracks) }
+                    onStart = { onOpenForYou(com.luc4n3x.levyra.desktop.app.state.homeDiscoveryPicks(discover, feed, library)) }
                 )
             }
         }

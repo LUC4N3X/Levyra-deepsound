@@ -80,6 +80,7 @@ import com.luc4n3x.levyra.feature.radio.CustomRadioError
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioCategory
 import com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry
+import com.luc4n3x.levyra.feature.radio.RadioFavoriteGroup
 import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -117,6 +118,7 @@ internal fun IvoryRadioScreen(
     val radioStrings = remember(languageCode) { LevyraLiveRadioCatalog.forCode(languageCode) }
     val libraryCopy = remember(languageCode) { radioLibraryCopy(languageCode) }
     val favoriteIds = remember(state.favorites) { state.favoriteIds }
+    val favoriteGroups = rememberRadioFavoriteGroups(state.favorites, state.favoriteSort, languageCode)
     var countryPickerOpen by remember { mutableStateOf(false) }
     var languagePickerOpen by remember { mutableStateOf(false) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
@@ -205,15 +207,28 @@ internal fun IvoryRadioScreen(
             item(key = "ivory-radio-custom-error", contentType = "ivory-radio-note") { IvoryRadioNote(libraryCopy.error(reason)) }
         }
         if (state.query.isBlank()) {
-            listOf("favorites" to (strings.favoritesPlain to state.favorites), "recent" to (strings.recent to state.recent)).forEach { (section, content) ->
-                val (sectionTitle, stations) = content
-                if (stations.isEmpty()) return@forEach
-                item(key = "ivory-radio-$section", contentType = "ivory-radio-presets") {
-                    Column(Modifier.padding(top = 18.dp)) {
-                        SkinSectionTitle(sectionTitle, IvoryRadioGutter)
-                        LazyRow(contentPadding = PaddingValues(horizontal = IvoryRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(stations, key = { "$section-${it.uuid}" }, contentType = { "IvoryRadio-stations" }) { station ->
-                                IvoryPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+            listOf(
+                Triple("favorites", strings.favoritesPlain, favoriteGroups),
+                Triple("recent", strings.recent, listOf(RadioFavoriteGroup("recent", null, state.recent)))
+            ).forEach { (section, sectionTitle, groups) ->
+                if (groups.none { it.items.isNotEmpty() }) return@forEach
+                item(key = "ivory-radio-$section-title", contentType = "ivory-radio-header") {
+                    Box(Modifier.padding(top = 18.dp)) {
+                        SkinSectionTitle(sectionTitle, IvoryRadioGutter) {
+                            if (section == "favorites") {
+                                RadioFavoriteSortButton(state.favoriteSort, languageCode, IvoryDesign.ink, LevyraText, LevyraPanelSoft, viewModel::setFavoriteSort)
+                            }
+                        }
+                    }
+                }
+                groups.forEach { group ->
+                    item(key = "ivory-radio-$section-${group.key}", contentType = "ivory-radio-presets") {
+                        Column {
+                            group.title?.let { RadioFavoriteGroupHeader(it, LevyraMuted, IvoryRadioGutter) }
+                            LazyRow(contentPadding = PaddingValues(horizontal = IvoryRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(group.items, key = { "$section-${it.uuid}" }, contentType = { "IvoryRadio-stations" }) { station ->
+                                    IvoryPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
+                                }
                             }
                         }
                     }

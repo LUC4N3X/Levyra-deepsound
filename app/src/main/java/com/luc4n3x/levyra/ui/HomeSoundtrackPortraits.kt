@@ -18,7 +18,8 @@ internal object HomeSoundtrackPortraits {
     )
 
     private val fixedPortraits: Map<String, String> = mapOf(
-        "dua lipa" to "https://api.deezer.com/artist/8706544/image?size=xl"
+        "dua lipa" to "https://api.deezer.com/artist/8706544/image?size=xl",
+        "billie eilish" to "https://assets.fanart.tv/fanart/eilish-billie-5e7ba178e463e.jpg"
     )
 
     private val tidalArtistIds: Map<String, Long> = mapOf(
