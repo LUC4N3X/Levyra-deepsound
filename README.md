@@ -18,7 +18,7 @@ Keep streamed tracks and local files in one library, save music for offline list
   <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-unified-info-9 126w, docs/assets/levyra-wiki-light.svg?v=m3-unified-info-9 160w" sizes="152px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-unified-info-9 126w, docs/assets/levyra-wiki.svg?v=m3-unified-info-9 160w" sizes="152px"><img src="docs/assets/levyra-wiki.svg?v=m3-unified-info-9" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-unified-info-9 126w, docs/assets/levyra-wiki.svg?v=m3-unified-info-9 160w" sizes="152px" width="152" alt="Levyra Documentation"></picture></a>
 </p>
 
-<p align="center"><b>Download Levyra</b></p>
+<p align="center"><b>Get Levyra</b></p>
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile-light.svg?v=m3-coherent-shapes-8"><source media="(max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile.svg?v=m3-coherent-shapes-8"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg?v=m3-coherent-shapes-8"><img src="docs/assets/levyra-github-download.svg?v=m3-coherent-shapes-8" width="168" height="51" alt="Download Levyra from GitHub Releases"></picture></a>
