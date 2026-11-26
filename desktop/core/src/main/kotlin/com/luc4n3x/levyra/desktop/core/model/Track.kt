@@ -16,7 +16,8 @@ data class Track(
     val explicit: Boolean? = null,
     val isrc: String = "",
     val musicVideo: Boolean = false,
-    val live: Boolean = false
+    val live: Boolean = false,
+    val viewCount: Long = 0L
 ) {
     val hasArtwork: Boolean get() = artworkUrl.isNotBlank()
     val isOffline: Boolean get() = offlinePath.isNotBlank()

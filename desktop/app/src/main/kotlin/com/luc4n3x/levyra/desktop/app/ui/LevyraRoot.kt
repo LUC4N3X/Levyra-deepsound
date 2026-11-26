@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.PlayerBar
 import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.CuratedPlaylistsScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.ExploreScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LibraryScreen
@@ -101,6 +102,7 @@ fun LevyraRoot(model: LevyraAppModel) {
     val soundtrack by model.soundtrackController.soundtrack.collectAsState()
     val artistPortraits by model.soundtrackController.artistPortraits.collectAsState()
     val homeFeed by model.homeFeedController.feed.collectAsState()
+    var curatedTitle by remember { mutableStateOf("") }
     var localSearchResults by remember { mutableStateOf<List<Track>>(emptyList()) }
 
     LaunchedEffect(localMusic.index, search.query) {
@@ -277,7 +279,14 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     model.navigate(Destination.SEARCH)
                                                 },
                                                 onOpenDiscover = { model.navigate(Destination.DISCOVER) },
-                                                onOpenMoods = { model.navigate(Destination.MOODS) },
+                                                onOpenMoods = {
+                                                    model.moodsController.close()
+                                                    model.navigate(Destination.MOODS)
+                                                },
+                                                onOpenCuratedAll = { title ->
+                                                    curatedTitle = title
+                                                    model.navigate(Destination.CURATED)
+                                                },
                                                 onOpenPodcast = { model.navigate(Destination.PODCAST) },
                                                 onOpenNewReleases = {
                                                     model.catalogController.clearSearch()
@@ -293,6 +302,13 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 }
                                             )
 
+                                            Destination.CURATED -> CuratedPlaylistsScreen(
+                                                title = curatedTitle,
+                                                shelves = homeFeed.curatedShelves,
+                                                onOpen = model::openCollection,
+                                                onBack = model::back
+                                            )
+
                                             Destination.RADIO -> RadioHost(model, settings.contentCountry, playback.current?.id)
 
                                             Destination.MOODS -> MoodsHost(model, settings.contentCountry, discover, strings.homeNewReleasesQuery)
@@ -305,7 +321,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 onBack = model::back
                                             )
 
-                                            Destination.DISCOVER -> ExploreHost(model, settings.contentCountry)
+                                            Destination.DISCOVER -> ExploreHost(model, settings.contentCountry, actions)
 
                                             Destination.SEARCH -> SearchScreen(
                                                 state = search,
@@ -578,7 +594,7 @@ fun LevyraRoot(model: LevyraAppModel) {
 }
 
 @Composable
-private fun ExploreHost(model: LevyraAppModel, contentCountry: String) {
+private fun ExploreHost(model: LevyraAppModel, contentCountry: String, actions: com.luc4n3x.levyra.desktop.app.ui.components.TrackActions) {
     val explore by model.exploreController.explore.collectAsState()
     val scope = rememberCoroutineScope()
     ExploreScreen(
@@ -588,7 +604,10 @@ private fun ExploreHost(model: LevyraAppModel, contentCountry: String) {
         onPlay = { tracks, index ->
             model.playbackController.playTracks(tracks.map { model.downloadController.completedTrack(it) ?: it }, index)
         },
-        onOpenStory = { url -> scope.launch { openLink(url) } }
+        onOpenStory = { url -> scope.launch { openLink(url) } },
+        actions = actions,
+        onOpenChart = model.exploreController::open,
+        onCloseChart = model.exploreController::close
     )
 }
 

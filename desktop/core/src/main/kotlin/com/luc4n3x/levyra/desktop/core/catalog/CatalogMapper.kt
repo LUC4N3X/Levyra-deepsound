@@ -25,7 +25,8 @@ object CatalogMapper {
             artist = cleanArtist(item.uploaderName.orEmpty()),
             videoUrl = url,
             artworkUrl = item.thumbnailUrl.orEmpty(),
-            durationMs = item.duration.coerceAtLeast(0L) * 1000L
+            durationMs = item.duration.coerceAtLeast(0L) * 1000L,
+            viewCount = item.viewCount.coerceAtLeast(0L)
         )
     }
 

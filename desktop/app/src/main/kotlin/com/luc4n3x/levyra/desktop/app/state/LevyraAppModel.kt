@@ -29,7 +29,8 @@ enum class Destination {
     NOW_PLAYING,
     MOODS,
     PODCAST,
-    RADIO
+    RADIO,
+    CURATED
 }
 
 class LevyraAppModel internal constructor(

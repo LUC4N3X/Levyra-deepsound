@@ -33,4 +33,11 @@ class MusicNewsTest {
         assertEquals("Rockol", MusicNews.sources("it").first().name)
         assertEquals("Pitchfork", MusicNews.sources("ja").first().name)
     }
+
+    @Test
+    fun readsOpenGraphImageInEitherAttributeOrder() {
+        assertEquals("https://img/a.jpg", MusicNews.articleImage("""<meta property="og:image" content="https://img/a.jpg">"""))
+        assertEquals("https://img/b.jpg", MusicNews.articleImage("""<meta content="https://img/b.jpg" name="twitter:image">"""))
+        assertEquals("", MusicNews.articleImage("""<meta property="og:image" content="http://img/c.jpg">"""))
+    }
 }

@@ -23,7 +23,8 @@ data class DailyPick(val track: Track, val seed: Track)
 data class HomeFeedState(
     val videos: List<Track> = emptyList(),
     val daily: List<DailyPick> = emptyList(),
-    val curated: List<com.luc4n3x.levyra.desktop.core.moods.MoodPlaylist> = emptyList()
+    val curated: List<com.luc4n3x.levyra.desktop.core.moods.MoodPlaylist> = emptyList(),
+    val curatedShelves: List<com.luc4n3x.levyra.desktop.core.moods.MoodShelf> = emptyList()
 )
 
 class HomeFeedController(
@@ -44,11 +45,12 @@ class HomeFeedController(
         if (curatedRegion != curatedKey) {
             curatedKey = curatedRegion
             scope.launch {
-                val playlists = safely { moods.curatedShelves(languageTag, country) }.orEmpty()
+                val shelves = safely { moods.curatedShelves(languageTag, country) }.orEmpty().distinctBy { it.title }
+                val playlists = shelves
                     .flatMap { it.playlists }
                     .distinctBy { it.id }
                     .take(CURATED_LIMIT)
-                if (curatedKey == curatedRegion) state.update { it.copy(curated = playlists) }
+                if (curatedKey == curatedRegion) state.update { it.copy(curated = playlists, curatedShelves = shelves) }
             }
         }
         val region = country.trim().uppercase().take(2).ifBlank { "US" }

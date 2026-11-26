@@ -79,6 +79,7 @@ kotlin {
 val generatedComposeResources = layout.buildDirectory.dir("generated/composeResources/main")
 val prepareComposeResources = tasks.register<Sync>("prepareComposeResources") {
     from(layout.projectDirectory.file("src/main/resources/icons/levyra.png"))
+    from(layout.projectDirectory.file("../../app/src/main/res/drawable/levyra_logo.png"))
     into(generatedComposeResources.map { it.dir("drawable") })
 }
 

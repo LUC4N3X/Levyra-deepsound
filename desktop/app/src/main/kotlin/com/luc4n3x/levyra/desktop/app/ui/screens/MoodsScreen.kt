@@ -303,7 +303,6 @@ private fun PlaylistCard(playlist: MoodPlaylist, onClick: () -> Unit) {
     Column(
         Modifier
             .width(PlaylistSize)
-            .clip(RoundedCornerShape(20.dp))
             .hoverable(interaction)
             .clickable(role = Role.Button, onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp)

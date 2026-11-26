@@ -66,4 +66,12 @@ class LyricsTest {
         )
         assertEquals(-1, lyrics.activeIndex(60_000L))
     }
+
+    @Test
+    fun `featured credits are stripped for the lyrics lookup`() {
+        assertEquals("Victory Lap", LyricsRepository.cleanTitle("Victory Lap (feat. Shiva, Geolier)"))
+        assertEquals("Lost in It", LyricsRepository.cleanTitle("Lost in It feat. Someone"))
+        assertEquals("Sfera Ebbasta", LyricsRepository.leadArtist("Sfera Ebbasta, Shiva, Geolier"))
+        assertEquals("Alfa", LyricsRepository.leadArtist("Alfa & Bresh"))
+    }
 }

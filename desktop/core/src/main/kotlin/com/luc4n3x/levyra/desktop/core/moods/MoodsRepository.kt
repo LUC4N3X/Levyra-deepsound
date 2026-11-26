@@ -63,24 +63,33 @@ class MoodsRepository(
             .orEmpty()
 
     suspend fun curatedShelves(languageTag: String, country: String): List<MoodShelf> = withContext(dispatcher) {
-        CURATED_BROWSE_IDS.asSequence()
-            .map { browseId -> browse(languageTag, country, browseId, "")?.let(MoodsParser::shelves).orEmpty() }
-            .map { shelves -> shelves.filter { it.playlists.isNotEmpty() } }
-            .firstOrNull { it.isNotEmpty() }
-            .orEmpty()
+        val shelves = LinkedHashMap<String, MoodShelf>()
+        val requested = HashSet<String>()
+        var root = browse(languageTag, country, HOME_BROWSE_ID, "")
+        var pages = 0
+        while (root != null && pages < CURATED_PAGES) {
+            MoodsParser.shelves(root).filter { it.playlists.isNotEmpty() }.forEach { shelves.putIfAbsent(it.title, it) }
+            val next = MoodsParser.continuation(root)?.takeIf(requested::add) ?: break
+            val visitor = root.optJSONObject("responseContext")?.optString("visitorData").orEmpty()
+            root = browse(languageTag, country, "", "", next, visitor)
+            pages++
+        }
+        shelves.values.sortedByDescending { it.playlists.size > 1 }
     }
 
     suspend fun decades(languageTag: String, country: String): List<MoodCategory> =
         MoodsParser.decades(shelves(DECADES_PARAMS, languageTag, country))
 
-    private fun browse(languageTag: String, country: String, browseId: String, params: String): JSONObject? {
+    private fun browse(languageTag: String, country: String, browseId: String, params: String, continuation: String = "", visitorData: String = ""): JSONObject? {
         val client = JSONObject()
             .put("clientName", "WEB_REMIX")
             .put("clientVersion", CLIENT_VERSION)
             .put("hl", innerTubeLanguage(languageTag))
             .put("gl", country.trim().uppercase().take(2).ifBlank { "US" })
-        val payload = JSONObject().put("context", JSONObject().put("client", client)).put("browseId", browseId)
-        if (params.isNotBlank()) payload.put("params", params)
+        if (visitorData.isNotBlank()) client.put("visitorData", visitorData)
+        val payload = JSONObject().put("context", JSONObject().put("client", client))
+        if (continuation.isNotBlank()) payload.put("continuation", continuation) else payload.put("browseId", browseId)
+        if (continuation.isBlank() && params.isNotBlank()) payload.put("params", params)
         val request = Request.Builder()
             .url(BROWSE_URL)
             .post(payload.toString().toRequestBody(JSON))
@@ -90,6 +99,7 @@ class MoodsRepository(
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
             .header("X-Youtube-Client-Name", "67")
             .header("X-Youtube-Client-Version", CLIENT_VERSION)
+            .apply { if (visitorData.isNotBlank()) header("X-Goog-Visitor-Id", visitorData) }
             .build()
         return runCatching {
             this.client.newCall(request).execute().use { response ->
@@ -102,7 +112,8 @@ class MoodsRepository(
 
     companion object {
         const val DECADES_PARAMS = "ggMPOg1uX1V4cTVVT0JjY0xI"
-        private val CURATED_BROWSE_IDS = listOf("FEmusic_mixed_for_you", "FEmusic_home")
+        private const val HOME_BROWSE_ID = "FEmusic_home"
+        private const val CURATED_PAGES = 5
         private const val ROOT_BROWSE_ID = "FEmusic_moods_and_genres"
         private const val CATEGORY_BROWSE_ID = "FEmusic_moods_and_genres_category"
         private const val ORIGIN = "https://music.youtube.com"
@@ -155,6 +166,9 @@ internal object MoodsParser {
             if (playlists.isEmpty()) null else MoodShelf(title, playlists, moreParams(header))
         }
     }
+
+    fun continuation(root: JSONObject): String? =
+        objects(root, setOf("nextContinuationData")).firstNotNullOfOrNull { it.optString("continuation").takeIf(String::isNotBlank) }
 
     fun decades(shelves: List<MoodShelf>): List<MoodCategory> {
         val byDecade = sortedMapOf<Int, MoodCategory>()

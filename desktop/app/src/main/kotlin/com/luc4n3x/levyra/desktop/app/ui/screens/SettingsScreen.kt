@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.desktop.app.ui.screens
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -73,7 +77,26 @@ fun SettingsScreen(
     }
 
     var page by remember { mutableStateOf(SettingsPage.INTERFACE) }
-    Row(modifier.fillMaxSize()) {
+    Row(
+        modifier
+            .fillMaxSize()
+            .drawBehind {
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(SettingsGlow.copy(alpha = 0.55f), SettingsGlow.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(0f, 0f),
+                        radius = size.maxDimension * 0.72f
+                    )
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(SettingsGlowWarm.copy(alpha = 0.10f), Color.Transparent),
+                        center = Offset(size.width, size.height),
+                        radius = size.maxDimension * 0.6f
+                    )
+                )
+            }
+    ) {
     SettingsHubList(strings = strings, selected = page, appVersion = appVersion, onSelect = { page = it })
     ScrollableColumn(
         modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -541,7 +564,7 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.74f))
             .padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -659,3 +682,6 @@ internal fun equalizerPresetLabel(preset: EqualizerPreset): String {
         EqualizerPreset.NIGHT -> strings.equalizerPresetNight
     }
 }
+
+private val SettingsGlow = Color(0xFF6E7F9E)
+private val SettingsGlowWarm = Color(0xFF9E7F8E)

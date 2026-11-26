@@ -102,7 +102,7 @@ internal fun SettingsHubList(
                 modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 2.dp)
             )
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainer)
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.74f))
             ) {
                 pages.forEach { page -> HubRow(page, strings, page == selected) { onSelect(page) } }
             }

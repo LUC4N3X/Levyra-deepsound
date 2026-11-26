@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,12 +63,64 @@ private val CuratedStackPeek = 16.dp
 internal fun defaultHomeOwnsCuratedPlaylists(): Boolean = defaultHomeUsesNewReleases(true)
 
 @Composable
-internal fun rememberDefaultCuratedShelves(): List<YoutubeMusicHomeShelf> {
+internal fun rememberDefaultCuratedShelves(chartId: String): List<YoutubeMusicHomeShelf> {
     if (!defaultHomeOwnsCuratedPlaylists()) return emptyList()
     val code = LocalLevyraStrings.current.code
     val shelves = rememberCuratedPlaylistShelves(code)
-    return remember(shelves) { shelves.filter { shelf -> shelf.items.any { it.playlist != null } } }
+    val youtube = remember(shelves) { shelves.filter { shelf -> shelf.items.any { it.playlist != null } } }
+    val storefront = remember(chartId) { com.luc4n3x.levyra.domain.ChartsCatalog.region(chartId).country }
+    val editorialViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.luc4n3x.levyra.viewmodel.AppleMusicEditorialViewModel>()
+    val editorial by editorialViewModel.state.collectAsStateWithLifecycle()
+    val needsFallback = youtube.isEmpty()
+    androidx.compose.runtime.LaunchedEffect(needsFallback, storefront, code) {
+        if (needsFallback) {
+            kotlinx.coroutines.delay(APPLE_CURATED_FALLBACK_DELAY_MS)
+            editorialViewModel.load(storefront, code)
+        }
+    }
+    val apple = remember(editorial.newMusic) { appleCuratedShelves(editorial.newMusic) }
+    return if (needsFallback) apple else youtube
 }
+
+private const val APPLE_CURATED_FALLBACK_DELAY_MS = 4_000L
+
+internal fun appleCuratedShelves(page: com.luc4n3x.levyra.data.apple.AppleCatalogPage?): List<YoutubeMusicHomeShelf> {
+    val items = page?.shelves.orEmpty().asSequence()
+        .filter { it.kind == com.luc4n3x.levyra.data.apple.AppleCatalogShelfKind.Grid }
+        .flatMap { it.items.asSequence() }
+        .filter { it.kind == com.luc4n3x.levyra.data.apple.AppleCatalogItemKind.Playlist }
+        .filter { com.luc4n3x.levyra.data.apple.AppleMusicHomeShelves.chartParts(it.title) == null }
+        .mapNotNull { item ->
+            val id = com.luc4n3x.levyra.data.apple.AppleCatalogIds.playlist(item.id)
+                ?: com.luc4n3x.levyra.data.apple.AppleCatalogIds.playlistIdFromUrl(item.url)
+                ?: return@mapNotNull null
+            val artwork = item.coverUrl(600)
+            YoutubeMusicHomeItem(
+                key = "apple-$id",
+                kind = com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind.Playlist,
+                title = item.title,
+                subtitle = item.subtitle,
+                thumbnailUrl = artwork,
+                playlist = PlaylistHit(title = item.title, author = item.subtitle, thumbnailUrl = artwork, playlistId = id)
+            )
+        }
+        .distinctBy { it.key }
+        .take(APPLE_CURATED_LIMIT)
+        .toList()
+    if (items.isEmpty()) return emptyList()
+    return listOf(
+        YoutubeMusicHomeShelf(
+            key = "apple-curated",
+            title = "",
+            strapline = "",
+            thumbnailUrl = items.first().thumbnailUrl,
+            style = com.luc4n3x.levyra.domain.YoutubeMusicHomeShelfStyle.Cards,
+            items = items
+        )
+    )
+}
+
+private const val APPLE_CURATED_LIMIT = 40
 
 @Composable
 internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShelf, onOpen: (PlaylistHit) -> Unit) {

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.desktop.app.state.ExploreUiState
+import com.luc4n3x.levyra.desktop.app.state.OpenChart
+import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.ui.i18n.cityChartsCopy
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.ExpressiveSectionHeader
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
@@ -69,6 +73,9 @@ fun ExploreScreen(
     onLoad: (String, String) -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onOpenStory: (String) -> Unit,
+    actions: TrackActions,
+    onOpenChart: (OpenChart, String) -> Unit,
+    onCloseChart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
@@ -85,6 +92,28 @@ fun ExploreScreen(
     val sources = remember(state.news) { state.news.map { it.source }.distinct() }
     val stories = remember(state.news, source) { state.news.filter { source.isBlank() || it.source == source } }
     val today = remember(locale) { LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(locale)) }
+    val cityCopy = remember(code) { cityChartsCopy(code) }
+    val shared = remember(code) { SharedStrings.forCode(code) }
+    val chartDay = remember(locale) { chartDate(locale) }
+    val dailySlots = remember(state.daily) { chartHueSlots(state.daily.map { it.playlistId }) }
+    val citySlots = remember(state.cities) { chartHueSlots(state.cities.map { it.playlistId }) }
+    val open = state.open
+    if (open != null) {
+        val storefront = if (open.city) state.cities.firstOrNull { it.playlistId == open.playlistId }?.storefront.orEmpty() else ""
+        ChartDetailPage(
+            chart = open,
+            date = chartDay,
+            playLabel = strings.playAll,
+            errorLabel = top100.failed,
+            retryLabel = top100.retry,
+            backLabel = shared.back,
+            actions = actions,
+            onBack = onCloseChart,
+            onRetry = { onOpenChart(open, storefront) },
+            modifier = modifier
+        )
+        return
+    }
 
     ScrollableColumn(
         modifier = modifier.fillMaxWidth(),
@@ -112,7 +141,7 @@ fun ExploreScreen(
                     ) {
                         items(releases, key = { "rel-${it.id}" }) { track ->
                             Column(
-                                Modifier.width(190.dp).clip(RoundedCornerShape(18.dp)).clickable(role = Role.Button) {
+                                Modifier.width(190.dp).clickable(role = Role.Button) {
                                     onPlay(releases, releases.indexOf(track).coerceAtLeast(0))
                                 },
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -127,8 +156,8 @@ fun ExploreScreen(
                 }
             }
         }
-        if (state.charts.isNotEmpty()) {
-            item {
+        if (state.daily.isNotEmpty()) {
+            item(key = "top100") {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     ExpressiveSectionHeader(LevyraIcons.Chart, SectionTints.Amber, top100.title, top100.subtitle)
                     ShelfRow(
@@ -136,13 +165,31 @@ fun ExploreScreen(
                         contentPadding = PaddingValues(horizontal = 32.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        items(state.charts, key = { "chart-${it.country}" }) { chart ->
-                            ChartCard(
-                                count = chart.tracks.size,
-                                label = countryName(chart.country, locale),
-                                colors = ChartPalettes[state.charts.indexOf(chart) % ChartPalettes.size],
-                                onClick = { onPlay(chart.tracks, 0) }
-                            )
+                        items(state.daily.size, key = { "top100-${state.daily[it].playlistId}" }) { index ->
+                            val chart = state.daily[index]
+                            val label = if (chart.global) top100.global else chart.label
+                            Top100Card(label, chartDay, chart.global, dailySlots[index], onClick = {
+                                onOpenChart(OpenChart(chart.playlistId, label, "Top 100", chart.global, city = false, slot = dailySlots[index]), "")
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        if (state.cities.isNotEmpty()) {
+            item(key = "cities") {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    ExpressiveSectionHeader(LevyraIcons.Radio, SectionTints.Sky, cityCopy.title, cityCopy.subtitle)
+                    ShelfRow(
+                        modifier = Modifier.horizontalShelfBleed(32.dp),
+                        contentPadding = PaddingValues(horizontal = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        items(state.cities.size, key = { "city-${state.cities[it].playlistId}" }) { index ->
+                            val city = state.cities[index]
+                            CityChartCard(city.badge, city.name, citySlots[index], onClick = {
+                                onOpenChart(OpenChart(city.playlistId, city.name, city.badge, global = false, city = true, slot = citySlots[index]), city.storefront)
+                            })
                         }
                     }
                 }
@@ -162,10 +209,15 @@ fun ExploreScreen(
             }
             item {
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val columns = if (maxWidth > 900.dp) 2 else 1
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val columns = when {
+                        maxWidth > 1300.dp -> 4
+                        maxWidth > 980.dp -> 3
+                        maxWidth > 640.dp -> 2
+                        else -> 1
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                         stories.drop(1).chunked(columns).forEach { chunk ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 chunk.forEach { story ->
                                     StoryRow(story, ago(story.publishedAtMs, editorial.minutesAgo, editorial.hoursAgo, editorial.daysAgo, editorial.justNow), locale,
                                         Modifier.weight(1f)) { onOpenStory(story.url) }
@@ -194,46 +246,6 @@ private fun ToggleChip(label: String, selected: Boolean, onClick: () -> Unit) {
     )
 }
 
-private val ChartPalettes = listOf(
-    listOf(Color(0xFF2E7D32), Color(0xFF66BB6A)),
-    listOf(Color(0xFF00695C), Color(0xFF26A69A)),
-    listOf(Color(0xFF283593), Color(0xFF5C6BC0)),
-    listOf(Color(0xFF6A1B9A), Color(0xFFAB47BC)),
-    listOf(Color(0xFFAD1457), Color(0xFFEC407A)),
-    listOf(Color(0xFFE65100), Color(0xFFFFA726))
-)
-
-@Composable
-private fun ChartCard(count: Int, label: String, colors: List<Color>, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .width(220.dp)
-            .height(200.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(colors))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(20.dp)
-    ) {
-        Canvas(Modifier.align(Alignment.BottomEnd).size(width = 90.dp, height = 70.dp)) {
-            val bars = listOf(0.35f, 0.6f, 0.45f, 0.85f, 0.55f, 1f)
-            val barWidth = size.width / (bars.size * 1.6f)
-            bars.forEachIndexed { index, height ->
-                val h = size.height * height
-                drawRoundRect(
-                    Color.White.copy(alpha = 0.22f),
-                    topLeft = Offset(index * barWidth * 1.6f, size.height - h),
-                    size = Size(barWidth, h),
-                    cornerRadius = CornerRadius(barWidth / 2f)
-                )
-            }
-        }
-        Column(Modifier.align(Alignment.TopStart)) {
-            Text("$count", style = MaterialTheme.typography.displayLarge.copy(fontSize = 64.sp, fontWeight = FontWeight.Bold), color = Color.White)
-        }
-        Text(label, style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.align(Alignment.BottomStart))
-    }
-}
-
 @Composable
 private fun LeadStory(story: NewsStory, minutes: String, hours: String, days: String, now: String, locale: Locale, onClick: () -> Unit) {
     Row(
@@ -256,16 +268,20 @@ private fun LeadStory(story: NewsStory, minutes: String, hours: String, days: St
 
 @Composable
 private fun StoryRow(story: NewsStory, ago: String, locale: Locale, modifier: Modifier, onClick: () -> Unit) {
-    Row(
-        modifier.clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable(role = Role.Button, onClick = onClick).padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    Column(
+        modifier.clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable(role = Role.Button, onClick = onClick)
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("${story.source.uppercase(locale)} · $ago", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp), color = LevyraBrand.soft)
-            Text(story.title, style = MaterialTheme.typography.titleSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+            if (story.imageUrl.isNotBlank()) {
+                Artwork(story.imageUrl, Modifier.fillMaxSize(), cornerRadius = 0.dp)
+            } else {
+                Icon(LevyraIcons.Menu, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.Center).size(28.dp))
+            }
         }
-        if (story.imageUrl.isNotBlank()) Artwork(story.imageUrl, Modifier.size(84.dp), cornerRadius = 16.dp)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("${story.source.uppercase(locale)} · $ago", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp), color = LevyraBrand.soft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(story.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

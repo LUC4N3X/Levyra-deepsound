@@ -9941,6 +9941,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlaylistHit(playlist: PlaylistHit) {
         playerReturnDetail = null
         val playlistId = playlist.playlistId.ifBlank { return }
+        if (com.luc4n3x.levyra.data.apple.AppleCatalogIds.playlist(playlistId) != null) {
+            openApplePlaylist(playlist, ChartsCatalog.region(_state.value.selectedChartId).country)
+            return
+        }
         if (playlistId == CuratedFeaturedPlaylist.YOUTUBE_ID) {
             openSpotifySourcedPlaylist(playlist, CuratedFeaturedPlaylist.SPOTIFY_ID)
             return

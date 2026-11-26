@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
@@ -137,7 +138,7 @@ internal fun LibraryPulseCard(pulse: LibraryPulse, shared: SharedStrings, onOpen
                 Text(
                     "${copy.yourSound} · ${shared.pulseWeek}".uppercase(locale),
                     color = colors.primary,
-                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = MaterialTheme.typography.labelLarge.letterSpacing * 1.6f),
+                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.4.sp),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
