@@ -35,7 +35,7 @@ const cards = [
   ['05_fresh_currents', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
   ['10_curated_for_you', 'SEARCH', ['Instant search'], ['Top results, tracks & discography.']],
   ['15_meet_the_artist', 'ARTISTS', ['Meet the artist'], ['Albums, top tracks & more.']],
-  ['12_in_your_orbit', 'COLLECTIONS', ['Made for you'], ['Mixes from your listening history.']],
+  ['12_in_your_orbit', 'PLAYLISTS', ['Curated playlists'], ['Hand-picked by mood & decade.']],
   ['18_open_the_album', 'OFFLINE', ['Music to go'], ['Save music for offline listening.']],
   ['19_discover_for_you', 'DISCOVERY', ['Hear it. Keep it.'], ['Preview tracks. Save your finds.']],
   ['23_youtube_music_style', 'BROWSE', ['Moods & genres'], ['Browse by vibe, decade & style.']],
