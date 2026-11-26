@@ -151,28 +151,30 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
 
 function makeInfoBadge({ label, value, icon, mobile = false, light = false }) {
   const meta = {
-    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 102, mw: 92 },
-    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 112, mw: 100 },
-    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 92, mw: 84 }
+    LATEST: { description: `Latest Levyra release ${value}`, display: value, w: 94, mw: 86, highlighted: true },
+    LICENSE: { description: 'Levyra license GPL-3.0', display: 'GPL-3.0', w: 104, mw: 94, highlighted: false },
+    DOCS: { description: 'Read Levyra documentation', display: 'Docs', w: 86, mw: 78, highlighted: false }
   }
   const entry = meta[label]
   if (!entry) throw new Error(`Unknown information badge ${label}`)
-  const bg = light ? '#F2F6FD' : '#171E2B'
-  const stroke = light ? '#CBD9F2' : '#2B374D'
-  const accent = light ? '#1B5EBE' : '#A8C7FA'
-  const wellOpacity = light ? '0.10' : '0.13'
-  const text = light ? '#142645' : '#E8F0FE'
+  const tertiaryContainer = light ? '#FAD8FD' : '#573E5C'
+  const onTertiaryContainer = light ? '#28132E' : '#FAD8FD'
+  const outlineVariant = light ? '#C4C6D0' : '#44474E'
+  const onSurfaceVariant = light ? '#44474E' : '#C4C6D0'
   const vw = entry.w
   const w = mobile ? entry.mw : vw
-  const h = mobile ? 30 : 34
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 34" role="img" aria-label="${escapeXml(entry.description)}">
+  const h = mobile ? 29 : 32
+  const rect = entry.highlighted
+    ? `<rect x="0" y="0" width="${vw}" height="32" rx="8" fill="${tertiaryContainer}"/>`
+    : `<rect x="0.5" y="0.5" width="${vw - 1}" height="31" rx="8" fill="none" stroke="${outlineVariant}" stroke-width="1"/>`
+  const fg = entry.highlighted ? onTertiaryContainer : onSurfaceVariant
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 32" role="img" aria-label="${escapeXml(entry.description)}">
   <title>${escapeXml(entry.description)}</title>
-  <rect x="0.75" y="0.75" width="${vw - 1.5}" height="32.5" rx="16.25" fill="${bg}" stroke="${stroke}" stroke-width="1.2"/>
-  <circle cx="19" cy="17" r="11" fill="${accent}" fill-opacity="${wellOpacity}"/>
-  <g transform="translate(19 17) scale(0.86)" style="color:${accent}">
+  ${rect}
+  <g transform="translate(17 16) scale(0.95)" style="color:${fg}">
     ${icon}
   </g>
-  <text x="38" y="21.5" fill="${text}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="640" letter-spacing="-.15">${escapeXml(entry.display)}</text>
+  <text x="34" y="20.8" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">${escapeXml(entry.display)}</text>
 </svg>
 `
 }

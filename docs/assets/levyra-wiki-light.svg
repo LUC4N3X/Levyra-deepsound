@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="92" height="34" viewBox="0 0 92 34" role="img" aria-label="Read Levyra documentation">
+<svg xmlns="http://www.w3.org/2000/svg" width="86" height="32" viewBox="0 0 86 32" role="img" aria-label="Read Levyra documentation">
   <title>Read Levyra documentation</title>
-  <rect x="0.75" y="0.75" width="90.5" height="32.5" rx="16.25" fill="#F2F6FD" stroke="#CBD9F2" stroke-width="1.2"/>
-  <circle cx="19" cy="17" r="11" fill="#1B5EBE" fill-opacity="0.10"/>
-  <g transform="translate(19 17) scale(0.86)" style="color:#1B5EBE">
-    <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="0.5" y="0.5" width="85" height="31" rx="8" fill="none" stroke="#C4C6D0" stroke-width="1"/>
+  <g transform="translate(17 16) scale(0.95)" style="color:#44474E">
+    <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="38" y="21.5" fill="#142645" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="640" letter-spacing="-.15">Docs</text>
+  <text x="34" y="20.8" fill="#44474E" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">Docs</text>
 </svg>

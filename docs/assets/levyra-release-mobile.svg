@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="92" height="30" viewBox="0 0 102 34" role="img" aria-label="Latest Levyra release v3.2.5">
+<svg xmlns="http://www.w3.org/2000/svg" width="86" height="29" viewBox="0 0 94 32" role="img" aria-label="Latest Levyra release v3.2.5">
   <title>Latest Levyra release v3.2.5</title>
-  <rect x="0.75" y="0.75" width="100.5" height="32.5" rx="16.25" fill="#171E2B" stroke="#2B374D" stroke-width="1.2"/>
-  <circle cx="19" cy="17" r="11" fill="#A8C7FA" fill-opacity="0.13"/>
-  <g transform="translate(19 17) scale(0.86)" style="color:#A8C7FA">
+  <rect x="0" y="0" width="94" height="32" rx="8" fill="#573E5C"/>
+  <g transform="translate(17 16) scale(0.95)" style="color:#FAD8FD">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
-  <text x="38" y="21.5" fill="#E8F0FE" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="640" letter-spacing="-.15">v3.2.5</text>
+  <text x="34" y="20.8" fill="#FAD8FD" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="500" letter-spacing="0.1">v3.2.5</text>
 </svg>
