@@ -1,10 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="42" viewBox="0 0 160 42" role="img" aria-label="Latest Levyra release v3.2.5">
-<title>Latest Levyra release v3.2.5</title>
-<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="#474151"/>
-<path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#DECDF4" opacity="0.12"/>
-<g transform="translate(23 21) scale(1.33)" style="color:#DECDF4">
-    <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="102" height="36" viewBox="0 0 102 36" role="img" aria-label="Latest Levyra release v3.2.5">
+  <title>Latest Levyra release v3.2.5</title>
+  <path d="M 18.00 0.00 H 95.00 A 7 7 0 0 1 102.00 7.00 V 18.00 A 18 18 0 0 1 84.00 36.00 H 7.00 A 7 7 0 0 1 0.00 29.00 V 18.00 A 18 18 0 0 1 18.00 0.00 Z" fill="#F6D2E0"/>
+  <path d="M 17.48 7.16 A 3.53 3.53 0 0 1 24.52 7.16 A 3.53 3.53 0 0 1 30.22 11.30 A 3.53 3.53 0 0 1 32.40 18.00 A 3.53 3.53 0 0 1 30.22 24.70 A 3.53 3.53 0 0 1 24.52 28.84 A 3.53 3.53 0 0 1 17.48 28.84 A 3.53 3.53 0 0 1 11.78 24.70 A 3.53 3.53 0 0 1 9.60 18.00 A 3.53 3.53 0 0 1 11.78 11.30 A 3.53 3.53 0 0 1 17.48 7.16 Z" fill="#5A2238" fill-opacity="0.11"/>
+  <g style="color:#5A2238">
+    <g transform="translate(11.4 8.4) scale(0.80)"><path fill="currentColor" d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></g>
   </g>
-<text x="51" y="16.2" fill="#DDCDEF" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="9.4" font-weight="670" letter-spacing=".65">LATEST</text>
-<text x="51" y="31.7" fill="#FAF8FF" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.3" font-weight="710" letter-spacing="-.35">v3.2.5</text>
+  <text x="40" y="23" fill="#5A2238" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14" font-weight="600" letter-spacing="0.05">v3.2.5</text>
 </svg>
