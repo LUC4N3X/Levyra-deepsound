@@ -14,7 +14,10 @@ import java.time.format.FormatStyle
 import java.time.temporal.IsoFields
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.completeWith
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -22,6 +25,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -138,10 +142,12 @@ class DiscoveryDeckController(
     private val state = MutableStateFlow(DiscoveryDeckState())
     val deck: StateFlow<DiscoveryDeckState> = state.asStateFlow()
     private var dismissed: List<String> = dismissedStore.read()
+    private val diskWork = serialQueue()
+    private val playerWork = serialQueue()
     private var previewPlayer: AudioPlayer? = null
     private var previewJob: Job? = null
     private var mainPausedByPreview = false
-    private var noticeId = 0L
+    private val noticeIds = AtomicLong()
 
     val weeklyPlaylistId: String get() = discoveryWeekId(today())
 
@@ -154,19 +160,24 @@ class DiscoveryDeckController(
         state.update { it.appended(unseen(picks)) }
     }
 
+    fun decide(key: String, save: Boolean) {
+        if (state.value.current?.key != key) return
+        if (save) save() else dismiss()
+    }
+
     fun save() {
         val pick = state.value.current ?: return
-        val added = runCatching {
-            libraryStore.ensurePlaylist(weeklyPlaylistId, weeklyPlaylistName())
-            libraryStore.addToPlaylist(weeklyPlaylistId, listOf(pick.track.asLibraryEntry()))
-        }.isSuccess
-        if (!added) {
-            notify(DiscoveryNoticeKind.SaveFailed)
-            return
-        }
+        val playlistId = weeklyPlaylistId
+        val playlistName = weeklyPlaylistName()
         stopPreview()
         state.update { it.decided(saved = true) }
         notify(DiscoveryNoticeKind.Saved)
+        diskWork.trySend {
+            runCatching {
+                libraryStore.ensurePlaylist(playlistId, playlistName)
+                libraryStore.addToPlaylist(playlistId, listOf(pick.track.asLibraryEntry()))
+            }.onFailure { notify(DiscoveryNoticeKind.SaveFailed) }
+        }
     }
 
     fun dismiss() {
@@ -180,7 +191,8 @@ class DiscoveryDeckController(
         val (restored, step) = state.value.undone() ?: return
         stopPreview()
         if (step.saved) {
-            libraryStore.removeFromPlaylist(weeklyPlaylistId, step.pick.track.id)
+            val playlistId = weeklyPlaylistId
+            diskWork.trySend { runCatching { libraryStore.removeFromPlaylist(playlistId, step.pick.track.id) } }
         } else {
             rememberDismissed(dismissed - step.pick.key)
         }
@@ -205,9 +217,9 @@ class DiscoveryDeckController(
             mainPausedByPreview = false
             resumeMain()
         }
-        previewPlayer?.let { player ->
+        playerWork.trySend {
+            previewPlayer?.let { player -> runCatching { player.close() } }
             previewPlayer = null
-            scope.launch(io) { runCatching { player.close() } }
         }
     }
 
@@ -228,24 +240,24 @@ class DiscoveryDeckController(
             try {
                 val url = withContext(io) { previewUrl(pick.track) }
                 check(url.isNotBlank())
-                val player = previewPlayer ?: withContext(io) { playerFactory() }.also { previewPlayer = it }
+                val player = onPlayer { previewPlayer ?: playerFactory().also { previewPlayer = it } }
                 val started = coroutineScope {
                     val outcome = async(start = CoroutineStart.UNDISPATCHED) {
                         withTimeoutOrNull(PREVIEW_START_TIMEOUT_MS) {
                             player.events.first { it is PlayerEvent.Playing || it is PlayerEvent.Failed }
                         }
                     }
-                    withContext(io) { player.play(url, discoveryPreviewStartMs(pick.track.durationMs)) }
+                    onPlayer { player.play(url, discoveryPreviewStartMs(pick.track.durationMs)) }
                     outcome.await()
                 }
                 check(started is PlayerEvent.Playing)
                 state.update { if (it.previewKey == pick.key) it.copy(previewStatus = DiscoveryPreviewStatus.Playing) else it }
                 delay(PREVIEW_MS)
-                stopPreview()
+                finishPreview(pick.key)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                stopPreview()
+                finishPreview(pick.key)
                 notify(DiscoveryNoticeKind.PreviewUnavailable)
             }
         }
@@ -255,8 +267,31 @@ class DiscoveryDeckController(
         previewJob?.cancel()
         previewJob = null
         if (state.value.previewStatus == DiscoveryPreviewStatus.Idle) return
-        previewPlayer?.let { player -> scope.launch(io) { runCatching { player.stop() } } }
+        stopPlayer()
         state.update { it.copy(previewKey = "", previewStatus = DiscoveryPreviewStatus.Idle) }
+    }
+
+    private fun finishPreview(key: String) {
+        var stopped = false
+        state.update {
+            stopped = it.previewKey == key
+            if (stopped) it.copy(previewKey = "", previewStatus = DiscoveryPreviewStatus.Idle) else it
+        }
+        if (stopped) stopPlayer()
+    }
+
+    private fun stopPlayer() {
+        playerWork.trySend { previewPlayer?.let { player -> runCatching { player.stop() } } }
+    }
+
+    private suspend fun <T> onPlayer(block: () -> T): T {
+        val result = CompletableDeferred<T>()
+        playerWork.send { result.completeWith(runCatching(block)) }
+        return result.await()
+    }
+
+    private fun serialQueue(): Channel<suspend () -> Unit> = Channel<suspend () -> Unit>(Channel.UNLIMITED).also { queue ->
+        scope.launch(io) { for (task in queue) task() }
     }
 
     private fun unseen(picks: List<DiscoveryPick>): List<DiscoveryPick> {
@@ -269,12 +304,12 @@ class DiscoveryDeckController(
     private fun rememberDismissed(keys: List<String>) {
         dismissed = keys.takeLast(MAX_DISMISSED)
         val snapshot = dismissed
-        scope.launch(io) { runCatching { dismissedStore.write(snapshot) } }
+        diskWork.trySend { runCatching { dismissedStore.write(snapshot) } }
     }
 
     private fun notify(kind: DiscoveryNoticeKind) {
-        noticeId += 1
-        state.update { it.copy(notice = DiscoveryNotice(noticeId, kind)) }
+        val id = noticeIds.incrementAndGet()
+        state.update { it.copy(notice = DiscoveryNotice(id, kind)) }
     }
 
     private fun weeklyPlaylistName(): String {

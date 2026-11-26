@@ -86,6 +86,7 @@ internal fun DiscoveryDeckScreen(
     onBack: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    onSwipe: (String, Boolean) -> Unit,
     onUndo: () -> Unit,
     onTogglePreview: () -> Unit,
     onPlayFull: () -> Unit,
@@ -123,7 +124,7 @@ internal fun DiscoveryDeckScreen(
             DiscoveryTopBar(copy, savedThisWeek, onBack, onOpenSaved, onRefresh)
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 when {
-                    current != null -> DiscoveryStage(deck, current, copy, onSave, onDismiss, onTogglePreview)
+                    current != null -> DiscoveryStage(deck, current, copy, onSave, onDismiss, onSwipe, onTogglePreview)
                     loading -> DiscoveryMessage(copy.loading, null, null, loading = true)
                     else -> DiscoveryMessage(copy.empty, copy.refresh, onRefresh, loading = false)
                 }
@@ -137,6 +138,10 @@ internal fun DiscoveryDeckScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
                 )
+            } else if (deck.canUndo) {
+                Box(Modifier.fillMaxWidth().padding(bottom = 12.dp), contentAlignment = Alignment.Center) {
+                    TextPill(copy.undo, MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurface, enabled = true, onClick = onUndo)
+                }
             }
         }
         DiscoveryNoticeHost(deck, copy, onOpenSaved, onConsumeNotice, Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp))
@@ -196,6 +201,7 @@ private fun DiscoveryStage(
     copy: DiscoveryCopy,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    onSwipe: (String, Boolean) -> Unit,
     onTogglePreview: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -217,10 +223,11 @@ private fun DiscoveryStage(
         }
         val offset = remember(current.key) { Animatable(0f) }
         val scope = rememberCoroutineScope()
+        val draggedKey = current.key
         val fling: (Boolean) -> Unit = { save ->
             scope.launch {
                 offset.animateTo(if (save) threshold * 3f else -threshold * 3f, tween(220))
-                if (save) onSave() else onDismiss()
+                onSwipe(draggedKey, save)
             }
         }
         Box(

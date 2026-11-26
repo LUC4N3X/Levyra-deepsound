@@ -89,6 +89,30 @@ class DiscoveryDeckControllerTest {
     }
 
     @Test
+    fun swipeDecisionForAnOlderCardIsIgnored() {
+        val library = libraryStore()
+        val controller = controller(library)
+        controller.open(listOf(pick("a"), pick("b"), pick("c")))
+        val draggedKey = controller.deck.value.current!!.key
+        controller.save()
+        controller.decide(draggedKey, save = false)
+        assertEquals("b", controller.deck.value.current?.track?.id)
+        controller.decide(controller.deck.value.current!!.key, save = false)
+        assertEquals("c", controller.deck.value.current?.track?.id)
+    }
+
+    @Test
+    fun undoStaysAvailableAfterTheLastCard() {
+        val controller = controller(libraryStore())
+        controller.open(listOf(pick("a")))
+        controller.dismiss()
+        assertEquals(null, controller.deck.value.current)
+        assertTrue(controller.deck.value.canUndo)
+        controller.undo()
+        assertEquals("a", controller.deck.value.current?.track?.id)
+    }
+
+    @Test
     fun appendKeepsPositionAndSkipsKnownCards() {
         val controller = controller(libraryStore())
         controller.open(listOf(pick("a"), pick("b")))

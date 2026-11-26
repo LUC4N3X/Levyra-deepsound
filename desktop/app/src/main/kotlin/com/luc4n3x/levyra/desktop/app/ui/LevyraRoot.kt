@@ -306,6 +306,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     onBack = model::back,
                                                     onSave = model.discoveryDeckController::save,
                                                     onDismiss = model.discoveryDeckController::dismiss,
+                                                    onSwipe = model.discoveryDeckController::decide,
                                                     onUndo = model.discoveryDeckController::undo,
                                                     onTogglePreview = model.discoveryDeckController::togglePreview,
                                                     onPlayFull = model.discoveryDeckController::playFull,
