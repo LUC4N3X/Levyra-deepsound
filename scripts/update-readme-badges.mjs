@@ -151,25 +151,24 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
 
 function makeInfoBadge({label,value,icon,mobile=false,light=false}){
  const styles={
-  LATEST:{corners:[19,8,19,8],description:`Latest Levyra release ${value}`,dark:['#474151','#DECDF4','#DDCDEF','#FAF8FF'],light:['#EEE8F3','#72548D','#715387','#33283C']},
-  LICENSE:{corners:[9,20,9,19],description:'Levyra license GPL-3.0',dark:['#364B49','#B8E7DA','#C1EBDD','#F4FFFA'],light:['#E4F0EC','#3D7469','#416D64','#294D43']},
-  DOCS:{corners:[18,9,9,19],description:'Read Levyra documentation',dark:['#4A3D49','#F0CBDD','#F1CFDE','#FFF8FD'],light:['#F2E7EE','#96607B','#83526D','#503647']}
+  LATEST:{dark:["#474151","#62546F","#F4DFFF","#E8D9F4","#FAF8FF"],light:["#EEE8F3","#DFD2EA","#49365A","#554164","#33283C"]},
+  LICENSE:{dark:["#364B49","#49635D","#D3F5E9","#CDEFE4","#F4FFFA"],light:["#E4F0EC","#CFE4DD","#24574B","#34594F","#294D43"]},
+  DOCS:{dark:["#4A3D49","#655061","#F9D9EA","#F1D9E7","#FFF8FD"],light:["#F2E7EE","#E7D3E0","#663C54","#6A4058","#503647"]}
  };
  const style=styles[label];
  if(!style)throw new Error(`Unknown information badge ${label}`);
- const [bg,accent,kicker,text]=style[light?'light':'dark'];
- const [tl,tr,br,bl]=style.corners;
- const number=x=>Number(x.toFixed(1));
- const path=`M ${tl} 0.8 H ${number(159.2-tr)} Q 159.2 0.8 159.2 ${tr} V ${number(41.2-br)} Q 159.2 41.2 ${number(159.2-br)} 41.2 H ${number(bl+.8)} Q .8 41.2 .8 ${number(41.2-bl)} V ${tl} Q .8 .8 ${tl} .8 Z`;
- return `<svg xmlns="http://www.w3.org/2000/svg" width="${mobile?126:160}" height="${mobile?33.075:42}" viewBox="0 0 160 42" role="img" aria-label="${escapeXml(style.description)}">
-<title>${escapeXml(style.description)}</title>
+ const [bg,iconContainer,iconColor,kicker,text]=style[light?'light':'dark'];
+ const description=label==='LATEST'?`Latest Levyra release ${value}`:label==='LICENSE'?'Levyra license GPL-3.0':'Read Levyra documentation';
+ const path='M 18 .8 H 151.2 Q 159.2 .8 159.2 8.8 V 23.2 Q 159.2 41.2 141.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 18.8 Q .8 .8 18 .8 Z';
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="${mobile?126:160}" height="${mobile?33.075:42}" viewBox="0 0 160 42" role="img" aria-label="${escapeXml(description)}">
+<title>${escapeXml(description)}</title>
 <path d="${path}" fill="${bg}"/>
-<path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="${accent}" opacity="${light?'0.13':'0.12'}"/>
-<g transform="translate(23 21) scale(1.33)" style="color:${accent}">
+<circle cx="23" cy="21" r="16.2" fill="${iconContainer}"/>
+<g transform="translate(23 21) scale(1.25)" style="color:${iconColor}">
     ${icon}
   </g>
-<text x="51" y="16.2" fill="${kicker}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="9.4" font-weight="670" letter-spacing=".65">${escapeXml(label)}</text>
-<text x="51" y="31.7" fill="${text}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.3" font-weight="710" letter-spacing="-.35">${escapeXml(value)}</text>
+<text x="48" y="16.5" fill="${kicker}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.4" font-weight="600" letter-spacing=".45">${escapeXml(label)}</text>
+<text x="48" y="32" fill="${text}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.5" font-weight="650" letter-spacing="0">${escapeXml(value)}</text>
 </svg>
 `;
 }

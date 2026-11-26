@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Read Levyra documentation">
 <title>Read Levyra documentation</title>
-<path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="#4A3D49"/>
-<path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#F0CBDD" opacity="0.12"/>
-<g transform="translate(23 21) scale(1.33)" style="color:#F0CBDD">
+<path d="M 18 .8 H 151.2 Q 159.2 .8 159.2 8.8 V 23.2 Q 159.2 41.2 141.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 18.8 Q .8 .8 18 .8 Z" fill="#4A3D49"/>
+<circle cx="23" cy="21" r="16.2" fill="#655061"/>
+<g transform="translate(23 21) scale(1.25)" style="color:#F9D9EA">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="51" y="16.2" fill="#F1CFDE" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="9.4" font-weight="670" letter-spacing=".65">DOCS</text>
-<text x="51" y="31.7" fill="#FFF8FD" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.3" font-weight="710" letter-spacing="-.35">Open docs</text>
+<text x="48" y="16.5" fill="#F1D9E7" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.4" font-weight="600" letter-spacing=".45">DOCS</text>
+<text x="48" y="32" fill="#FFF8FD" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.5" font-weight="650" letter-spacing="0">Open docs</text>
 </svg>
