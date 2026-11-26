@@ -28,7 +28,15 @@ class LyricsRepository(
         cache[track.id]?.let { return@withContext it }
 
         val direct = fetch(getUrl(track))?.let(::parseSingle)
-        val resolved = direct ?: fetch(searchUrl(track))?.let(::parseFirstMatch)
+        val cleanTitle = cleanTitle(track.title)
+        val leadArtist = leadArtist(track.artist)
+        val resolved = direct
+            ?: fetch(searchUrl(track.title, track.artist))?.let { parseFirstMatch(it, track.durationMs) }
+            ?: if (cleanTitle != track.title || leadArtist != track.artist) {
+                fetch(searchUrl(cleanTitle, leadArtist))?.let { parseFirstMatch(it, track.durationMs) }
+            } else {
+                null
+            }
         if (resolved != null && !resolved.isEmpty) {
             cache[track.id] = resolved
         }
@@ -52,12 +60,22 @@ class LyricsRepository(
     private fun parseSingle(body: String): Lyrics? =
         runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()?.let(::toLyrics)
 
-    private fun parseFirstMatch(body: String): Lyrics? {
+    private fun parseFirstMatch(body: String, durationMs: Long): Lyrics? {
         val entries = runCatching { json.parseToJsonElement(body).jsonArray }.getOrNull() ?: return null
-        return entries.asSequence()
-            .mapNotNull { element -> runCatching { element.jsonObject }.getOrNull() }
-            .mapNotNull(::toLyrics)
-            .firstOrNull { !it.isEmpty }
+        val objects = entries.mapNotNull { element -> runCatching { element.jsonObject }.getOrNull() }
+        val targetSeconds = durationMs / 1000.0
+        val ordered = if (durationMs > 0L) {
+            objects.sortedBy { entry ->
+                val seconds = entry.text("duration").toDoubleOrNull() ?: return@sortedBy Double.MAX_VALUE
+                kotlin.math.abs(seconds - targetSeconds)
+            }.filter { entry ->
+                val seconds = entry.text("duration").toDoubleOrNull()
+                seconds == null || kotlin.math.abs(seconds - targetSeconds) <= MAX_DURATION_DRIFT_SECONDS
+            }
+        } else {
+            objects
+        }
+        return ordered.asSequence().mapNotNull(::toLyrics).firstOrNull { !it.isEmpty }
     }
 
     private fun toLyrics(entry: JsonObject): Lyrics? {
@@ -87,15 +105,25 @@ class LyricsRepository(
         }
     }
 
-    private fun searchUrl(track: Track): String =
-        "https://lrclib.net/api/search?track_name=${encode(track.title)}&artist_name=${encode(track.artist)}"
+    private fun searchUrl(title: String, artist: String): String =
+        "https://lrclib.net/api/search?track_name=${encode(title)}&artist_name=${encode(artist)}"
 
     private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 
     private fun JsonObject.text(key: String): String =
         runCatching { this[key]?.jsonPrimitive?.content }.getOrNull().orEmpty()
 
-    private companion object {
-        const val SOURCE = "LRCLIB"
+    companion object {
+        private const val SOURCE = "LRCLIB"
+        private const val MAX_DURATION_DRIFT_SECONDS = 8.0
+        private val decoration = Regex("""\s*[(\[][^)\]]*[)\]]""")
+        private val featuring = Regex("""\s+(?:feat\.?|ft\.?|featuring)\s+.*$""", RegexOption.IGNORE_CASE)
+        private val artistSeparator = Regex("""\s*(?:,|&|\bx\b|\bfeat\.?|\bft\.?|\bwith\b)\s*""", RegexOption.IGNORE_CASE)
+
+        fun cleanTitle(title: String): String =
+            title.replace(decoration, "").replace(featuring, "").trim().ifBlank { title.trim() }
+
+        fun leadArtist(artist: String): String =
+            artist.split(artistSeparator).firstOrNull { it.isNotBlank() }?.trim() ?: artist.trim()
     }
 }

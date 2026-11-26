@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.core.storage
 
+import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,22 @@ class LibraryStore(
         }
         data.copy(favorites = favorites)
     }
+
+    fun toggleFollowArtist(artist: CollectionRef) = mutate { data ->
+        data.copy(followedArtists = data.followedArtists.toggleArtist(artist))
+    }
+
+    fun togglePinnedArtist(artist: CollectionRef) = mutate { data ->
+        data.copy(pinnedArtists = data.pinnedArtists.toggleArtist(artist))
+    }
+
+    fun toggleExcludedArtist(artist: CollectionRef) = mutate { data ->
+        val excluded = data.excludedArtists
+        data.copy(excludedArtists = if (artist.id in excluded) excluded - artist.id else excluded + (artist.id to artist.title))
+    }
+
+    private fun List<CollectionRef>.toggleArtist(artist: CollectionRef): List<CollectionRef> =
+        if (any { it.id == artist.id }) filterNot { it.id == artist.id } else this + artist
 
     fun createPlaylist(name: String): String {
         val trimmed = name.trim().ifBlank { "Nuova playlist" }
@@ -85,7 +102,8 @@ class LibraryStore(
     }
 
     fun recordPlayback(track: Track) = mutate { data ->
-        val entry = HistoryEntry(track = track, playedAt = nowMillis())
+        val previous = data.history.firstOrNull { it.track.id == track.id }?.playCount ?: 0
+        val entry = HistoryEntry(track = track, playedAt = nowMillis(), playCount = previous + 1)
         val history = (listOf(entry) + data.history.filterNot { it.track.id == track.id })
             .take(MAX_HISTORY)
         data.copy(history = history)
@@ -102,6 +120,16 @@ class LibraryStore(
     }
 
     fun clearRecentSearches() = mutate { data -> data.copy(recentSearches = emptyList()) }
+
+    fun importPhoneLibrary(phone: PhoneLibrary): PhoneImportResult {
+        var result = PhoneImportResult(0, 0, 0)
+        mutate { data ->
+            val (updated, counts) = PhoneLibraryImport.merge(data, phone, MAX_HISTORY, nowMillis()) { UUID.randomUUID().toString() }
+            result = counts
+            updated
+        }
+        return result
+    }
 
     @Synchronized
     private fun mutate(transform: (LibraryData) -> LibraryData) {

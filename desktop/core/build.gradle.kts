@@ -94,6 +94,15 @@ kotlin {
     sourceSets.named("main") {
         kotlin.srcDir(rootProject.file("../third_party/LevyraNexus/src/main/kotlin"))
         kotlin.srcDir(sharedAudioSources)
+        val sharedCatalogSources = objects.sourceDirectorySet("sharedCatalogSources", "Shared catalog rules").apply {
+            srcDir(androidSourceRoot)
+            include("com/luc4n3x/levyra/domain/ReleaseType.kt")
+            include("com/luc4n3x/levyra/domain/YoutubeMusicViewCount.kt")
+            include("com/luc4n3x/levyra/domain/ArtistIdentity.kt")
+            include("com/luc4n3x/levyra/data/spotify/SpotifyArtistAudience.kt")
+            include("com/luc4n3x/levyra/data/spotify/SpotifyHttpBody.kt")
+        }
+        kotlin.source(sharedCatalogSources)
     }
     sourceSets.named("test") {
         resources.srcDir(rootProject.file("../app/src/test/resources"))

@@ -22,7 +22,7 @@ Levyra is also available through the alternative Android repositories listed on 
 3. Run the installer or extract the files to your preferred location.
 4. Launch Levyra.
 
-Android and Windows Desktop versions are developed and released on independent schedules.
+Android, Windows, and Linux release together with the same version and separate downloads.
 
 ## First launch
 

@@ -120,8 +120,10 @@ onboarding, sessions, and backups unless explicitly changed. Keep audio/song and
 native-video modes distinct. Motion artwork is decorative and must never delay
 audible playback. Keep playback, MediaSession, notification, Android Auto,
 queue, and background service synchronized. Do not add telemetry or tracking
-unless explicitly requested. Android and Desktop versions/releases remain
-independent.
+unless explicitly requested. Deliver every new APK feature and user-facing
+change on Windows and Linux in the same PR. Record platform limitations in the PR.
+All three use `levyraVersionName` in root `gradle.properties`. A verified new APK
+release triggers separate Windows and Linux releases from the same commit.
 Android UI follows Levyra's Material 3 Expressive design direction, not generic templates.
 For Kotlin and Android UI work, consult the upstream `kotlin-footguns` and `material-3`
 skills in focused phases per `docs/ai/UPSTREAM_ANDROID_SKILLS.md`; keep the two-skill cap.

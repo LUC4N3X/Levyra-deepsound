@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.data.spotify
 
-import com.luc4n3x.levyra.data.artistNameMatches
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.artistIdentityMatches
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -24,7 +23,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 internal class SpotifyArtistAudience(
-    private val clientFactory: () -> OkHttpClient = { LevyraHttpClientFactory.externalIntegrations() }
+    private val clientFactory: () -> OkHttpClient,
+    private val matchesArtist: (String, String) -> Boolean = ::artistIdentityMatches
 ) {
     private val client by lazy {
         clientFactory().newBuilder().callTimeout(4, TimeUnit.SECONDS).build()
@@ -52,7 +52,7 @@ internal class SpotifyArtistAudience(
     private suspend fun lookup(name: String): AudienceLookup = withContext(Dispatchers.IO) {
         val bearer = accessToken() ?: return@withContext AudienceLookup.Failed
         val search = pathfinder(bearer, searchPayload(name)) ?: return@withContext AudienceLookup.Failed
-        val uri = spotifyArtistUriFor(search, name) ?: return@withContext AudienceLookup.Missing
+        val uri = spotifyArtistUriFor(search, name, matchesArtist) ?: return@withContext AudienceLookup.Missing
         val overview = pathfinder(bearer, overviewPayload(uri)) ?: return@withContext AudienceLookup.Failed
         spotifyMonthlyListeners(overview)?.let { AudienceLookup.Found(it) } ?: AudienceLookup.Missing
     }
@@ -172,14 +172,18 @@ private suspend fun Call.awaitBoundedText(maxBytes: Long): String? = suspendCanc
     })
 }
 
-internal fun spotifyArtistUriFor(search: JSONObject, artistName: String): String? {
+internal fun spotifyArtistUriFor(
+    search: JSONObject,
+    artistName: String,
+    matchesArtist: (String, String) -> Boolean = ::artistIdentityMatches
+): String? {
     val items = search.optJSONObject("data")?.optJSONObject("searchV2")?.optJSONObject("artists")?.optJSONArray("items")
         ?: return null
     for (index in 0 until items.length()) {
         val data = items.optJSONObject(index)?.optJSONObject("data") ?: continue
         val name = data.optJSONObject("profile")?.optString("name").orEmpty().trim()
         val uri = data.optString("uri").trim()
-        if (name.isNotEmpty() && SPOTIFY_ARTIST_URI.matches(uri) && artistNameMatches(artistName, name)) return uri
+        if (name.isNotEmpty() && SPOTIFY_ARTIST_URI.matches(uri) && matchesArtist(artistName, name)) return uri
     }
     return null
 }

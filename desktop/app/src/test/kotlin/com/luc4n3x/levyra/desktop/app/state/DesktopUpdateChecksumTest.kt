@@ -1,15 +1,21 @@
 package com.luc4n3x.levyra.desktop.app.state
 
+import com.luc4n3x.levyra.desktop.app.DesktopPlatform
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -55,6 +61,56 @@ class DesktopUpdateChecksumTest {
         val controller = controller(503, "temporarily unavailable")
 
         assertVerificationFailsAndDeletes(controller, installer)
+    }
+
+    @Test
+    fun startupSelectsMatchingReleaseAndInvalidInstallerCannotExitApp() = runTest {
+        val target = DesktopPlatform.updateTarget() ?: return@runTest
+        val tag = "${target.tagPrefix}3.2.5"
+        val name = target.assetName("3.2.5")
+        val installer = "test installer".toByteArray()
+        val downloadUrl = "https://github.com/LUC4N3X/Levyra-deepsound/releases/download/$tag"
+        val releases = buildJsonArray {
+            add(buildJsonObject {
+                put("tag_name", tag)
+                put("published_at", "2026-11-26T00:00:00Z")
+                put("assets", buildJsonArray {
+                    for ((asset, size) in listOf(name to installer.size, "$name.sha256" to 64)) {
+                        add(buildJsonObject {
+                            put("name", asset)
+                            put("browser_download_url", "$downloadUrl/$asset")
+                            put("size", size)
+                        })
+                    }
+                })
+            })
+        }
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val body = when (request.url.pathSegments.last()) {
+                "releases" -> releases.toString().toResponseBody()
+                name -> installer.toResponseBody()
+                "$name.sha256" -> "0".repeat(64).toResponseBody()
+                else -> error("Unexpected update request")
+            }
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
+                .code(200).message("test").body(body).build()
+        }.build()
+        val paths = AppPaths(temporaryFolder.root.toPath()).prepare()
+        val controller = DesktopUpdateController(this, paths, "1.3.0", client)
+        try {
+            controller.check()
+            val available = controller.state.first { it.phase == DesktopUpdatePhase.AVAILABLE }
+            assertEquals("3.2.5", available.release?.version)
+            assertTrue((available.release?.publishedAtEpochMs ?: 0L) > 0)
+            controller.install { fail("An unverified installer closed the app") }
+            val failed = controller.state.first { it.phase == DesktopUpdatePhase.FAILED }
+            assertTrue(failed.error.contains("SHA-256"))
+            assertFalse(Files.exists(paths.root.resolve("updates/$name")))
+            assertFalse(Files.exists(paths.root.resolve("updates/$name.part")))
+        } finally {
+            controller.shutdown()
+        }
     }
 
     private suspend fun assertVerificationFailsAndDeletes(

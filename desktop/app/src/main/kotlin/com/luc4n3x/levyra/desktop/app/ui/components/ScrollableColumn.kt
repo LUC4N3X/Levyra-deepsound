@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
@@ -22,12 +23,12 @@ fun ScrollableColumn(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    state: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit
 ) {
-    val listState = rememberLazyListState()
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
-            state = listState,
+            state = state,
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,
@@ -35,7 +36,7 @@ fun ScrollableColumn(
             content = content
         )
         VerticalScrollbar(
-            adapter = rememberScrollbarAdapter(listState),
+            adapter = rememberScrollbarAdapter(state),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()

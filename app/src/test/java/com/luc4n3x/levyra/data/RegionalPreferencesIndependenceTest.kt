@@ -59,6 +59,12 @@ class RegionalPreferencesIndependenceTest {
     }
 
     @Test
+    fun changingTheUiLanguageResetsTheTop50CountryEvenAfterManualSelection() {
+        assertEquals("us", ChartsCatalog.regionAfterLanguageChange("it", "it", "it", "en", followNewLanguage = true).id)
+        assertEquals("br", ChartsCatalog.regionAfterLanguageChange("it", "it", "en", "pt-BR", followNewLanguage = true).id)
+    }
+
+    @Test
     fun automaticRegionFollowsLanguage() {
         val russian = LevyraContentLocales.catalogLocale("ru")
 

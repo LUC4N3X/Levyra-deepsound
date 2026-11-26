@@ -217,6 +217,45 @@ object LevyraIcons {
         }
     }
 
+    val Menu: ImageVector by lazy {
+        strokeIcon("LevyraMenu") {
+            moveTo(4f, 7f)
+            lineTo(20f, 7f)
+            moveTo(4f, 12f)
+            lineTo(20f, 12f)
+            moveTo(4f, 17f)
+            lineTo(20f, 17f)
+        }
+    }
+
+    val Radio: ImageVector by lazy {
+        strokeIcon("LevyraRadio") {
+            circle(12f, 12f, 1.8f)
+            moveTo(8.2f, 8.2f)
+            curveTo(6.1f, 10.3f, 6.1f, 13.7f, 8.2f, 15.8f)
+            moveTo(15.8f, 8.2f)
+            curveTo(17.9f, 10.3f, 17.9f, 13.7f, 15.8f, 15.8f)
+            moveTo(5.4f, 5.4f)
+            curveTo(1.8f, 9f, 1.8f, 15f, 5.4f, 18.6f)
+            moveTo(18.6f, 5.4f)
+            curveTo(22.2f, 9f, 22.2f, 15f, 18.6f, 18.6f)
+        }
+    }
+
+    val Tune: ImageVector by lazy {
+        strokeIcon("LevyraTune") {
+            moveTo(6f, 4f)
+            lineTo(6f, 20f)
+            moveTo(12f, 4f)
+            lineTo(12f, 20f)
+            moveTo(18f, 4f)
+            lineTo(18f, 20f)
+            circle(6f, 15f, 2f)
+            circle(12f, 8f, 2f)
+            circle(18f, 13f, 2f)
+        }
+    }
+
     val Home: ImageVector by lazy {
         strokeIcon("LevyraHome") {
             moveTo(4f, 11f)

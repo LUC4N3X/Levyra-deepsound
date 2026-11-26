@@ -8774,7 +8774,7 @@ private fun HomeScreen(
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
     val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
-    val curatedShelves = rememberDefaultCuratedShelves()
+    val curatedShelves = rememberDefaultCuratedShelves(state.selectedChartId)
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
@@ -9756,7 +9756,7 @@ private fun StudioHomeScreen(
         otherSections = otherSections,
         visiblePersonalTracks = visiblePersonalTracks,
         visibleEditorialCollections = spotlight.visibleEditorialCollections,
-        curatedShelves = rememberDefaultCuratedShelves(),
+        curatedShelves = rememberDefaultCuratedShelves(state.selectedChartId),
         homeCollectionAccents = spotlight.homeCollectionAccents,
         spotlightHeroData = spotlight.heroData,
         homeRenderOrder = look.homeRenderOrder,

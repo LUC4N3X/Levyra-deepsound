@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
@@ -35,7 +35,6 @@ import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
-import com.luc4n3x.levyra.desktop.core.model.CollectionKind
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 
 @Composable
@@ -50,20 +49,6 @@ fun CollectionScreen(
     onOpenCollection: (CollectionRef) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (state.ref?.kind == CollectionKind.ARTIST) {
-        ArtistScreen(
-            state = state,
-            actions = actions,
-            onBack = onBack,
-            onPlayAll = onPlayAll,
-            onShuffleAll = onShuffleAll,
-            onEnqueueAll = onEnqueueAll,
-            onOpenCollection = onOpenCollection,
-            modifier = modifier
-        )
-        return
-    }
-
     val strings = LocalStrings.current
     val tracks = state.page.tracks
 
@@ -150,7 +135,7 @@ fun CollectionScreen(
 
         if (state.page.collections.isNotEmpty()) {
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShelfRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.page.collections, key = { it.id }) { ref ->
                         CollectionCard(
                             ref = ref,

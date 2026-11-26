@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.FlowPreview::class)
+
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
@@ -15,6 +17,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 enum class Destination {
@@ -26,16 +31,26 @@ enum class Destination {
     LOCAL_MUSIC,
     PLAYLIST,
     SETTINGS,
-    NOW_PLAYING
+    NOW_PLAYING,
+    MOODS,
+    PODCAST,
+    RADIO,
+    CURATED
 }
 
-class LevyraAppModel(
+class LevyraAppModel internal constructor(
     private val scope: CoroutineScope,
     val paths: AppPaths,
     private val settingsStore: SettingsStore,
     val libraryStore: LibraryStore,
     val catalogController: CatalogController,
     val discoverController: DiscoverController,
+    val soundtrackController: SoundtrackController,
+    val moodsController: MoodsController,
+    val homeFeedController: HomeFeedController,
+    internal val radioController: RadioController,
+    val exploreController: ExploreController,
+    val podcastController: PodcastController,
     val lyricsController: LyricsController,
     val playbackController: PlaybackController,
     val downloadController: OfflineDownloadController,
@@ -60,9 +75,21 @@ class LevyraAppModel(
             settingsStore.settings.collect { value ->
                 if (value.onboardingCompleted) {
                     ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
-                    discoverController.load(value.contentCountry)
+                    discoverController.load(value.effectiveChartCountry, value.contentCountry)
+                    soundtrackController.load(value.language.tag)
+                    homeFeedController.load(value.contentCountry, value.language.tag)
                 }
             }
+        }
+        scope.launch {
+            libraryStore.library
+                .map { library -> library.favorites.size to library.history.firstOrNull()?.track?.id }
+                .distinctUntilChanged()
+                .debounce(DAILY_SEED_DEBOUNCE_MS)
+                .collect {
+                    val value = settingsStore.settings.value
+                    if (value.onboardingCompleted) homeFeedController.load(value.contentCountry, value.language.tag)
+                }
         }
         scope.launch {
             playbackController.messages.collect { message -> noticeFlow.tryEmit(message) }
@@ -105,6 +132,17 @@ class LevyraAppModel(
         navigate(Destination.COLLECTION)
     }
 
+    fun openTrendingArtist(name: String) {
+        val cached = soundtrackController.artistReferences.value[name.lowercase()]
+        if (cached != null) {
+            openCollection(cached)
+        } else {
+            catalogController.clearCollectionHistory()
+            catalogController.openArtist(name)
+            navigate(Destination.COLLECTION)
+        }
+    }
+
     fun openCollectionFromUrl(url: String) {
         if (destinationState.value == Destination.COLLECTION) {
             catalogController.pushCollectionHistory()
@@ -114,9 +152,26 @@ class LevyraAppModel(
         catalogController.openCollectionFromUrl(url) { navigate(Destination.COLLECTION) }
     }
 
+    fun toggleFollowArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.toggleFollowArtist(artist) }
+    }
+
+    fun togglePinnedArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.togglePinnedArtist(artist) }
+    }
+
+    fun toggleExcludedArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.toggleExcludedArtist(artist) }
+    }
+
+    fun downloadArtistTracks(tracks: List<Track>) {
+        scope.launch { tracks.forEach(downloadController::enqueue) }
+    }
+
     fun refreshDiscover() {
         if (settingsStore.current.onboardingCompleted) {
-            discoverController.load(settingsStore.current.contentCountry, force = true)
+            val settings = settingsStore.current
+            discoverController.load(settings.effectiveChartCountry, settings.contentCountry, force = true)
         }
     }
 
@@ -137,3 +192,5 @@ class LevyraAppModel(
         noticeFlow.tryEmit(message)
     }
 }
+
+private const val DAILY_SEED_DEBOUNCE_MS = 20_000L

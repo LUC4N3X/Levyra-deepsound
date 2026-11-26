@@ -4,16 +4,20 @@ import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.model.ArtistDetail
 import com.luc4n3x.levyra.desktop.core.model.CatalogPage
 import com.luc4n3x.levyra.desktop.core.model.CollectionDetail
+import com.luc4n3x.levyra.desktop.core.model.CollectionKind
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SearchUiState(
@@ -168,6 +172,17 @@ class CatalogController(
         collectionJob = scope.launch { loadCollection { catalog.collection(ref) } }
     }
 
+    fun openArtist(name: String) {
+        cancelCollectionJobs()
+        collectionState.value = CollectionUiState(
+            ref = CollectionRef(name, name, url = "", kind = CollectionKind.ARTIST),
+            loading = true
+        )
+        collectionJob = scope.launch {
+            loadCollection { catalog.collection(catalog.findArtist(name) ?: error(COLLECTION_ERROR)) }
+        }
+    }
+
     fun openCollectionFromUrl(url: String, onOpened: () -> Unit) {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return
@@ -210,11 +225,22 @@ class CatalogController(
     private suspend fun loadCollection(load: suspend () -> CollectionDetail) {
         try {
             val detail = load()
+            currentCoroutineContext().ensureActive()
             collectionState.value = CollectionUiState(
                 ref = detail.ref,
                 page = detail.page,
                 artist = detail.artist
             )
+            val artist = detail.artist
+            if (artist != null && artist.monthlyListeners == null) {
+                val listeners = catalog.artistMonthlyListeners(artist.name)
+                currentCoroutineContext().ensureActive()
+                if (listeners != null) {
+                    collectionState.update { current ->
+                        if (current.ref?.id != detail.ref.id) current else current.copy(artist = artist.copy(monthlyListeners = listeners))
+                    }
+                }
+            }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {

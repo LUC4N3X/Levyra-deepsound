@@ -1,0 +1,51 @@
+LEVYRA DESKTOP - TERMINI D'USO E LIMITAZIONE DI RESPONSABILITÀ
+TERMS OF USE AND DISCLAIMER
+
+Leggi attentamente questi termini. Installando o usando Levyra accetti integralmente quanto segue.
+Please read these terms carefully. By installing or using Levyra you accept all of the following.
+
+ITALIANO
+
+1. Software fornito "così com'è"
+Levyra è software libero e gratuito, fornito "così com'è" e "come disponibile", senza garanzie di alcun tipo, espresse o implicite, incluse a titolo esemplificativo le garanzie di commerciabilità, idoneità a uno scopo particolare, assenza di errori, continuità del servizio o non violazione di diritti di terzi.
+
+2. Esclusione di responsabilità
+Nei limiti massimi consentiti dalla legge applicabile, l'autore e i contributori di Levyra non sono responsabili per alcun danno diretto, indiretto, incidentale, speciale, consequenziale o punitivo, né per perdita di dati, profitti, interruzione di attività o malfunzionamenti di dispositivi, derivanti dall'installazione, dall'uso o dall'impossibilità di usare il software, anche se avvisati della possibilità di tali danni.
+
+3. Responsabilità dell'utente
+L'utente è l'unico responsabile dell'uso che fa di Levyra e dei contenuti a cui accede. L'utente si impegna a rispettare le leggi del proprio Paese, i diritti d'autore e i termini di servizio delle piattaforme e dei fornitori di contenuti di terze parti. Levyra non ospita, non distribuisce e non vende contenuti protetti: riproduce contenuti pubblicamente disponibili tramite servizi di terzi.
+
+4. Nessuna affiliazione
+Levyra non è affiliato, approvato o sponsorizzato da alcuna piattaforma musicale, etichetta o fornitore di contenuti. Marchi e nomi citati appartengono ai rispettivi proprietari.
+
+5. Privacy
+Levyra non include telemetria né tracciamento. Preferenze, libreria e cronologia restano sul tuo computer, nella cartella dati dell'applicazione. Le richieste di rete necessarie (ricerca, riproduzione, testi, classifiche, notizie) vengono inviate direttamente ai rispettivi servizi.
+
+6. Aggiornamenti
+Levyra può verificare la presenza di nuove versioni e scaricarle solo dopo la tua conferma, controllandone l'integrità tramite SHA-256.
+
+7. Licenza
+Levyra è distribuito con licenza GNU General Public License versione 3 (GPL-3.0-only). Il testo completo è disponibile su https://www.gnu.org/licenses/gpl-3.0.html e nel repository del progetto. Questi termini non limitano i diritti che la GPL ti concede.
+
+ENGLISH
+
+1. Provided "as is"
+Levyra is free software provided "as is" and "as available", without warranties of any kind, express or implied, including but not limited to merchantability, fitness for a particular purpose, error-free operation, uninterrupted service or non-infringement.
+
+2. Limitation of liability
+To the maximum extent permitted by applicable law, the author and contributors of Levyra shall not be liable for any direct, indirect, incidental, special, consequential or punitive damages, or for loss of data, profits, business interruption or device malfunction, arising from installing, using or being unable to use the software, even if advised of the possibility of such damages.
+
+3. User responsibility
+You are solely responsible for how you use Levyra and the content you access. You agree to comply with the laws of your country, copyright, and the terms of service of third-party platforms and content providers. Levyra does not host, distribute or sell protected content; it plays publicly available content through third-party services.
+
+4. No affiliation
+Levyra is not affiliated with, endorsed or sponsored by any music platform, label or content provider. All trademarks belong to their respective owners.
+
+5. Privacy
+Levyra contains no telemetry or tracking. Settings, library and history stay on your computer, in the application data folder. Required network requests (search, playback, lyrics, charts, news) go directly to the respective services.
+
+6. Updates
+Levyra may check for new versions and downloads them only after your confirmation, verifying their integrity with SHA-256.
+
+7. License
+Levyra is distributed under the GNU General Public License version 3 (GPL-3.0-only). The full text is available at https://www.gnu.org/licenses/gpl-3.0.html and in the project repository. These terms do not restrict any right granted to you by the GPL.

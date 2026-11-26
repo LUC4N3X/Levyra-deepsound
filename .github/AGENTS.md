@@ -16,7 +16,9 @@ Before editing a workflow, load `.agents/skills/levyra-ci-workflows/SKILL.md` an
 
 - Reuse existing Android build/release, Desktop build/release, F-Droid, extractor/config sync, validation, and duplicate-guard workflows.
 - Do not create parallel workflows that publish the same artifact or respond to the same release trigger without a documented reason.
-- Preserve Android and Desktop version, tag, artifact, and release separation.
+- Read the same `levyraVersionName` for Android, Windows, and Linux. A verified new Android APK publication triggers the two Desktop releases from its commit.
+- The initial Desktop 3.2.5 release is a one-time exception. Build it from the main commit that enables it and preserve the source tag and assets of the existing Android 3.2.5 release.
+- Keep platform tags, artifacts, and release pages distinct.
 - Preserve artifact names and paths consumed by later jobs.
 - Make success, no-change, skipped, cancelled, and failure outcomes semantically distinct.
 - Keep caches deterministic and prevent untrusted executable output from crossing trust boundaries.

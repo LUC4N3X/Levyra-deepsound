@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.ui
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,8 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
@@ -54,21 +51,26 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.PlayerBar
 import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
+import com.luc4n3x.levyra.desktop.app.ui.screens.ArtistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
-import com.luc4n3x.levyra.desktop.app.ui.screens.DiscoverScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.CuratedPlaylistsScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.ExploreScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LibraryScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LocalMusicScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.MoodsScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.RadioScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.PodcastScreen
+import com.luc4n3x.levyra.desktop.core.podcast.PodcastLocale
 import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.OnboardingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
-import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
-import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
+import com.luc4n3x.levyra.desktop.core.model.CollectionKind
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
@@ -99,6 +101,10 @@ fun LevyraRoot(model: LevyraAppModel) {
     val search by model.catalogController.search.collectAsState()
     val collection by model.catalogController.collection.collectAsState()
     val discover by model.discoverController.discover.collectAsState()
+    val soundtrack by model.soundtrackController.soundtrack.collectAsState()
+    val artistReferences by model.soundtrackController.artistReferences.collectAsState()
+    val artistPortraits = remember(artistReferences) { artistReferences.mapValues { it.value.artworkUrl } }
+    val homeFeed by model.homeFeedController.feed.collectAsState()
     var localSearchResults by remember { mutableStateOf<List<Track>>(emptyList()) }
 
     LaunchedEffect(localMusic.index, search.query) {
@@ -131,9 +137,8 @@ fun LevyraRoot(model: LevyraAppModel) {
     var pendingPlaylistTrack by remember { mutableStateOf<Track?>(null) }
     var newPlaylistName by remember { mutableStateOf("") }
     var vlcStatus by remember { mutableStateOf("") }
-    var artworkAccent by remember { mutableStateOf(LevyraBrand.cyan) }
+    var navCompactOverride by remember { mutableStateOf<Boolean?>(null) }
 
-    val currentArtwork = playback.current?.artworkUrl.orEmpty()
     val playerVisible = !playback.queue.isEmpty
     val favoriteIds = remember(library.favorites) {
         library.favorites.mapTo(HashSet<String>()) { it.id }
@@ -143,20 +148,11 @@ fun LevyraRoot(model: LevyraAppModel) {
         model.notices.collect { message -> snackbarState.showSnackbar(message) }
     }
 
-    LaunchedEffect(currentArtwork) {
-        artworkAccent = ArtworkPalette.accentFor(currentArtwork) ?: LevyraBrand.cyan
-    }
-
     LaunchedEffect(playback.current?.id, destination) {
         if (destination == Destination.NOW_PLAYING) {
             model.lyricsController.requestFor(playback.current)
         }
     }
-
-    val accent by animateColorAsState(
-        targetValue = artworkAccent,
-        animationSpec = tween(durationMillis = 280)
-    )
 
     val actions = remember(model, playback.current?.id, favoriteIds) {
         TrackActions(
@@ -197,7 +193,7 @@ fun LevyraRoot(model: LevyraAppModel) {
         )
     }
 
-    LevyraTheme(themeMode = settings.themeMode, accent = accent) {
+    LevyraTheme(themeMode = settings.themeMode) {
         CompositionLocalProvider(
             LocalStrings provides strings,
             LocalAccentColor provides MaterialTheme.colorScheme.primary,
@@ -214,6 +210,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                         onLanguagePreview = { language ->
                             model.updateSettings { it.copy(language = language) }
                         },
+                        onThemePreview = { mode -> model.updateSettings { it.copy(themeMode = mode) } },
                         onComplete = { displayName, language, tastes, country ->
                             model.updateSettings {
                                 it.copy(
@@ -233,54 +230,57 @@ fun LevyraRoot(model: LevyraAppModel) {
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
                     ) {
-                        val compactNavigation = maxWidth < 1_150.dp
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(8.dp)
-                        ) {
+                        val compactNavigation = navCompactOverride ?: (maxWidth < 1_100.dp)
+                        Column(modifier = Modifier.fillMaxSize()) {
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .fillMaxWidth()
                             ) {
                                 LevyraSidebar(
                                     destination = destination,
                                     hasActiveTrack = playback.current != null,
                                     isPlaying = playback.isPlaying,
                                     onNavigate = model::navigate,
-                                    compact = compactNavigation
+                                    compact = compactNavigation,
+                                    onToggleCompact = { navCompactOverride = !compactNavigation },
+                                    favoritesLabel = strings.homeFavorites,
+                                    favoritesCount = library.favorites.size,
+                                    playlists = library.playlists,
+                                    onOpenPlaylist = model::openPlaylist
                                 )
 
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxHeight(),
-                                    shape = MaterialTheme.shapes.large,
-                                    color = MaterialTheme.colorScheme.surface
+                                    shape = ContentLayerShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    listOf(
-                                                        accent.copy(alpha = 0.05f),
-                                                        Color.Transparent,
-                                                        Color.Transparent
-                                                    )
-                                                )
-                                            )
-                                    ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
                                         when (destination) {
                                             Destination.HOME -> HomeScreen(
                                                 library = library,
                                                 discover = discover,
+                                                soundtrack = soundtrack,
+                                                artistPortraits = artistPortraits,
+                                                feed = homeFeed,
+                                                onOpenCollection = model::openCollection,
                                                 currentTrack = playback.current,
+                                                isPlaying = playback.isPlaying,
+                                                displayName = settings.displayName,
+                                                onTogglePlayback = model.playbackController::togglePlayPause,
                                                 actions = actions,
-                                                onOpenSearch = { model.navigate(Destination.SEARCH) },
+                                                onRequestPortraits = model.soundtrackController::requestPortraits,
+                                                onOpenArtist = model::openTrendingArtist,
                                                 onOpenDiscover = { model.navigate(Destination.DISCOVER) },
+                                                onOpenMoods = {
+                                                    model.moodsController.close()
+                                                    model.navigate(Destination.MOODS)
+                                                },
+                                                onOpenCuratedAll = { model.navigate(Destination.CURATED) },
+                                                onOpenPodcast = { model.navigate(Destination.PODCAST) },
                                                 onOpenNewReleases = {
                                                     model.catalogController.clearSearch()
                                                     model.catalogController.setFilter(SearchFilter.ALBUMS)
@@ -292,29 +292,36 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     model.playbackController.playShuffled(
                                                         tracks.map { model.downloadController.completedTrack(it) ?: it }
                                                     )
-                                                },
-                                                onOpenPlaylist = model::openPlaylist,
-                                                onCreatePlaylist = { name ->
-                                                    model.libraryStore.createPlaylist(name)
-                                                },
-                                                onImportUrl = model::openCollectionFromUrl,
-                                                onClearHistory = model.libraryStore::clearHistory
-                                            )
-
-                                            Destination.DISCOVER -> DiscoverScreen(
-                                                state = discover,
-                                                actions = actions,
-                                                onCountryChange = { value ->
-                                                    model.updateSettings { it.copy(contentCountry = value) }
-                                                },
-                                                onRefresh = model::refreshDiscover,
-                                                onPlayAll = { actions.onPlay(discover.tracks, 0) },
-                                                onShuffleAll = {
-                                                    model.playbackController.playShuffled(
-                                                        discover.tracks.map { model.downloadController.completedTrack(it) ?: it }
-                                                    )
                                                 }
                                             )
+
+                                            Destination.CURATED -> {
+                                                val curatedPage by model.homeFeedController.curatedPage.collectAsState()
+                                                LaunchedEffect(settings.language, settings.contentCountry) {
+                                                    model.homeFeedController.loadCuratedCollections(settings.language.tag, settings.contentCountry)
+                                                }
+                                                CuratedPlaylistsScreen(
+                                                    shelves = homeFeed.curatedShelves,
+                                                    page = curatedPage,
+                                                    onSelectCategory = model.homeFeedController::selectCuratedCategory,
+                                                    onOpen = model::openCollection,
+                                                    onBack = model::back
+                                                )
+                                            }
+
+                                            Destination.RADIO -> RadioHost(model, settings.contentCountry, playback.current?.id)
+
+                                            Destination.MOODS -> MoodsHost(model, settings.contentCountry, discover, strings.homeNewReleasesQuery)
+
+                                            Destination.PODCAST -> PodcastScreen(
+                                                controller = model.podcastController,
+                                                locale = PodcastLocale(hl = settings.language.tag, gl = settings.contentCountry),
+                                                currentTrackId = playback.current?.id,
+                                                isPlaying = playback.isPlaying,
+                                                onBack = model::back
+                                            )
+
+                                            Destination.DISCOVER -> ExploreHost(model, settings.contentCountry, actions)
 
                                             Destination.SEARCH -> SearchScreen(
                                                 state = search,
@@ -330,28 +337,60 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 localResults = localSearchResults
                                             )
 
-                                            Destination.COLLECTION -> CollectionScreen(
-                                                state = collection,
-                                                actions = actions,
-                                                onBack = model::back,
-                                                onLoadMore = model.catalogController::loadMoreCollection,
-                                                onPlayAll = { actions.onPlay(collection.page.tracks, 0) },
-                                                onShuffleAll = {
-                                                    model.playbackController.playShuffled(
-                                                        collection.page.tracks.map {
-                                                            model.downloadController.completedTrack(it) ?: it
-                                                        }
-                                                    )
-                                                },
-                                                onEnqueueAll = {
-                                                    model.playbackController.enqueueLast(
-                                                        collection.page.tracks.map {
-                                                            model.downloadController.completedTrack(it) ?: it
-                                                        }
-                                                    )
-                                                },
-                                                onOpenCollection = model::openCollection
-                                            )
+                                            Destination.COLLECTION -> {
+                                                val activeId = collection.ref?.id
+                                                androidx.compose.runtime.key(activeId) {
+                                                    if (collection.ref?.kind == CollectionKind.ARTIST) {
+                                                        ArtistScreen(
+                                                            state = collection,
+                                                            library = library,
+                                                            contentCountry = settings.contentCountry,
+                                                            vlcDirectory = settings.vlcDirectory,
+                                                            motionEnabled = playback.current?.musicVideo != true,
+                                                            actions = actions,
+                                                            onBack = model::back,
+                                                            onShuffle = { tracks ->
+                                                                model.playbackController.playShuffled(
+                                                                    tracks.map { model.downloadController.completedTrack(it) ?: it }
+                                                                )
+                                                            },
+                                                            onEnqueue = { tracks ->
+                                                                model.playbackController.enqueueLast(
+                                                                    tracks.map { model.downloadController.completedTrack(it) ?: it }
+                                                                )
+                                                            },
+                                                            onDownload = model::downloadArtistTracks,
+                                                            onToggleFollow = model::toggleFollowArtist,
+                                                            onTogglePin = model::togglePinnedArtist,
+                                                            onToggleExclude = model::toggleExcludedArtist,
+                                                            onOpen = model::openCollection
+                                                        )
+                                                    } else {
+                                                        CollectionScreen(
+                                                            state = collection,
+                                                            actions = actions,
+                                                            onBack = model::back,
+                                                            onLoadMore = model.catalogController::loadMoreCollection,
+                                                            onPlayAll = { actions.onPlay(collection.page.tracks, 0) },
+                                                            onShuffleAll = {
+                                                                model.playbackController.playShuffled(
+                                                                    collection.page.tracks.map {
+                                                                        model.downloadController.completedTrack(it) ?: it
+                                                                    }
+                                                                )
+                                                            },
+                                                            onEnqueueAll = {
+                                                                model.playbackController.enqueueLast(
+                                                                    collection.page.tracks.map {
+                                                                        model.downloadController.completedTrack(it) ?: it
+                                                                    }
+                                                                )
+                                                            },
+                                                            onOpenCollection = model::openCollection
+                                                        )
+                                                    }
+                                                }
+                                            }
 
                                             Destination.LIBRARY -> LibraryHost(
                                                 model = model,
@@ -470,6 +509,27 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 },
                                                 onRefreshAudioOutputDevices = { createEngine ->
                                                     model.playbackController.refreshAudioOutputDevices(createEngine)
+                                                },
+                                                onImportPhoneBackup = {
+                                                    scope.launch {
+                                                        val selected = chooseBackupFile()
+                                                        if (selected.isBlank()) return@launch
+                                                        val restore = com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(strings.languageCode).restoreBackup
+                                                        val outcome = withContext(Dispatchers.IO) {
+                                                            runCatching {
+                                                                val phone = java.nio.file.Files.newInputStream(Path.of(selected)).use {
+                                                                    com.luc4n3x.levyra.desktop.core.storage.PhoneLibraryImport.read(it)
+                                                                }
+                                                                model.libraryStore.importPhoneLibrary(phone)
+                                                            }
+                                                        }
+                                                        model.notify(
+                                                            outcome.fold(
+                                                                { result -> "$restore · ${result.favorites} ${strings.homeFavorites} · ${result.playlists} ${strings.homePlaylists}" },
+                                                                { "$restore · ${strings.searchNoResults}" }
+                                                            )
+                                                        )
+                                                    }
                                                 }
                                             )
                                         }
@@ -483,9 +543,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         onRemove = model.playbackController::removeFromQueue,
                                         onClear = model.playbackController::clearQueue,
                                         onClose = model::closeQueue,
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .clip(RoundedCornerShape(18.dp))
+                                        modifier = Modifier.fillMaxHeight()
                                     )
                                 }
                             }
@@ -495,8 +553,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     model = model,
                                     library = library,
                                     queueVisible = queueVisible,
-                                    destination = destination,
-                                    modifier = Modifier.padding(top = 8.dp)
+                                    destination = destination
                                 )
                             }
                         }
@@ -569,6 +626,78 @@ fun LevyraRoot(model: LevyraAppModel) {
 }
 
 @Composable
+private fun ExploreHost(model: LevyraAppModel, contentCountry: String, actions: com.luc4n3x.levyra.desktop.app.ui.components.TrackActions) {
+    val explore by model.exploreController.explore.collectAsState()
+    val scope = rememberCoroutineScope()
+    ExploreScreen(
+        state = explore,
+        contentCountry = contentCountry,
+        onLoad = model.exploreController::load,
+        onPlay = { tracks, index ->
+            model.playbackController.playTracks(tracks.map { model.downloadController.completedTrack(it) ?: it }, index)
+        },
+        onOpenStory = { url -> scope.launch { openLink(url) } },
+        actions = actions,
+        onOpenChart = model.exploreController::open,
+        onCloseChart = model.exploreController::close
+    )
+}
+
+private suspend fun openLink(url: String) = withContext(Dispatchers.IO) {
+    if (!url.startsWith("https://", ignoreCase = true)) return@withContext
+    runCatching {
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            Desktop.getDesktop().browse(java.net.URI(url))
+        }
+    }
+    Unit
+}
+
+@Composable
+private fun RadioHost(model: LevyraAppModel, contentCountry: String, currentTrackId: String?) {
+    val radio by model.radioController.radio.collectAsState()
+    RadioScreen(
+        state = radio,
+        contentCountry = contentCountry,
+        currentTrackId = currentTrackId,
+        onOpen = model.radioController::open,
+        onCategory = model.radioController::selectCategory,
+        onSearch = model.radioController::search,
+        onToggleFavorite = model.radioController::toggleFavorite,
+        onPlay = { tracks, index -> model.playbackController.playTracks(tracks, index) }
+    )
+}
+
+@Composable
+private fun MoodsHost(
+    model: LevyraAppModel,
+    contentCountry: String,
+    discover: com.luc4n3x.levyra.desktop.app.state.DiscoverUiState,
+    newReleasesQuery: String
+) {
+    val moods by model.moodsController.moods.collectAsState()
+    MoodsScreen(
+        state = moods,
+        contentCountry = contentCountry,
+        newReleasesArtwork = discover.freshCurrents.firstOrNull()?.artworkUrl.orEmpty(),
+        localWaveArtwork = discover.tracks.firstOrNull()?.artworkUrl.orEmpty(),
+        onLoad = model.moodsController::load,
+        onRequestArtwork = model.moodsController::requestArtwork,
+        onOpenCategory = model.moodsController::open,
+        onCloseCategory = model.moodsController::close,
+        onOpenNewReleases = {
+            model.catalogController.clearSearch()
+            model.catalogController.setFilter(SearchFilter.ALBUMS)
+            model.catalogController.onQueryChange(newReleasesQuery)
+            model.catalogController.submit(newReleasesQuery)
+            model.navigate(Destination.SEARCH)
+        },
+        onOpenLocalWave = { model.navigate(Destination.DISCOVER) },
+        onOpenCollection = model::openCollection
+    )
+}
+
+@Composable
 private fun LibraryHost(
     model: LevyraAppModel,
     library: LibraryData,
@@ -582,6 +711,9 @@ private fun LibraryHost(
         downloads = downloads,
         actions = actions,
         onOpenPlaylist = model::openPlaylist,
+        onOpenArtist = model::openCollection,
+        onCreatePlaylist = { name -> model.libraryStore.createPlaylist(name) },
+        onImportUrl = model::openCollectionFromUrl,
         onImportPlaylist = {
             scope.launch {
                 val selected = choosePlaylistFile(save = false, suggestedName = "")
@@ -646,6 +778,7 @@ private fun PlayerBarHost(
             .map(com.luc4n3x.levyra.desktop.app.state.PlaybackUiState::withoutTransientUiTicks)
             .distinctUntilChanged()
     }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
+    val settings by model.settings.collectAsState()
 
     PlayerBar(
         state = playback,
@@ -680,6 +813,8 @@ private fun PlayerBarHost(
             }
         },
         onOpenNowPlaying = { model.navigate(Destination.NOW_PLAYING) },
+        settings = settings,
+        onUpdateSettings = model::updateSettings,
         modifier = modifier
     )
 }
@@ -733,6 +868,14 @@ private suspend fun choosePlaylistFile(
 private fun playlistTarget(file: File): File =
     if (file.extension.isBlank()) File(file.parentFile, "${file.name}.m3u8") else file
 
+private suspend fun chooseBackupFile(): String = withContext(Dispatchers.Swing) {
+    val chooser = JFileChooser()
+    chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+    chooser.isMultiSelectionEnabled = false
+    chooser.fileFilter = FileNameExtensionFilter("Levyra backup", "zip", "levyra")
+    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) chooser.selectedFile?.absolutePath.orEmpty() else ""
+}
+
 private suspend fun chooseDirectory(): String = withContext(Dispatchers.Swing) {
     val chooser = JFileChooser()
     chooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
@@ -767,5 +910,6 @@ private suspend fun openDirectory(path: String) = withContext(Dispatchers.IO) {
     Unit
 }
 
+private val ContentLayerShape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
 private const val LOCAL_SEARCH_PREVIEW_LIMIT = 6
 private const val LOCAL_SEARCH_DEBOUNCE_MS = 140L

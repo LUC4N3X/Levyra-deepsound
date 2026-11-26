@@ -111,5 +111,6 @@ None
 - [ ] I tested the changes and verified them locally
 - [ ] Documentation, tests, and assets were updated where relevant
 - [ ] No secrets, keystores, build artifacts, or local configuration files were committed
-- [ ] Android and Desktop versioning and release channels remain independent
+- [ ] Android, Windows, and Linux use the same version and keep platform release tags and downloads separate
+- [ ] APK feature and user-facing changes have Windows and Linux equivalents in this PR, with any platform limitations documented
 - [ ] CI checks pass, or any known issue is explained in the description

@@ -4,10 +4,18 @@ on:
   pull_request:
     paths:
       - "desktop/**"
+      - "gradle.properties"
       - "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/**"
       - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackConcurrency.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/domain/HighQualityAudio.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/domain/PlaybackManifest.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/spotify/SpotifyArtistAudience.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/spotify/SpotifyHttpBody.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/update/LevyraReleaseContent.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/theme/LevyraTypeRhythm.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/update/AppUpdateProgress.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/update/ReleaseHighlights.kt"
+      - "app/src/main/res/drawable*/onboarding_levyra_brand.*"
+      - "app/src/main/java/com/luc4n3x/levyra/domain/**"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/i18n/**"
       - "app/src/main/java/com/luc4n3x/levyra/player/offline/TidalDashFlac.kt"
       - "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/**"
       - "app/src/test/resources/**"
@@ -19,16 +27,23 @@ on:
       - master
     paths:
       - "desktop/**"
+      - "gradle.properties"
       - "third_party/LevyraExtractor/**"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Version of the verified Android release
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: desktop-windows-${{ github.ref }}
-  cancel-in-progress: true
+  group: desktop-windows-${{ github.ref }}-${{ inputs.release_version || 'build' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -102,13 +117,16 @@ jobs:
       - name: Resolve desktop version
         id: version
         shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
         run: |
-          $versionFile = "desktop/version.properties"
+          $versionFile = "gradle.properties"
           if (-not (Test-Path $versionFile)) { throw "$versionFile non trovato" }
-          $line = Get-Content $versionFile | Where-Object { $_ -match '^levyraDesktopVersion=' } | Select-Object -First 1
-          if (-not $line) { throw "levyraDesktopVersion non trovato in $versionFile" }
+          $line = Get-Content $versionFile | Where-Object { $_ -match '^levyraVersionName=' } | Select-Object -First 1
+          if (-not $line) { throw "levyraVersionName non trovato in $versionFile" }
           $version = ($line -split '=', 2)[1].Trim()
           if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$') { throw "Versione Levyra Desktop non valida: $version" }
+          if ($env:RELEASE_VERSION -and $version -cne $env:RELEASE_VERSION) { throw "La versione Windows non corrisponde alla release Android $env:RELEASE_VERSION" }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Levyra Desktop version: $version"
       - name: Install WiX Toolset
@@ -131,11 +149,11 @@ jobs:
       - name: Build portable distribution
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --stacktrace createReleaseDistributable -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
+        run: .\gradlew.bat --stacktrace createReleaseDistributable
       - name: Build installers
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
+        run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe
       - name: Prepare Windows release assets
         shell: pwsh
         run: |
@@ -171,6 +189,27 @@ jobs:
               throw "Asset Windows obbligatorio non trovato: $name"
             }
           }
+      - name: Smoke test the Windows MSI
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $msi = Join-Path $PWD "release-assets/LEVYRA-Windows-$version-x64.msi"
+          $installDir = Join-Path $env:RUNNER_TEMP "levyra-msi-smoke"
+          $log = Join-Path $env:RUNNER_TEMP "levyra-msi-smoke.log"
+          $arguments = '/i "{0}" INSTALLDIR="{1}" /quiet /norestart /L*v "{2}"' -f $msi, $installDir, $log
+          $install = Start-Process msiexec.exe -ArgumentList $arguments -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "MSI install failed with exit code $($install.ExitCode)" }
+          if (-not (Test-Path -LiteralPath (Join-Path $installDir "Levyra.exe") -PathType Leaf)) {
+            throw "Levyra.exe missing from the MSI installation"
+          }
+      - name: Upload MSI smoke test log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-windows-msi-smoke
+          path: ${{ runner.temp }}/levyra-msi-smoke.log
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -181,7 +220,7 @@ jobs:
 
   publish:
     name: Publish Windows release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: inputs.release_version != '' && github.ref == 'refs/heads/main'
     needs: installer
     runs-on: windows-latest
     timeout-minutes: 30
@@ -292,18 +331,37 @@ jobs:
             $tagCommit = Resolve-TagCommit $tag
             if (-not $tagCommit) { throw "Impossibile risolvere il commit del tag $tag" }
             if ($tagCommit -ne $env:GITHUB_SHA) {
-              throw "La versione Desktop $version è già legata al commit $tagCommit. Incrementare desktop/version.properties prima di pubblicare un nuovo build."
+              throw "La versione Desktop $version è già legata al commit $tagCommit. Aggiornare levyraVersionName in gradle.properties prima di pubblicare un nuovo build."
             }
           }
 
           if (-not $releaseExists) {
-            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Independent Windows release. Android and Desktop keep separate versions and release channels." --latest=false
+            $releaseFlags = @()
+            if ($version.Contains("-")) { $releaseFlags += "--prerelease" }
+            $assets = @(Get-ChildItem -LiteralPath $releaseAssets -File | Select-Object -ExpandProperty FullName)
+            foreach ($name in @($msiName, $exeName, $zipName)) {
+              $digest = Get-FileDigest (Join-Path $releaseAssets $name)
+              if ($digest -ne (Read-Checksum (Join-Path $releaseAssets "$name.sha256"))) {
+                throw "Checksum locale non valido per $name"
+              }
+            }
+            $androidNotes = gh release view "v$version" --repo $repo --json body --jq .body
+            if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere le novità della release Android v$version" }
+            $highlights = [regex]::Match(($androidNotes -join "`n"), '(?s)<!-- levyra-highlights.*?-->').Value
+            $notesFile = Join-Path $env:RUNNER_TEMP "levyra-windows-release-notes.md"
+            @("Windows packages for Levyra $version, built from commit $env:GITHUB_SHA.", "", $highlights) |
+              Set-Content -LiteralPath $notesFile -Encoding utf8
+            gh release create $tag @assets --repo $repo --target $env:GITHUB_SHA --title "Levyra Windows $version" --notes-file $notesFile --latest=false @releaseFlags
             if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
           }
 
-          $releaseJson = gh release view $tag --repo $repo --json assets
+          $releaseJson = gh release view $tag --repo $repo --json assets,isDraft,targetCommitish
           if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere gli asset esistenti di $tag" }
-          $remoteAssets = @((($releaseJson | ConvertFrom-Json).assets))
+          $release = $releaseJson | ConvertFrom-Json
+          if ($release.isDraft -and -not $tagExists -and $release.targetCommitish -cne $env:GITHUB_SHA) {
+            throw "La bozza $tag non corrisponde al commit della release Android"
+          }
+          $remoteAssets = @($release.assets)
           foreach ($remoteAsset in $remoteAssets) {
             $remoteAssetsByName[[string]$remoteAsset.name] = $remoteAsset
           }
@@ -360,7 +418,7 @@ jobs:
               $existingChecksum = Download-ReleaseAsset $pair.Checksum $pairDirectory
               $declaredExistingDigest = Read-Checksum $existingChecksum
               if ($localDigest -ne $declaredExistingDigest) {
-                throw "La release $tag contiene $($pair.Checksum) per un build differente. Incrementare desktop/version.properties o rimuovere manualmente l'asset orfano."
+                throw "La release $tag contiene $($pair.Checksum) per un build differente. Aggiornare levyraVersionName in gradle.properties o rimuovere manualmente l'asset orfano."
               }
               gh release upload $tag $localArtifact --repo $repo
               if ($LASTEXITCODE -ne 0) {
@@ -384,5 +442,9 @@ jobs:
             if ($pair.Artifact -notin $finalNames -or $pair.Checksum -notin $finalNames) {
               throw "Release incompleta: manca la coppia $($pair.Artifact) / $($pair.Checksum)"
             }
+          }
+          if ($release.isDraft) {
+            gh release edit $tag --repo $repo --draft=false --latest=false
+            if ($LASTEXITCODE -ne 0) { throw "Impossibile pubblicare la bozza $tag" }
           }
           Write-Host "Release immutabile $tag completa: tutte le coppie artifact/checksum sono presenti e coerenti."

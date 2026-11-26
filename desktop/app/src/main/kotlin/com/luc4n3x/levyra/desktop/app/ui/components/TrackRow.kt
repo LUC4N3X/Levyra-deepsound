@@ -61,7 +61,9 @@ fun TrackRow(
     onAddToPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
     extraAction: TrackRowAction? = null,
-    position: Int? = null
+    position: Int? = null,
+    subtitle: String = track.displaySubtitle,
+    showDuration: Boolean = true
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
@@ -127,9 +129,9 @@ fun TrackRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (track.displaySubtitle.isNotBlank()) {
+            if (subtitle.isNotBlank()) {
                 Text(
-                    text = track.displaySubtitle,
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -159,11 +161,13 @@ fun TrackRow(
             }
         }
 
-        Text(
-            text = Format.duration(track.durationMs),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (showDuration) {
+            Text(
+                text = Format.duration(track.durationMs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
         IconButton(onClick = onToggleFavorite) {
             Icon(

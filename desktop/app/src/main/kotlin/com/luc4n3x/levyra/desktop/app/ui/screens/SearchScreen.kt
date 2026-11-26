@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -125,7 +125,7 @@ fun SearchScreen(
             }
         }
 
-        LazyRow(
+        ShelfRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 14.dp),
@@ -362,7 +362,7 @@ private fun SearchLanding(
 
         item {
             SearchSectionTitle(strings.searchQuickPicks)
-            LazyRow(
+            ShelfRow(
                 modifier = Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(end = 20.dp)
@@ -379,7 +379,7 @@ private fun SearchLanding(
 
         item {
             SearchSectionTitle(strings.searchPopularArtists)
-            LazyRow(
+            ShelfRow(
                 modifier = Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(end = 20.dp)
@@ -396,7 +396,7 @@ private fun SearchLanding(
 
         item {
             SearchSectionTitle(strings.searchMoods)
-            LazyRow(
+            ShelfRow(
                 modifier = Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(end = 20.dp)

@@ -518,7 +518,10 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val fallbackProfiles = ArtistFallbackProfiles(MAX_FALLBACK_PROFILES)
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
     private val artistLore = ArtistLoreRepository(context)
-    private val spotifyAudience = SpotifyArtistAudience()
+    private val spotifyAudience = SpotifyArtistAudience(
+        clientFactory = { LevyraHttpClientFactory.externalIntegrations() },
+        matchesArtist = ::artistNameMatches
+    )
     private val audiencePreferences = context?.applicationContext
         ?.getSharedPreferences(AUDIENCE_PREFERENCES_NAME, Context.MODE_PRIVATE)
 

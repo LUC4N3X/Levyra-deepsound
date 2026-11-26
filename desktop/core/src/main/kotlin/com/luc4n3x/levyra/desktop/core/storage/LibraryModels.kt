@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.core.storage
 
+import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.Track
 import kotlinx.serialization.Serializable
 
@@ -16,7 +17,8 @@ data class LocalPlaylist(
 @Serializable
 data class HistoryEntry(
     val track: Track,
-    val playedAt: Long
+    val playedAt: Long,
+    val playCount: Int = 1
 )
 
 @Serializable
@@ -24,7 +26,10 @@ data class LibraryData(
     val favorites: List<Track> = emptyList(),
     val playlists: List<LocalPlaylist> = emptyList(),
     val history: List<HistoryEntry> = emptyList(),
-    val recentSearches: List<String> = emptyList()
+    val recentSearches: List<String> = emptyList(),
+    val followedArtists: List<CollectionRef> = emptyList(),
+    val pinnedArtists: List<CollectionRef> = emptyList(),
+    val excludedArtists: Map<String, String> = emptyMap()
 )
 
 @Serializable

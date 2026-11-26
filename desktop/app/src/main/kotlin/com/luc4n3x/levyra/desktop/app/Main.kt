@@ -1,8 +1,6 @@
 package com.luc4n3x.levyra.desktop.app
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +31,7 @@ import com.luc4n3x.levyra.desktop.app.di.AppContainer
 import com.luc4n3x.levyra.desktop.app.state.Destination
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
 import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
-import com.luc4n3x.levyra.desktop.app.ui.DesktopUpdateDialogHost
+import com.luc4n3x.levyra.desktop.app.ui.DesktopUpdateHost
 import com.luc4n3x.levyra.desktop.app.ui.LevyraRoot
 import com.luc4n3x.levyra.desktop.app.ui.components.TextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.components.levyraIconPainter
@@ -240,14 +238,14 @@ fun main(args: Array<String>) {
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            DesktopUpdateHost(
+                controller = container.updateController,
+                language = settings.language,
+                themeMode = settings.themeMode,
+                enabled = settings.onboardingCompleted,
+                onInstallReady = ::quit
+            ) {
                 LevyraRoot(model = container.appModel)
-                DesktopUpdateDialogHost(
-                    controller = container.updateController,
-                    language = settings.language,
-                    enabled = settings.onboardingCompleted,
-                    onInstallReady = ::quit
-                )
             }
         }
 

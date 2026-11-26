@@ -11,6 +11,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -61,7 +62,8 @@ internal data class DesktopRelease(
     val name: String,
     val notes: String,
     val installer: DesktopReleaseAsset,
-    val checksum: DesktopReleaseAsset
+    val checksum: DesktopReleaseAsset,
+    val publishedAtEpochMs: Long = 0L
 )
 
 internal data class DesktopUpdateUiState(
@@ -101,7 +103,7 @@ internal class DesktopUpdateController(
         .build()
     private val downloadClient = baseClient.newBuilder()
         .callTimeout(0L, TimeUnit.MILLISECONDS)
-        .readTimeout(0L, TimeUnit.MILLISECONDS)
+        .readTimeout(60L, TimeUnit.SECONDS)
         .build()
     private val internalState = MutableStateFlow(DesktopUpdateUiState())
     private var checkJob: Job? = null
@@ -234,7 +236,10 @@ internal class DesktopUpdateController(
             },
             notes = root["body"]?.jsonPrimitive?.contentOrNull.orEmpty().trim(),
             installer = installer,
-            checksum = checksum
+            checksum = checksum,
+            publishedAtEpochMs = root["published_at"]?.jsonPrimitive?.contentOrNull?.let {
+                runCatching { Instant.parse(it).toEpochMilli() }.getOrNull()
+            } ?: 0L
         )
     }
 
@@ -455,7 +460,6 @@ exit ${'$'}process.ExitCode
     private companion object {
         const val DESKTOP_RELEASES_URL =
             "https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases?per_page=50"
-        const val DESKTOP_RELEASE_TAG_PREFIX = "desktop-v"
         const val RELEASE_ASSET_PATH_PREFIX = "/LUC4N3X/Levyra-deepsound/releases/download/"
         const val UPDATE_DIRECTORY = "updates"
         const val BUFFER_SIZE = 64 * 1024

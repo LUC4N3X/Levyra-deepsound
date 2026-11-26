@@ -17,12 +17,9 @@ description: Automatically use for Levyra pre-merge/pre-release validation, Andr
 
 Do not change versions, publish, tag, merge, upload, or release unless those actions are separately and explicitly authorized.
 
-Android and Desktop versioning are independent:
+Android, Windows, and Linux use `levyraVersionName` from the root `gradle.properties`. Android uses `levyraVersionCode` for APK upgrades.
 
-- Android uses `levyraVersionName` and `levyraVersionCode` in the existing Android configuration.
-- Desktop uses `desktop/version.properties` and `desktop-v<version>` tags.
-
-Never update one platform's version merely because the other platform is releasing.
+Verify the `v<version>` APK release before publishing the corresponding `desktop-v<version>` and `desktop-linux-v<version>` releases. The three releases use the same source commit and keep their downloads separate.
 
 ## Release-note authoring contract
 
