@@ -435,18 +435,20 @@ class PlaybackService : MediaLibraryService() {
 
         fun triggerGentleWakeAlarm(context: Context, settings: GentleWakeSettings) {
             val appContext = context.applicationContext
-            val service = activeService
-            if (service != null) {
-                service.startGentleWakeInternal(settings, isPreview = false)
-            } else {
-                val intent = Intent(appContext, PlaybackService::class.java).apply {
-                    action = ACTION_START_GENTLE_WAKE_SERVICE
+            val intent = Intent(appContext, PlaybackService::class.java).apply {
+                action = ACTION_START_GENTLE_WAKE_SERVICE
+            }
+            runCatching {
+                androidx.core.content.ContextCompat.startForegroundService(appContext, intent)
+            }.onFailure { error ->
+                Timber.w(error, "GentleWake foreground service start failed")
+                val service = activeService
+                if (service != null) {
+                    service.startGentleWakeInternal(settings, isPreview = false)
+                } else {
+                    runCatching { appContext.startService(intent) }
+                        .onFailure { Timber.w(it, "GentleWake service start failed") }
                 }
-                runCatching {
-                    androidx.core.content.ContextCompat.startForegroundService(appContext, intent)
-                }.recoverCatching {
-                    appContext.startService(intent)
-                }.onFailure { Timber.w(it, "GentleWake service start failed") }
             }
         }
 
@@ -638,6 +640,8 @@ class PlaybackService : MediaLibraryService() {
     private var gentleWakeCrescendoJob: Job? = null
     private var gentleWakePreservedQueue: PlaybackQueueSnapshot? = null
     private var gentleWakePreservedRepeatMode: Int = Player.REPEAT_MODE_OFF
+    private var gentleWakePlayingTone = false
+    private var gentleWakeRestoreAudioAttributes: AudioAttributes? = null
 
     @Volatile
     private var sleepWithMusicSettings = SleepWithMusicSettings()
@@ -1274,6 +1278,10 @@ class PlaybackService : MediaLibraryService() {
                 NativeAudioIntegration.redirectFailedPlatformDecoder(error)?.let { mimeType ->
                     Timber.w("Platform audio decoder failed for %s; retrying with FFmpeg", mimeType)
                     player.prepare()
+                    return
+                }
+                if (_gentleWakeRuntimeStateFlow.value.active && !gentleWakePlayingTone) {
+                    Timber.w("GentleWake source error %s; the alarm ramp switches to the tone", error.errorCodeName)
                     return
                 }
                 updatePlaybackProtection(player)
@@ -3226,19 +3234,28 @@ class PlaybackService : MediaLibraryService() {
 
             val player = activePlayer ?: return@launch
             cancelQueueTransition()
-            val playTrack = gentleWakePlayableTrack(firstTrack, resolved.displayTitle)
+            val playTrack = gentleWakePlayableTrack(firstTrack)
+            val alarmTracks = if (playTrack == null) {
+                listOf(gentleWakeToneTrack(languageCode))
+            } else {
+                resolved.tracks
+            }
+            gentleWakePlayingTone = playTrack == null ||
+                playTrack.id == GentleWakeToneGenerator.BUILT_IN_TONE_TRACK_ID
 
             if (queueEngine.isTransientPlaybackActive) {
-                queueEngine.replaceTransient(resolved.tracks, 0)
+                queueEngine.replaceTransient(alarmTracks, 0)
             } else {
                 val preserved = queueEngine.state.value
                 gentleWakePreservedQueue = preserved
                 gentleWakePreservedRepeatMode = player.repeatMode
-                queueEngine.beginTransientPlayback(preserved, resolved.tracks, 0)
+                queueEngine.beginTransientPlayback(preserved, alarmTracks, 0)
             }
+            if (playTrack == null) markGentleWakeEmergencyFallback(languageCode)
+            setGentleWakeAlarmAudio(player, alarmActive = true)
             player.volume = initialVol
-            player.repeatMode = if (resolved.tracks.size <= 1) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_ALL
-            player.setMediaItem(LevyraMediaItemFactory.build(playTrack), 0L)
+            player.repeatMode = if (alarmTracks.size <= 1) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_ALL
+            player.setMediaItem(LevyraMediaItemFactory.build(playTrack ?: alarmTracks.first()), 0L)
             player.prepare()
             player.play()
 
@@ -3246,19 +3263,77 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    private suspend fun gentleWakePlayableTrack(firstTrack: Track, displayTitle: String): Track {
+    private suspend fun gentleWakePlayableTrack(firstTrack: Track): Track? {
         val local = firstTrack.streamUrl.startsWith("file://") ||
             firstTrack.streamUrl.startsWith("content://") ||
             firstTrack.streamUrl.startsWith("/")
-        if (local || firstTrack.isLiveRadio()) return firstTrack
-        return withContext(Dispatchers.IO) {
-            runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }.getOrNull()
-                ?: GentleWakeToneGenerator.ensureToneTrack(
-                    context = this@PlaybackService,
-                    title = displayTitle,
-                    subtitle = com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode(LevyraPreferences(this@PlaybackService).languageCode()).gentleWakeTitle
-                )
+        if (local) return firstTrack
+        if (firstTrack.isLiveRadio()) {
+            return firstTrack.takeIf(GentleWakePlaybackCoordinator::isRemoteAlarmCandidate)
         }
+        return withContext(Dispatchers.IO) {
+            runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }
+                .onFailure { if (it is CancellationException) throw it }
+                .getOrNull()
+        }
+    }
+
+    private fun setGentleWakeAlarmAudio(player: ExoPlayer, alarmActive: Boolean) {
+        if (alarmActive) {
+            if (gentleWakeRestoreAudioAttributes == null) gentleWakeRestoreAudioAttributes = player.audioAttributes
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_ALARM)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                false
+            )
+        } else {
+            val restore = gentleWakeRestoreAudioAttributes ?: return
+            gentleWakeRestoreAudioAttributes = null
+            player.setAudioAttributes(restore, true)
+        }
+    }
+
+    private suspend fun gentleWakeToneTrack(languageCode: String): Track {
+        val copy = com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode(languageCode)
+        return withContext(Dispatchers.IO) {
+            GentleWakeToneGenerator.ensureToneTrack(
+                context = this@PlaybackService,
+                title = copy.builtInToneName,
+                subtitle = copy.builtInToneSubtitle
+            )
+        }
+    }
+
+    private fun markGentleWakeEmergencyFallback(languageCode: String) {
+        val state = _gentleWakeRuntimeStateFlow.value
+        if (!state.active) return
+        val toneName = com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode(languageCode).builtInToneName
+        _gentleWakeRuntimeStateFlow.value = state.copy(sourceTitle = toneName, usingEmergencyFallback = true)
+        if (!state.previewActive) {
+            GentleWakeScheduler.postGentleWakeRingingNotification(
+                context = this,
+                languageCode = languageCode,
+                sourceTitle = toneName,
+                usingEmergencyFallback = true
+            )
+        }
+    }
+
+    private suspend fun fallBackToGentleWakeTone(player: ExoPlayer) {
+        if (gentleWakePlayingTone) return
+        gentleWakePlayingTone = true
+        val languageCode = LevyraPreferences(this).languageCode()
+        val tone = gentleWakeToneTrack(languageCode)
+        if (!_gentleWakeRuntimeStateFlow.value.active) return
+        Timber.w("GentleWake source failed; ringing the built-in tone")
+        queueEngine.replaceTransient(listOf(tone), 0)
+        markGentleWakeEmergencyFallback(languageCode)
+        player.repeatMode = Player.REPEAT_MODE_ONE
+        player.setMediaItem(LevyraMediaItemFactory.build(tone), 0L)
+        player.prepare()
+        player.play()
     }
 
     private suspend fun CoroutineScope.runGentleWakeRamp(
@@ -3269,8 +3344,22 @@ class PlaybackService : MediaLibraryService() {
     ) {
         val requestedAtMs = SystemClock.elapsedRealtime()
         var rampStartedAtMs = -1L
+        var lastHealthyAtMs = requestedAtMs
         while (isActive && _gentleWakeRuntimeStateFlow.value.active) {
             val nowMs = SystemClock.elapsedRealtime()
+            val playbackReady = player.playbackState == Player.STATE_READY
+            if (playbackReady || !player.playWhenReady) lastHealthyAtMs = nowMs
+            if (!gentleWakePlayingTone && GentleWakePlaybackCoordinator.shouldFallBackToTone(
+                    hasPlayerError = player.playerError != null,
+                    playWhenReady = player.playWhenReady,
+                    playbackReady = playbackReady,
+                    lastHealthyAtMs = lastHealthyAtMs,
+                    nowMs = nowMs
+                )
+            ) {
+                fallBackToGentleWakeTone(player)
+                lastHealthyAtMs = SystemClock.elapsedRealtime()
+            }
             if (rampStartedAtMs < 0L &&
                 (player.isPlaying || nowMs - requestedAtMs >= GENTLE_WAKE_RAMP_START_GRACE_MS)
             ) {
@@ -3306,6 +3395,7 @@ class PlaybackService : MediaLibraryService() {
             }
             player?.pause()
             player?.volume = 1f
+            player?.let { setGentleWakeAlarmAudio(it, alarmActive = false) }
             val settings = LevyraPreferences(this@PlaybackService).gentleWakeSettings()
             val snoozeUntil = GentleWakeScheduler.scheduleSnooze(this@PlaybackService, settings, customDelayMs)
             GentleWakeScheduler.cancelGentleWakeNotification(this@PlaybackService)
@@ -3325,6 +3415,7 @@ class PlaybackService : MediaLibraryService() {
         val wasPreview = _gentleWakeRuntimeStateFlow.value.previewActive
         player?.pause()
         player?.volume = 1f
+        player?.let { setGentleWakeAlarmAudio(it, alarmActive = false) }
         gentleWakePreservedQueue?.let { preserved ->
             gentleWakePreservedQueue = null
             player?.repeatMode = gentleWakePreservedRepeatMode
