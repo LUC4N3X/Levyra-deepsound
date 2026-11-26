@@ -102,11 +102,9 @@ Direct YouTube, YouTube Music, and `youtu.be` URLs are also accepted. When Levyr
 
 ## Windows Updates
 
-Android, Windows, and Linux read `levyraVersionName` in the root `gradle.properties`. The APK, Windows installers, and Linux packages have distinct GitHub releases for the same version.
+Android, Windows, and Linux read `levyraVersionName` in the root `gradle.properties`. Each GitHub release tagged `v<version>` hosts the APK and Desktop packages.
 
-For Levyra 3.2.5, the tags are `v3.2.5`, `desktop-v3.2.5`, and `desktop-linux-v3.2.5`.
-
-The app checks only releases whose tag starts with `desktop-v`. When a newer version is available, Levyra:
+Levyra checks shared release tags and recognizes legacy Desktop release tags. When a newer version is available, Levyra:
 
 1. opens the same animated release screen as Android, adapted for a desktop window;
 2. downloads the correct Windows MSI;
@@ -215,7 +213,7 @@ cd desktop
 
 Artifacts are generated in `app/build/compose/binaries/main-release/`. The workflow reads `levyraVersionName` from the root `gradle.properties`.
 
-After the APK release succeeds and its published checksums are verified, the Windows and Linux workflows package the same commit and publish separate releases. Windows includes the MSI, EXE, portable ZIP, and SHA-256 checksums. Linux includes the DEB, RPM, portable archive, and SHA-256 checksums. Pull requests generate temporary workflow artifacts.
+After the APK release succeeds and its published checksums are verified, the Windows and Linux workflows package the same commit and attach their downloads to the APK release. Windows includes the MSI, EXE, portable ZIP, and SHA-256 checksums. Linux includes the DEB, RPM, portable archive, and SHA-256 checksums. Pull requests generate temporary workflow artifacts.
 
 ## VLC Runtime
 
@@ -315,10 +313,9 @@ The app exits normally on close when the desktop has no supported system tray.
 GNOME may require a tray extension for background tray controls.
 
 Update checks select the distribution's DEB or RPM and only
-`desktop-linux-v<version>` releases, verify SHA-256, then open the verified file
+shared `v<version>` releases or legacy Linux tags, verify SHA-256, then open the verified file
 in the system package manager. They never start a Windows installer on Linux.
 Other distributions use the portable archive and manual updates.
-Linux uses the `desktop-linux-v<version>` tag for the same version published for Android and Windows.
 
 The Linux CI runs native libVLC tests and rendered UI previews, installs the real
 DEB, and checks the installed app through MPRIS: local WAV playback, seek,

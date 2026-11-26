@@ -16,9 +16,9 @@ Before editing a workflow, load `.agents/skills/levyra-ci-workflows/SKILL.md` an
 
 - Reuse existing Android build/release, Desktop build/release, F-Droid, extractor/config sync, validation, and duplicate-guard workflows.
 - Do not create parallel workflows that publish the same artifact or respond to the same release trigger without a documented reason.
-- Read the same `levyraVersionName` for Android, Windows, and Linux. A verified new Android APK publication triggers the two Desktop releases from its commit.
-- The initial Desktop 3.2.5 release is a one-time exception. Build it from the main commit that enables it and preserve the source tag and assets of the existing Android 3.2.5 release.
-- Keep platform tags, artifacts, and release pages distinct.
+- Read the same `levyraVersionName` for Android, Windows, and Linux. Attach verified Windows and Linux packages from that commit to the APK release.
+- Build the one-time Desktop 3.2.5 packages from the main commit enabling the shared release. Preserve the existing APK tag and assets.
+- Publish the APK, Windows, and Linux downloads under one `v<version>` tag. Keep filenames platform-specific.
 - Preserve artifact names and paths consumed by later jobs.
 - Make success, no-change, skipped, cancelled, and failure outcomes semantically distinct.
 - Keep caches deterministic and prevent untrusted executable output from crossing trust boundaries.
@@ -30,7 +30,7 @@ Before editing a workflow, load `.agents/skills/levyra-ci-workflows/SKILL.md` an
 - Do not publish, tag, upload, create a release, or change repository settings unless explicitly authorized.
 - Keep real signing material and credentials only in approved GitHub secrets or environments.
 - Never add secret values, keystores, `.env`, `local.properties`, API tokens, or private URLs to workflow files or artifacts.
-- Keep Desktop releases from becoming the repository's Android `Latest` release.
+- The APK release job controls GitHub `Latest` status. Desktop jobs upload their own assets to the existing release.
 
 ## Validation
 

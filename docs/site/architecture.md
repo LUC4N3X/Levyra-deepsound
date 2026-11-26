@@ -62,7 +62,7 @@ desktop/
 - `core/`: Stream resolution, downloads, and desktop application services.
 - `packaging/`: Windows MSI and portable distribution packages.
 
-Android, Windows, and Linux share a version and publish their downloads on separate release pages.
+Android, Windows, and Linux publish their downloads together under the same release version.
 
 ## Playback before decoration
 

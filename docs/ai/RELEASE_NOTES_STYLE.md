@@ -147,7 +147,7 @@ Examples:
 - no account, advertising identifier, analytics, or tracking system was added;
 - existing favorites, playlists, downloads, queue, history, settings, playback
   state, and backups remain compatible;
-- Android, Windows, and Linux share a version and have separate release tags.
+- Android, Windows, and Linux share a version and release tag.
 
 Only include claims that are true for the current release.
 

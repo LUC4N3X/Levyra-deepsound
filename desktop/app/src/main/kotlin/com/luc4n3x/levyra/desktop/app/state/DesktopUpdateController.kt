@@ -202,9 +202,13 @@ internal class DesktopUpdateController(
             .orEmpty()
             .trim()
         val target = DesktopPlatform.updateTarget() ?: return null
-        if (!tag.startsWith(target.tagPrefix)) return null
+        val prefix = when {
+            tag.startsWith(target.tagPrefix) -> target.tagPrefix
+            tag.startsWith("v") -> "v"
+            else -> return null
+        }
 
-        val version = tag.removePrefix(target.tagPrefix).trim()
+        val version = tag.removePrefix(prefix).trim()
         if (version.isBlank()) return null
 
         val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { element ->

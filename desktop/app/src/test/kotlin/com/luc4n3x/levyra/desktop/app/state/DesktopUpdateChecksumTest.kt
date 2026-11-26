@@ -64,9 +64,15 @@ class DesktopUpdateChecksumTest {
     }
 
     @Test
-    fun startupSelectsMatchingReleaseAndInvalidInstallerCannotExitApp() = runTest {
+    fun startupSelectsLegacyReleaseAndRejectsInvalidInstaller() = assertStartupUpdate(sharedTag = false)
+
+    @Test
+    fun startupSelectsSharedReleaseAndRejectsInvalidInstaller() = assertStartupUpdate(sharedTag = true)
+
+    private fun assertStartupUpdate(sharedTag: Boolean) = runTest {
         val target = DesktopPlatform.updateTarget() ?: return@runTest
-        val tag = "${target.tagPrefix}3.2.5"
+        val prefix = if (sharedTag) "v" else target.tagPrefix
+        val tag = "${prefix}3.2.5"
         val name = target.assetName("3.2.5")
         val installer = "test installer".toByteArray()
         val downloadUrl = "https://github.com/LUC4N3X/Levyra-deepsound/releases/download/$tag"

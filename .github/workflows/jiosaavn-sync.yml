@@ -211,7 +211,7 @@ jobs:
             - [x] I tested the changes and verified them locally
             - [x] Documentation, tests, and assets were updated where relevant
             - [x] No secrets, keystores, build artifacts, or local configuration files were committed
-            - [x] Android, Windows, and Linux use the same version and keep platform release tags and downloads separate
+            - [x] Android, Windows, and Linux use one version and one release tag with platform-specific downloads
             - [x] CI checks pass, or any known issue is explained in the description
 
   repair_pr:
@@ -621,7 +621,7 @@ jobs:
           - [x] I tested the changes and verified them locally
           - [x] Documentation, tests, and assets were updated where relevant
           - [x] No secrets, keystores, build artifacts, or local configuration files were committed
-          - [x] Android, Windows, and Linux use the same version and keep platform release tags and downloads separate
+          - [x] Android, Windows, and Linux use one version and one release tag with platform-specific downloads
           - [ ] CI checks pass, or any known issue is explained in the description
           EOF
           else

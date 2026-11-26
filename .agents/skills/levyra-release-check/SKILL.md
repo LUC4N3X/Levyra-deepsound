@@ -19,7 +19,7 @@ Do not change versions, publish, tag, merge, upload, or release unless those act
 
 Android, Windows, and Linux use `levyraVersionName` from the root `gradle.properties`. Android uses `levyraVersionCode` for APK upgrades.
 
-Verify the `v<version>` APK release before publishing the corresponding `desktop-v<version>` and `desktop-linux-v<version>` releases. The three releases use the same source commit and keep their downloads separate.
+Verify the `v<version>` APK release, then attach Windows and Linux packages built from the same commit. The initial 3.2.5 Desktop packages use the commit enabling the shared release.
 
 ## Release-note authoring contract
 

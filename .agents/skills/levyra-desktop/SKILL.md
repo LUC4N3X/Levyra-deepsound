@@ -18,7 +18,7 @@ description: Implement, debug, or review Levyra Desktop for Windows, including K
 - `desktop/player` owns the `AudioPlayer` abstraction and queue; native libvlc access stays isolated in its implementation.
 - `desktop/app` wires dependencies, lifecycle, windows, UI, updates, protocol handling, and packaging.
 - Reuse the shared extractor and localization catalog rather than creating divergent Desktop copies.
-- Android and Desktop versioning, build, packaging, and release tags remain independent.
+- Android and Desktop share a version and GitHub release. Each platform uses its own build and packaging jobs.
 
 ## Guardrails
 

@@ -146,7 +146,7 @@ Artwork, lyrics, refresh, diagnostics, prefetch, metadata enrichment and
 animation must never delay or destabilize direct playback.
 
 Android, Windows, and Linux use the version from the root `gradle.properties`.
-Each platform publishes its own packages and tags. Include Windows and Linux
+Publish all three platform packages under one version tag. Include Windows and Linux
 equivalents for user-facing APK changes in the same PR.
 
 ## Engineering behavior

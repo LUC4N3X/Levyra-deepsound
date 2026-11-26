@@ -37,6 +37,10 @@ on:
         description: Version of the verified Android release
         type: string
         required: true
+      apk_commit:
+        description: Commit pinned by the verified APK release tag
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -219,7 +223,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish Windows release
+    name: Attach Windows packages to APK release
     if: inputs.release_version != '' && github.ref == 'refs/heads/main'
     needs: installer
     runs-on: windows-latest
@@ -232,16 +236,17 @@ jobs:
         with:
           name: levyra-desktop-windows-${{ needs.installer.outputs.version }}
           path: release-assets
-      - name: Publish immutable desktop release
+      - name: Upload checksummed Windows packages
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           LEVYRA_DESKTOP_VERSION: ${{ needs.installer.outputs.version }}
+          APK_COMMIT: ${{ inputs.apk_commit }}
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $false
           $version = $env:LEVYRA_DESKTOP_VERSION
-          $tag = "desktop-v$version"
+          $tag = "v$version"
           $repo = $env:GITHUB_REPOSITORY
           $remote = "https://github.com/$repo.git"
           $releaseAssets = Join-Path $PWD "release-assets"
@@ -317,50 +322,14 @@ jobs:
             return $path
           }
 
-          gh release view $tag --repo $repo *> $null
-          $releaseExists = $LASTEXITCODE -eq 0
-          $remoteTag = git ls-remote --exit-code --tags $remote "refs/tags/$tag" 2>$null
-          $tagQueryExit = $LASTEXITCODE
-          $tagExists = switch ($tagQueryExit) {
-            0 { $true }
-            2 { $false }
-            default { throw "Impossibile verificare l'esistenza del tag remoto $tag (git ls-remote exit $tagQueryExit)" }
+          $tagCommit = Resolve-TagCommit $tag
+          if ($env:APK_COMMIT -notmatch '^[0-9a-f]{40}$' -or $tagCommit -cne $env:APK_COMMIT) {
+            throw "Il tag APK $tag non corrisponde al commit verificato"
           }
-
-          if ($tagExists) {
-            $tagCommit = Resolve-TagCommit $tag
-            if (-not $tagCommit) { throw "Impossibile risolvere il commit del tag $tag" }
-            if ($tagCommit -ne $env:GITHUB_SHA) {
-              throw "La versione Desktop $version è già legata al commit $tagCommit. Aggiornare levyraVersionName in gradle.properties prima di pubblicare un nuovo build."
-            }
-          }
-
-          if (-not $releaseExists) {
-            $releaseFlags = @()
-            if ($version.Contains("-")) { $releaseFlags += "--prerelease" }
-            $assets = @(Get-ChildItem -LiteralPath $releaseAssets -File | Select-Object -ExpandProperty FullName)
-            foreach ($name in @($msiName, $exeName, $zipName)) {
-              $digest = Get-FileDigest (Join-Path $releaseAssets $name)
-              if ($digest -ne (Read-Checksum (Join-Path $releaseAssets "$name.sha256"))) {
-                throw "Checksum locale non valido per $name"
-              }
-            }
-            $androidNotes = gh release view "v$version" --repo $repo --json body --jq .body
-            if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere le novità della release Android v$version" }
-            $highlights = [regex]::Match(($androidNotes -join "`n"), '(?s)<!-- levyra-highlights.*?-->').Value
-            $notesFile = Join-Path $env:RUNNER_TEMP "levyra-windows-release-notes.md"
-            @("Windows packages for Levyra $version, built from commit $env:GITHUB_SHA.", "", $highlights) |
-              Set-Content -LiteralPath $notesFile -Encoding utf8
-            gh release create $tag @assets --repo $repo --target $env:GITHUB_SHA --title "Levyra Windows $version" --notes-file $notesFile --latest=false @releaseFlags
-            if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
-          }
-
-          $releaseJson = gh release view $tag --repo $repo --json assets,isDraft,targetCommitish
-          if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere gli asset esistenti di $tag" }
+          $releaseJson = gh release view $tag --repo $repo --json assets,isDraft
+          if ($LASTEXITCODE -ne 0) { throw "La release APK $tag non è disponibile" }
           $release = $releaseJson | ConvertFrom-Json
-          if ($release.isDraft -and -not $tagExists -and $release.targetCommitish -cne $env:GITHUB_SHA) {
-            throw "La bozza $tag non corrisponde al commit della release Android"
-          }
+          if ($release.isDraft) { throw "La release APK $tag è ancora una bozza" }
           $remoteAssets = @($release.assets)
           foreach ($remoteAsset in $remoteAssets) {
             $remoteAssetsByName[[string]$remoteAsset.name] = $remoteAsset
@@ -443,8 +412,4 @@ jobs:
               throw "Release incompleta: manca la coppia $($pair.Artifact) / $($pair.Checksum)"
             }
           }
-          if ($release.isDraft) {
-            gh release edit $tag --repo $repo --draft=false --latest=false
-            if ($LASTEXITCODE -ne 0) { throw "Impossibile pubblicare la bozza $tag" }
-          }
-          Write-Host "Release immutabile $tag completa: tutte le coppie artifact/checksum sono presenti e coerenti."
+          Write-Host "Pacchetti Windows e checksum verificati sulla release $tag."
