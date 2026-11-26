@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.desktop.app.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -16,7 +19,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,14 +26,17 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -50,10 +55,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.desktop.app.state.DiscoverUiState
 import com.luc4n3x.levyra.desktop.app.state.SoundtrackUiState
 import com.luc4n3x.levyra.desktop.app.state.soundtrackPrimaryArtist
+import com.luc4n3x.levyra.desktop.app.ui.components.CookieShape
+import com.luc4n3x.levyra.desktop.app.ui.components.SunnyShape
+import com.luc4n3x.levyra.desktop.app.ui.components.CollectionCard
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.ExpressiveSectionHeader
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
@@ -65,15 +74,14 @@ import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.components.horizontalShelfBleed
 import com.luc4n3x.levyra.desktop.app.ui.components.levyraLogoPainter
-import com.luc4n3x.levyra.desktop.app.ui.components.SunnyShape
 import androidx.compose.foundation.lazy.LazyListScope
 import com.luc4n3x.levyra.ui.i18n.HomeSectionSubtitles
-import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.desktop.app.ui.components.rememberArtworkRequest
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
+import com.luc4n3x.levyra.desktop.core.catalog.artistCreditMatches
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
@@ -85,7 +93,11 @@ import com.luc4n3x.levyra.ui.i18n.homeSectionSubtitles
 import com.luc4n3x.levyra.ui.i18n.homeTrendingVideoShelfTitle
 import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.random.Random
+import kotlinx.coroutines.delay
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
 
 @Composable
@@ -104,7 +116,7 @@ fun HomeScreen(
     onOpenArtist: (String) -> Unit,
     onOpenDiscover: () -> Unit,
     onOpenMoods: () -> Unit,
-    onOpenCuratedAll: (String) -> Unit,
+    onOpenCuratedAll: () -> Unit,
     onOpenPodcast: () -> Unit,
     onOpenNewReleases: () -> Unit,
     onPlayMix: (List<Track>) -> Unit,
@@ -119,36 +131,40 @@ fun HomeScreen(
     val historyTracks = remember(library.history) {
         library.history.sortedByDescending { it.playedAt }.map { it.track }.distinctBy(::trackIdentity)
     }
+    val excluded = library.excludedArtists.values
+    val suggestedTracks = remember(discover.tracks, library.excludedArtists) {
+        discover.tracks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
+    }
     val knownIds = remember(library.history, library.favorites) {
         (library.history.map { it.track.id } + library.favorites.map { it.id }).toHashSet()
     }
-    val orbitTracks = remember(currentTrack, historyTracks, library.favorites, discover.tracks) {
-        (listOfNotNull(currentTrack) + historyTracks + library.favorites + discover.tracks)
+    val orbitTracks = remember(currentTrack, historyTracks, library.favorites, suggestedTracks) {
+        (listOfNotNull(currentTrack) + historyTracks + library.favorites + suggestedTracks)
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy(::trackIdentity)
             .take(ORBIT_LIMIT)
     }
-    val quickPicks = remember(library.favorites, historyTracks, discover.tracks, orbitTracks) {
-        (orbitTracks + library.favorites + historyTracks + discover.tracks.take(20)).distinctBy(::trackIdentity).take(QUICK_PICKS_LIMIT)
+    val quickPicks = remember(library.favorites, historyTracks, suggestedTracks, orbitTracks) {
+        (orbitTracks + library.favorites + historyTracks + suggestedTracks.take(20)).distinctBy(::trackIdentity).take(QUICK_PICKS_LIMIT)
     }
-    val discoveryTracks = remember(discover.freshCurrents, discover.genres, knownIds) {
+    val discoveryTracks = remember(discover.freshCurrents, discover.genres, knownIds, library.excludedArtists) {
         (discover.freshCurrents + discover.genres.flatMap { it.tracks })
-            .filterNot { it.id in knownIds }
+            .filterNot { track -> track.id in knownIds || excluded.any { artistCreditMatches(track.artist, it) } }
             .distinctBy(::trackIdentity)
     }
-    val dailyFallback = remember(discover.genres, knownIds) {
+    val dailyFallback = remember(discover.genres, knownIds, library.excludedArtists) {
         discover.genres.flatMap { it.tracks }
-            .filterNot { it.id in knownIds }
+            .filterNot { track -> track.id in knownIds || excluded.any { artistCreditMatches(track.artist, it) } }
             .distinctBy(::trackIdentity)
             .shuffled(Random(LocalDate.now().toEpochDay()))
             .take(DAILY_LIMIT)
     }
-    val dailyPicks = remember(feed.daily, dailyFallback) {
-        feed.daily.ifEmpty { dailyFallback.map { com.luc4n3x.levyra.desktop.app.state.DailyPick(it, it) } }
+    val dailyPicks = remember(feed.daily, dailyFallback, library.excludedArtists) {
+        feed.daily.filterNot { pick -> excluded.any { artistCreditMatches(pick.track.artist, it) || artistCreditMatches(pick.seed.artist, it) } }.ifEmpty { dailyFallback.map { com.luc4n3x.levyra.desktop.app.state.DailyPick(it, it) } }
     }
     val dailyTracks = remember(dailyPicks) { dailyPicks.map { it.track } }
-    val trendingArtists = remember(discover.tracks) {
-        discover.tracks.map { soundtrackPrimaryArtist(it.artist) }
+    val trendingArtists = remember(suggestedTracks) {
+        suggestedTracks.map { soundtrackPrimaryArtist(it.artist) }
             .filter(String::isNotBlank)
             .distinctBy { it.lowercase() }
             .take(ARTIST_LIMIT)
@@ -161,17 +177,22 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
         item(key = "soundtrack") {
-            val soundtrackQueue = remember(soundtrack.tracks, quickPicks) {
-                (soundtrack.tracks.take(1) + quickPicks + soundtrack.tracks.drop(1)).distinctBy(::trackIdentity)
+            val soundtrackTracks = remember(soundtrack.tracks, library.excludedArtists) {
+                soundtrack.tracks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
             }
-            val leadArtists = remember(soundtrack.artist, quickPicks) {
-                (listOf(soundtrack.artist) + quickPicks.map { soundtrackPrimaryArtist(it.artist) })
+            val soundtrackQueue = remember(soundtrackTracks, quickPicks, library.excludedArtists) {
+                soundtrackTracks.ifEmpty {
+                    quickPicks.filterNot { track -> excluded.any { artistCreditMatches(track.artist, it) } }
+                }.distinctBy(::trackIdentity)
+            }
+            val leadArtists = remember(soundtrackQueue) {
+                soundtrackQueue.map { soundtrackPrimaryArtist(it.artist) }
                     .filter(String::isNotBlank)
                     .distinctBy { it.lowercase() }
                     .take(3)
             }
-            val companions = remember(quickPicks) {
-                quickPicks.distinctBy { soundtrackPrimaryArtist(it.artist).lowercase() }.map { it.artworkUrl }.filter(String::isNotBlank).take(3)
+            val companions = remember(soundtrackQueue) {
+                soundtrackQueue.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
             }
             val heroPlaying = isPlaying && currentTrack != null && soundtrackQueue.any { it.id == currentTrack.id }
             Box(Modifier.horizontalShelfBleed(Gutter)) {
@@ -180,7 +201,8 @@ fun HomeScreen(
                     overlineHighlight = displayName,
                     title = shared.homeSoundtrackTodayTitle,
                     lead = remember(leadArtists, shared) { shared.homeSoundtrackLead(leadArtists) },
-                    portraitUrl = soundtrack.portraitUrl,
+                    portraitUrl = soundtrack.portraitUrl.takeIf { soundtrackTracks.isNotEmpty() }.orEmpty(),
+                    fallbackArtworkUrl = soundtrackQueue.firstOrNull { it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty(),
                     companionArtworkUrls = companions,
                     playing = heroPlaying,
                     loading = soundtrack.loading && soundtrackQueue.isEmpty(),
@@ -195,6 +217,19 @@ fun HomeScreen(
                     onOpenPodcast = onOpenPodcast,
                     modifier = Modifier.padding(start = Gutter, top = 22.dp)
                 )
+            }
+        }
+
+        if (library.pinnedArtists.isNotEmpty()) {
+            item(key = "home-pinned-artists") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ExpressiveSectionHeader(LevyraIcons.Disc, SectionTints.Lavender, shared.speedDialCopy().title)
+                    ShelfRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(library.pinnedArtists, key = { it.id }) { artist ->
+                            CollectionCard(artist, onClick = { onOpenCollection(artist) }, modifier = Modifier.width(152.dp))
+                        }
+                    }
+                }
             }
         }
 
@@ -214,30 +249,49 @@ fun HomeScreen(
                     title = copy.title,
                     lead = copy.lead,
                     start = copy.start,
-                    badge = copy.reasonNewRelease,
-                    covers = discoveryTracks.take(6).map { it.artworkUrl },
+                    covers = remember(discoveryTracks) {
+                        discoveryTracks.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3)
+                    },
                     onStart = { onPlayMix(discoveryTracks) }
                 )
             }
         }
 
-        if (feed.curated.isNotEmpty()) {
-            item(key = "curated") {
-                val curatedTitle = remember(code) { LevyraMonoHomeStrings.forCode(code).mixedForYou }
+        if (feed.curatedShelves.isEmpty()) {
+            item(key = "curated-empty-shelf") {
+                val copy = remember(code) { LevyraMonoHomeStrings.forCode(code) }
+                ExpressiveSectionHeader(
+                    LevyraIcons.Playlist,
+                    SectionTints.Lavender,
+                    copy.mixedForYou,
+                    copy.rotationOverline
+                ) { SectionShowAll(shared.showAll, onOpenCuratedAll) }
+            }
+        }
+        feed.curatedShelves.forEachIndexed { index, shelf ->
+            item(key = "curated-$index-${shelf.title}") {
+                val copy = remember(code) { LevyraMonoHomeStrings.forCode(code) }
+                val curatedTitle = if (index == 0) copy.mixedForYou else shelf.title
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     ExpressiveSectionHeader(
                         LevyraIcons.Playlist,
                         SectionTints.Lavender,
                         curatedTitle,
-                        subtitles.curatedPlaylists
-                    ) { SectionShowAll(shared.showAll) { onOpenCuratedAll(curatedTitle) } }
-                    ShelfRow(
-                        modifier = Modifier.horizontalShelfBleed(Gutter),
-                        contentPadding = PaddingValues(horizontal = Gutter),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp)
-                    ) {
-                        items(feed.curated, key = { "curated-${it.id}" }) { playlist ->
-                            CuratedCard(playlist.title, playlist.subtitle, playlist.artworkUrl) { onOpenCollection(playlist.toCollectionRef()) }
+                        if (index == 0) copy.rotationOverline else shelf.subtitle.ifBlank { subtitles.curatedPlaylists }
+                    ) { if (index == 0) SectionShowAll(shared.showAll, onOpenCuratedAll) }
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val gap = 14.dp
+                        val cardWidth = ((maxWidth - gap * 6) / 7).coerceIn(136.dp, CuratedSize)
+                        ShelfRow(
+                            modifier = Modifier.horizontalShelfBleed(Gutter),
+                            contentPadding = PaddingValues(horizontal = Gutter),
+                            horizontalArrangement = Arrangement.spacedBy(gap)
+                        ) {
+                            items(shelf.playlists, key = { "curated-${it.id}" }) { playlist ->
+                                CuratedCard(playlist.title, playlist.subtitle, playlist.artworkUrl, Modifier.width(cardWidth)) {
+                                    onOpenCollection(playlist.toCollectionRef())
+                                }
+                            }
                         }
                     }
                 }
@@ -262,7 +316,13 @@ fun HomeScreen(
                             val copy = remember(code) { discoveryCopy(code) }
                             PosterCard(
                                 pick.track,
-                                badge = if (pick.seed.id != pick.track.id) copy.reasonSimilarTo(pick.seed.title, soundtrackPrimaryArtist(pick.seed.artist)) else null,
+                                reason = when {
+                                    pick.seed.id != pick.track.id && pick.seed.artist.isNotBlank() ->
+                                        copy.reasonSimilarTo(pick.seed.title, soundtrackPrimaryArtist(pick.seed.artist))
+                                    pick.track.artist.isNotBlank() ->
+                                        copy.reasonForFansOf(soundtrackPrimaryArtist(pick.track.artist))
+                                    else -> null
+                                },
                                 onClick = { actions.onPlay(dailyTracks, dailyTracks.indexOf(pick.track).coerceAtLeast(0)) }
                             )
                         }
@@ -375,137 +435,108 @@ private fun OverlayTile(track: Track, modifier: Modifier, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DiscoveryCard(title: String, lead: String, start: String, badge: String, covers: List<String>, onStart: () -> Unit) {
-    val surface = MaterialTheme.colorScheme.surfaceContainer
-    val tint by produceState(LevyraBrand.soft, covers.firstOrNull()) {
-        value = covers.firstOrNull()?.let { ArtworkPalette.accentFor(it) } ?: LevyraBrand.soft
+internal fun DiscoveryCard(title: String, lead: String, start: String, covers: List<String>, onStart: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val tint by produceState(colors.primary, covers.firstOrNull()) {
+        value = covers.firstOrNull()?.let { ArtworkPalette.accentFor(it) } ?: colors.primary
     }
-    val container = lerp(surface, tint, 0.34f)
-    val action = lerp(tint, Color.White, 0.42f)
+    val top = lerp(colors.surfaceContainer, tint, 0.22f)
+    val bottom = colors.surfaceContainer
+    val shape = RoundedCornerShape(32.dp)
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(272.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(Brush.verticalGradient(listOf(container, surface)))
-            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(32.dp))
-            .hoverable(interaction)
-            .padding(horizontal = 32.dp, vertical = 28.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-            Text(lead, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(26.dp))
-            Row(
-                Modifier.clip(RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClick = onStart).padding(end = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Box(Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(action), contentAlignment = Alignment.Center) {
-                    Icon(LevyraIcons.Play, contentDescription = start, tint = Color(0xFF0E1A12), modifier = Modifier.size(24.dp))
-                }
-                Text(start, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
-        DiscoveryDeck(covers, badge, tint, action, hovered)
-    }
-}
-
-private class DeckSlot(val x: Float, val y: Float, val rotation: Float, val scale: Float, val alpha: Float)
-
-private val DeckSlots = listOf(
-    DeckSlot(-44f, 18f, -6f, 0.58f, 0f),
-    DeckSlot(-92f, 14f, -12f, 0.75f, 1f),
-    DeckSlot(0f, 0f, 0f, 1f, 1f),
-    DeckSlot(92f, 14f, 12f, 0.75f, 1f),
-    DeckSlot(44f, 18f, 6f, 0.58f, 0f)
-)
-
-private inline fun deckValue(position: Float, pick: (DeckSlot) -> Float): Float {
-    val offset = position.coerceIn(-2f, 2f) + 2f
-    val lower = kotlin.math.floor(offset).toInt().coerceAtMost(DeckSlots.lastIndex - 1)
-    val fraction = offset - lower
-    val start = pick(DeckSlots[lower])
-    return start + (pick(DeckSlots[lower + 1]) - start) * fraction
-}
-
-@Composable
-private fun DiscoveryDeck(covers: List<String>, badge: String, accent: Color, action: Color, replay: Boolean) {
-    val deckSize = covers.size.coerceAtMost(DECK_MAX_CARDS)
-    val turning = deckSize >= DECK_MIN_CARDS
-    val turn = remember { androidx.compose.animation.core.Animatable(0f) }
-    androidx.compose.runtime.LaunchedEffect(turning, deckSize, replay) {
-        if (!turning) {
-            turn.snapTo(0f)
-            return@LaunchedEffect
-        }
-        repeat(deckSize * DECK_LOOPS) {
-            kotlinx.coroutines.delay(DECK_HOLD_MS)
-            turn.animateTo(kotlin.math.round(turn.value) + 1f, androidx.compose.animation.core.tween(DECK_TURN_MS, easing = DeckEasing))
-        }
-    }
-    val base by remember { androidx.compose.runtime.derivedStateOf { kotlin.math.floor(turn.value).toInt() } }
-    val front by remember { androidx.compose.runtime.derivedStateOf { kotlin.math.round(turn.value).toInt() } }
-    fun coverAt(index: Int): String =
-        if (deckSize >= DECK_MIN_CARDS) covers[index.mod(deckSize)] else covers.getOrNull(if (index < 0) 2 else index).orEmpty()
-    Box(Modifier.width(420.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier.size(232.dp).graphicsLayer { rotationZ = DECK_BLOB_REST + DECK_BLOB_STEP * turn.value }
-                .clip(SunnyShape)
-                .background(accent.copy(alpha = 0.20f))
-        )
-        if (covers.isNotEmpty()) {
-            for (index in (base - 1)..(base + 2)) {
-                androidx.compose.runtime.key(index) {
-                    Artwork(
-                        coverAt(index),
-                        Modifier
-                            .zIndex(DECK_FRONT_Z - kotlin.math.abs(index - front))
-                            .size(DeckCoverSize)
-                            .graphicsLayer {
-                                val position = index - turn.value
-                                translationX = deckValue(position) { it.x }.dp.toPx()
-                                translationY = deckValue(position) { it.y }.dp.toPx()
-                                rotationZ = deckValue(position) { it.rotation }
-                                val scale = deckValue(position) { it.scale }
-                                scaleX = scale
-                                scaleY = scale
-                                alpha = deckValue(position) { it.alpha }
-                            }
-                            .border(3.dp, Color.Black.copy(alpha = 0.55f), RoundedCornerShape(30.dp)),
-                        cornerRadius = 30.dp
-                    )
-                }
-            }
-        }
-        Row(
-            Modifier.align(Alignment.BottomCenter).zIndex(DECK_FRONT_Z + 1f).clip(CircleShape).background(action)
-                .padding(start = 10.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+    val lift by animateFloatAsState(if (hovered) 1f else 0f, label = "discovery-deck")
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        BoxWithConstraints(
+            Modifier.widthIn(max = 1040.dp).fillMaxWidth()
+                .clip(shape).background(Brush.verticalGradient(listOf(top, bottom)))
+                .border(1.dp, colors.outlineVariant.copy(alpha = 0.45f), shape).hoverable(interaction)
         ) {
-            Icon(LevyraIcons.Radio, contentDescription = null, tint = Color(0xFF0E1A12), modifier = Modifier.size(14.dp))
-            Text(badge, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF0E1A12), maxLines = 1)
+            val panelWidth = maxWidth
+            val compact = panelWidth < 630.dp
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = if (compact) 20.dp else 36.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        title,
+                        style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onSurface
+                    )
+                    Text(lead, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    Row(
+                        Modifier.padding(top = 12.dp).clip(CircleShape).background(colors.surfaceContainerHigh)
+                            .clickable(role = Role.Button, onClick = onStart).padding(end = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier.size(52.dp).clip(CookieShape).background(colors.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(LevyraIcons.Play, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(24.dp))
+                        }
+                        Text(start, style = MaterialTheme.typography.labelLarge, color = colors.onSurface, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (covers.isNotEmpty() && panelWidth >= 360.dp) {
+                    val width = if (compact) 132.dp else (panelWidth * 0.44f).coerceAtMost(440.dp)
+                    DiscoveryArtwork(covers, tint, width, compact) { lift }
+                }
+            }
         }
     }
 }
 
-private val DeckCoverSize = 172.dp
-private val DeckEasing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private const val DECK_MAX_CARDS = 6
-private const val DECK_MIN_CARDS = 3
-private const val DECK_LOOPS = 2
-private const val DECK_HOLD_MS = 2_800L
-private const val DECK_TURN_MS = 850
-private const val DECK_FRONT_Z = 10f
-private const val DECK_BLOB_REST = 18f
-private const val DECK_BLOB_STEP = 30f
+@Composable
+private fun DiscoveryArtwork(covers: List<String>, accent: Color, width: Dp, compact: Boolean, lift: () -> Float) {
+    val size = if (compact) 94.dp else 172.dp
+    val edge = MaterialTheme.colorScheme.surfaceContainer
+    val turn = remember(covers) { Animatable(0f) }
+    val moving = covers.size == 3
+    LaunchedEffect(turn, moving) {
+        if (!moving) return@LaunchedEffect
+        repeat(covers.size * 2) { step ->
+            delay(2300)
+            turn.animateTo((step + 1).toFloat(), tween(680))
+        }
+    }
+    val front by remember(turn) { derivedStateOf { turn.value.roundToInt() % covers.size } }
+    Box(Modifier.width(width).height(if (compact) 138.dp else 202.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.size(size * 1.12f).graphicsLayer { rotationZ = 12f + lift() * 8f + turn.value * 12f }
+                .clip(SunnyShape).background(accent.copy(alpha = 0.32f))
+        )
+        covers.forEachIndexed { index, url ->
+            val top = index == front
+            val shape = RoundedCornerShape(28.dp)
+            Artwork(
+                url,
+                Modifier.size(size).zIndex(if (top) 1f else 0f).graphicsLayer {
+                    val offset = if (moving) {
+                        ((index - turn.value + 19.5f) % 3f) - 1.5f
+                    } else if (index == 0) 0f else -1f
+                    val distance = abs(offset).coerceIn(0f, 1f)
+                    val movement = size * (if (compact) 0.24f else 0.54f)
+                    translationX = movement.toPx() * offset
+                    translationY = (9.dp * distance - 5.dp * lift() * (1f - distance)).toPx()
+                    val scale = 1f - distance * 0.25f + lift() * (1f - distance) * 0.03f
+                    scaleX = scale
+                    scaleY = scale
+                    rotationZ = offset * 15f - 3f * (1f - distance)
+                    alpha = 1f - (abs(offset) - 1f).coerceIn(0f, 0.5f) * 2f
+                }.border(3.dp, edge, shape),
+                cornerRadius = 28.dp
+            )
+        }
+    }
+}
 
 @Composable
-private fun PosterCard(track: Track, rank: Int? = null, badge: String? = null, onClick: () -> Unit) {
+private fun PosterCard(track: Track, rank: Int? = null, reason: String? = null, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     Box(
@@ -522,15 +553,22 @@ private fun PosterCard(track: Track, rank: Int? = null, badge: String? = null, o
             scaleY = scale
         }, cornerRadius = 0.dp)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
-        if (badge != null) {
-            Text(
-                badge,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(12.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)).padding(horizontal = 10.dp, vertical = 5.dp).hoverMarquee(hovered)
-            )
+        if (reason != null) {
+            Row(
+                modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.70f)).padding(horizontal = 10.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(LevyraIcons.Radio, contentDescription = null, tint = LevyraBrand.soft, modifier = Modifier.size(14.dp))
+                Text(
+                    reason,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         if (rank != null) {
             Text(
@@ -592,7 +630,13 @@ internal fun CuratedCard(title: String, subtitle: String, artworkUrl: String, mo
 }
 
 @Composable
-private fun VideoCard(track: Track, code: String, playsLabel: String, onClick: () -> Unit) {
+internal fun VideoCard(
+    track: Track,
+    code: String,
+    playsLabel: String,
+    menu: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
+) {
     val meta = remember(track.artist, track.viewCount, code, playsLabel) {
         val plays = formatViewCount(track.viewCount, code).takeIf(String::isNotBlank)?.let { "$it $playsLabel" }.orEmpty()
         listOf(track.artist.trim(), plays).filter(String::isNotBlank).joinToString(" • ")
@@ -615,6 +659,7 @@ private fun VideoCard(track: Track, code: String, playsLabel: String, onClick: (
             ) {
                 Icon(LevyraIcons.Play, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
+            if (menu != null) Box(Modifier.align(Alignment.TopEnd).padding(6.dp)) { menu() }
         }
         Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
         Text(meta, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)

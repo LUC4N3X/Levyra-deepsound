@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -28,32 +29,49 @@ class DiscoverController(
 ) {
     private val state = MutableStateFlow(DiscoverUiState())
     private var job: Job? = null
+    private var freshCountry = ""
 
     val discover: StateFlow<DiscoverUiState> = state.asStateFlow()
 
-    fun load(country: String, force: Boolean = false) {
+    fun load(country: String, contentCountry: String, force: Boolean = false) {
         val region = country.trim().uppercase().take(2).ifBlank { "IT" }
         val current = state.value
-        if (!force && region == current.country && current.tracks.isNotEmpty()) return
+        if (!force && region == current.country && contentCountry == freshCountry &&
+            (current.loading || current.tracks.isNotEmpty())) return
+        val previousContentCountry = freshCountry
+        freshCountry = contentCountry
         job?.cancel()
-        state.value = current.copy(country = region, loading = true, error = "")
+        state.value = current.copy(
+            country = region,
+            tracks = current.tracks.takeIf { current.country == region }.orEmpty(),
+            freshCurrents = current.freshCurrents.takeIf { previousContentCountry == contentCountry }.orEmpty(),
+            loading = true,
+            error = ""
+        )
         job = scope.launch {
             try {
                 val tracks = charts.topSongs(region, ChartsRepository.DEFAULT_LIMIT)
-                val fresh = charts.freshCurrents(region)
+                currentCoroutineContext().ensureActive()
+                state.update { current ->
+                    if (current.country != region) current else current.copy(
+                        tracks = tracks,
+                        loading = false,
+                        error = if (tracks.isEmpty()) EMPTY_ERROR else ""
+                    )
+                }
+                val fresh = charts.freshCurrents(contentCountry)
                 val genres = charts.genres()
                 currentCoroutineContext().ensureActive()
-                state.value = state.value.copy(
-                    tracks = tracks,
-                    freshCurrents = fresh,
-                    genres = genres,
-                    loading = false,
-                    error = if (tracks.isEmpty()) EMPTY_ERROR else ""
-                )
+                state.update { current ->
+                    if (current.country != region) current else current.copy(freshCurrents = fresh, genres = genres)
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
-                state.value = state.value.copy(loading = false, error = error.message ?: EMPTY_ERROR)
+                state.update { current ->
+                    if (current.country != region || !current.loading) current
+                    else current.copy(loading = false, error = error.message ?: EMPTY_ERROR)
+                }
             }
         }
     }

@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,28 +45,59 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.CookieShape
+import com.luc4n3x.levyra.desktop.app.state.CuratedPageState
+import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import com.luc4n3x.levyra.desktop.app.ui.components.SunnyShape
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
+import com.luc4n3x.levyra.desktop.core.moods.MoodCategory
 import com.luc4n3x.levyra.desktop.core.moods.MoodShelf
+import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
+import com.luc4n3x.levyra.ui.i18n.curatedCollectionsCopy
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
 
 @Composable
 fun CuratedPlaylistsScreen(
-    title: String,
     shelves: List<MoodShelf>,
+    page: CuratedPageState,
+    onSelectCategory: (String) -> Unit,
     onOpen: (CollectionRef) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val code = LocalStrings.current.languageCode
     val shared = remember(code) { SharedStrings.forCode(code) }
-    val groups = remember(shelves) { shelves.filter { it.playlists.isNotEmpty() } }
+    val copy = remember(code) { LevyraMonoHomeStrings.forCode(code) }
+    val browseCopy = remember(code) { curatedCollectionsCopy(code) }
+    val title = copy.mixedForYou
+    val groups = remember(shelves, page.collections, copy, browseCopy) {
+        val collections = page.collections
+        val lead = shelves.mapIndexed { index, shelf ->
+            if (index == 0) shelf.copy(title = copy.rotationOverline, subtitle = "") else shelf
+        }
+        val candidates = lead + listOf(
+            MoodShelf(browseCopy.decadesTitle, collections?.decades.orEmpty(), subtitle = browseCopy.decadesSubtitle),
+            MoodShelf(browseCopy.everydayTitle, collections?.everyday.orEmpty(), subtitle = browseCopy.everydaySubtitle)
+        )
+        val seen = HashSet<String>()
+        candidates.mapNotNull { shelf ->
+            val unique = shelf.playlists.filter { seen.add(it.id) }
+            shelf.copy(playlists = unique).takeIf { unique.isNotEmpty() }
+        }
+    }
+    val ids = remember(groups) { groups.flatMapTo(HashSet()) { shelf -> shelf.playlists.map { it.id } } }
+    val browse = remember(ids, page.playlists) { page.playlists.filterNot { it.id in ids }.take(12) }
+    val categories = page.collections?.categories.orEmpty()
+    val browseShelf = MoodShelf(browseCopy.browseTitle, browse, subtitle = browseCopy.browseSubtitle)
+    val visibleGroups = if (categories.isEmpty()) groups else groups + browseShelf
     val covers = remember(groups) { groups.flatMap { it.playlists }.map { it.artworkUrl }.filter(String::isNotBlank).distinct().take(3) }
     val total = remember(groups) { groups.flatMap { it.playlists }.distinctBy { it.id }.size }
     val tone by produceState(LevyraBrand.soft, covers.firstOrNull()) {
@@ -76,7 +110,11 @@ fun CuratedPlaylistsScreen(
         )
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = ((maxWidth - Gutter * 2 + CellGap) / (CellMin + CellGap)).toInt().coerceIn(2, 8)
+            val listState = rememberLazyListState()
+            val scope = rememberCoroutineScope()
+            val jumpItems = if (visibleGroups.size > 1) 3 else 2
             ScrollableColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = Gutter, end = Gutter, top = 20.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -104,13 +142,35 @@ fun CuratedPlaylistsScreen(
                         Text(title, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                if (groups.isEmpty()) {
+                if (visibleGroups.size > 1) {
+                    item(key = "curated-jumps") {
+                        ShelfRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(visibleGroups.size) { index ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        val target = jumpItems + groups.take(index).sumOf { 1 + (it.playlists.size + columns - 1) / columns }
+                                        scope.launch { listState.scrollToItem(target) }
+                                    },
+                                    label = { Text(visibleGroups[index].title) }
+                                )
+                            }
+                        }
+                    }
+                }
+                if (visibleGroups.isEmpty() && !page.loading) {
                     item(key = "curated-empty") {
                         Text(shared.exploreEmpty, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 48.dp))
                     }
                 }
-                groups.forEachIndexed { group, shelf ->
+                visibleGroups.forEachIndexed { group, shelf ->
+                    val picker = group == groups.size && categories.isNotEmpty()
                     item(key = "curated-head-$group-${shelf.title}") { GroupHeader(group, shelf, shared.playlistsPlain) }
+                    if (picker) {
+                        item(key = "curated-picker") {
+                            CuratedCategoryPicker(categories, page.category, browseCopy.decadesTitle, onSelectCategory)
+                        }
+                    }
                     val rows = shelf.playlists.chunked(columns)
                     rows.forEachIndexed { rowIndex, row ->
                         item(key = "curated-row-$group-$rowIndex") {
@@ -128,6 +188,43 @@ fun CuratedPlaylistsScreen(
                         }
                     }
                 }
+                if (page.loading || page.categoryLoading) {
+                    item(key = "curated-loading") { LoadingRow(LocalStrings.current.loading) }
+                } else if (categories.isNotEmpty() && browse.isEmpty()) {
+                    item(key = "curated-browse-empty") { Text(shared.exploreEmpty) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CuratedCategoryPicker(
+    categories: List<MoodCategory>,
+    selected: String,
+    decades: String,
+    onSelect: (String) -> Unit
+) {
+    val groups = remember(categories) { categories.groupBy { it.sectionIndex } }
+    val active = categories.firstOrNull { it.params == selected }?.sectionIndex ?: categories.first().sectionIndex
+    Column {
+        ShelfRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(groups.values.toList(), key = { it.first().sectionIndex }) { group ->
+                val first = group.first()
+                FilterChip(
+                    selected = active == first.sectionIndex,
+                    onClick = { onSelect(first.params) },
+                    label = { Text(first.section.ifBlank { decades }) }
+                )
+            }
+        }
+        ShelfRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(groups[active].orEmpty(), key = { it.params }) { category ->
+                FilterChip(
+                    selected = selected == category.params,
+                    onClick = { onSelect(category.params) },
+                    label = { Text(category.title) }
+                )
             }
         }
     }
@@ -146,7 +243,7 @@ private fun GroupHeader(group: Int, shelf: MoodShelf, playlistsLabel: String) {
         }
         Column {
             Text(shelf.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${shelf.playlists.size} · $playlistsLabel", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(shelf.subtitle.ifBlank { "${shelf.playlists.size} · $playlistsLabel" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

@@ -9,20 +9,11 @@ plugins {
     alias(libs.plugins.compose)
 }
 
-val desktopVersionFile = rootProject.file("version.properties")
-val desktopVersionProperties = Properties().apply {
-    require(desktopVersionFile.isFile) {
-        "desktop/version.properties non trovato"
-    }
-    desktopVersionFile.inputStream().use(::load)
-}
-
-val levyraDesktopVersion = providers.gradleProperty("levyraDesktopVersion").getOrElse(
-    desktopVersionProperties.getProperty("levyraDesktopVersion")
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?: error("levyraDesktopVersion non trovato in desktop/version.properties")
-)
+val versionFile = rootProject.file("../gradle.properties")
+val levyraDesktopVersion = Properties().apply {
+    versionFile.inputStream().use(::load)
+}.getProperty("levyraVersionName")?.trim()
+    ?: error("levyraVersionName non trovato in gradle.properties")
 
 require(levyraDesktopVersion.matches(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+([-.+][0-9A-Za-z.-]+)?$"))) {
     "Versione Levyra Desktop non valida: $levyraDesktopVersion"
@@ -52,6 +43,10 @@ kotlin {
         ).apply {
             srcDir(rootProject.file("../app/src/main/java"))
             include("com/luc4n3x/levyra/ui/i18n/**/*.kt")
+            include("com/luc4n3x/levyra/ui/update/LevyraReleaseContent.kt")
+            include("com/luc4n3x/levyra/ui/theme/LevyraTypeRhythm.kt")
+            include("com/luc4n3x/levyra/update/AppUpdateProgress.kt")
+            include("com/luc4n3x/levyra/update/ReleaseHighlights.kt")
             include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
             include("com/luc4n3x/levyra/ui/HomeSoundtrackPortraits.kt")
             include("com/luc4n3x/levyra/domain/ParametricEqualizer.kt")
@@ -80,6 +75,7 @@ val generatedComposeResources = layout.buildDirectory.dir("generated/composeReso
 val prepareComposeResources = tasks.register<Sync>("prepareComposeResources") {
     from(layout.projectDirectory.file("src/main/resources/icons/levyra.png"))
     from(layout.projectDirectory.file("../../app/src/main/res/drawable/levyra_logo.png"))
+    from(layout.projectDirectory.file("../../app/src/main/res/drawable-nodpi/onboarding_levyra_brand.webp"))
     into(generatedComposeResources.map { it.dir("drawable") })
 }
 
@@ -130,7 +126,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "Levyra"
-            packageVersion = levyraDesktopVersion
+            packageVersion = levyraDesktopVersion.substringBefore('-').substringBefore('+')
             description = "Levyra Desktop"
             copyright = "Copyright (c) LUC4N3X"
             vendor = "LUC4N3X"

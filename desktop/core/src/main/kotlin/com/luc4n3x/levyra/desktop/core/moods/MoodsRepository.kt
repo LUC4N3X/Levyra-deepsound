@@ -2,22 +2,37 @@ package com.luc4n3x.levyra.desktop.core.moods
 
 import com.luc4n3x.levyra.desktop.core.catalog.desktopArtistArtworkUrl
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
+import com.luc4n3x.levyra.desktop.core.extractor.YoutubeMusicBrowse
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class MoodCategory(val title: String, val params: String, val sectionIndex: Int, val artworkUrl: String = "")
+data class MoodCategory(val title: String, val params: String, val sectionIndex: Int, val artworkUrl: String = "", val section: String = "")
 
 data class MoodPlaylist(val id: String, val title: String, val subtitle: String, val artworkUrl: String)
 
-data class MoodShelf(val title: String, val playlists: List<MoodPlaylist>, val moreParams: String = "")
+data class MoodShelf(
+    val title: String,
+    val playlists: List<MoodPlaylist>,
+    val moreParams: String = "",
+    val subtitle: String = "",
+    val browseId: String = "",
+    val playlistOnly: Boolean = true
+)
+
+data class CuratedCollections(
+    val decades: List<MoodPlaylist>,
+    val everyday: List<MoodPlaylist>,
+    val categories: List<MoodCategory>
+)
 
 fun moodBrowseOrder(categories: List<MoodCategory>, decades: List<MoodCategory>): List<MoodCategory> {
     val split = categories.indexOfLast { it.sectionIndex == 0 } + 1
@@ -34,20 +49,21 @@ fun moodBrowseOrder(categories: List<MoodCategory>, decades: List<MoodCategory>)
 }
 
 class MoodsRepository(
-    private val client: OkHttpClient = ExtractorHttp.client,
+    client: OkHttpClient = ExtractorHttp.client,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
+    private val music = YoutubeMusicBrowse(client)
     private val shelfCache = ConcurrentHashMap<String, List<MoodShelf>>()
 
     suspend fun categories(languageTag: String, country: String): List<MoodCategory> = withContext(dispatcher) {
-        browse(languageTag, country, ROOT_BROWSE_ID, "")?.let(MoodsParser::categories).orEmpty()
+        music.browse(languageTag, country, ROOT_BROWSE_ID, "")?.let(MoodsParser::categories).orEmpty()
     }
 
     suspend fun shelves(params: String, languageTag: String, country: String): List<MoodShelf> = withContext(dispatcher) {
         if (params.isBlank()) return@withContext emptyList()
         val key = "$languageTag|$country|$params"
         shelfCache[key]?.let { return@withContext it }
-        val shelves = browse(languageTag, country, CATEGORY_BROWSE_ID, params)?.let(MoodsParser::shelves).orEmpty()
+        val shelves = music.browse(languageTag, country, CATEGORY_BROWSE_ID, params)?.let(MoodsParser::shelves).orEmpty()
         if (shelves.isNotEmpty()) {
             if (shelfCache.size >= MAX_CACHED_SHELVES) shelfCache.clear()
             shelfCache[key] = shelves
@@ -63,72 +79,99 @@ class MoodsRepository(
             .orEmpty()
 
     suspend fun curatedShelves(languageTag: String, country: String): List<MoodShelf> = withContext(dispatcher) {
-        val shelves = LinkedHashMap<String, MoodShelf>()
-        val requested = HashSet<String>()
-        var root = browse(languageTag, country, HOME_BROWSE_ID, "")
-        var pages = 0
-        while (root != null && pages < CURATED_PAGES) {
-            MoodsParser.shelves(root).filter { it.playlists.isNotEmpty() }.forEach { shelves.putIfAbsent(it.title, it) }
-            val next = MoodsParser.continuation(root)?.takeIf(requested::add) ?: break
-            val visitor = root.optJSONObject("responseContext")?.optString("visitorData").orEmpty()
-            root = browse(languageTag, country, "", "", next, visitor)
-            pages++
+        val mixed = async { music.browse(languageTag, country, MIXED_BROWSE_ID, "")?.let(MoodsParser::homeShelves).orEmpty() }
+        val home = async { curatedHome(languageTag, country) }
+        val mixedShelves = mixed.await()
+        val homeShelves = home.await()
+        val source = mixedShelves.filter { it.playlistOnly }
+            .ifEmpty { homeShelves.filter { it.browseId == ROOT_BROWSE_ID && it.playlistOnly } }
+            .ifEmpty { homeShelves.filter { it.playlistOnly } }
+            .ifEmpty { homeShelves }
+        if (source.isEmpty()) return@withContext emptyList()
+        val featured = homeShelves.asSequence()
+            .filter { it.browseId.startsWith("FEmusic_new_releases") }
+            .flatMap { it.playlists.asSequence() }
+            .firstOrNull { it.artworkUrl.isNotBlank() }
+            ?: music.browse(languageTag, country, "VL$FEATURED_PLAYLIST_ID", "")?.let { MoodsParser.featuredPlaylist(it, FEATURED_PLAYLIST_ID) }
+        val ordered = MoodsParser.orderCurated(source, featured)
+        val lead = ordered.first()
+        val missing = FEATURED_SHELF_SIZE - lead.playlists.size
+        if (missing <= 0) return@withContext ordered
+        val used = lead.playlists.mapTo(HashSet()) { it.id }
+        val additions = homeShelves.asSequence().flatMap { it.playlists.asSequence() }
+            .filter { it.artworkUrl.isNotBlank() && used.add(it.id) }.take(missing).toList()
+        val decadePicks = if (additions.size < missing) {
+            MoodsParser.decadePlaylists(shelves(DECADES_PARAMS, languageTag, country))
+                .filter { used.add(it.id) }.take(missing - additions.size)
+        } else emptyList()
+        listOf(lead.copy(playlists = lead.playlists + additions + decadePicks)) + ordered.drop(1)
+    }
+
+    private suspend fun curatedHome(languageTag: String, country: String): List<MoodShelf> {
+        val shelves = mutableListOf<MoodShelf>()
+        val visited = HashSet<String>()
+        var root = music.browse(languageTag, country, HOME_BROWSE_ID, "")
+        var visitor = ""
+        for (page in 1..FEATURED_PAGES) {
+            coroutineContext.ensureActive()
+            val current = root ?: break
+            shelves += MoodsParser.homeShelves(current)
+            if (page == FEATURED_PAGES || shelves.any { it.browseId == ROOT_BROWSE_ID && it.playlistOnly }) break
+            val next = MoodsParser.continuation(current)?.takeIf(visited::add) ?: break
+            visitor = current.optJSONObject("responseContext")?.optString("visitorData").orEmpty().ifBlank { visitor }
+            root = music.browse(languageTag, country, "", "", next, visitor)
         }
-        shelves.values.sortedByDescending { it.playlists.size > 1 }
+        return shelves + music.browse(languageTag, country, EXPLORE_BROWSE_ID, "")?.let(MoodsParser::homeShelves).orEmpty()
+    }
+
+    suspend fun curatedCollections(languageTag: String, country: String): CuratedCollections = withContext(dispatcher) {
+        val decadeRequest = async { shelves(DECADES_PARAMS, languageTag, country) }
+        val providerCategories = categories(languageTag, country)
+        val byParams = providerCategories.associateBy { it.params }
+        val everydayRequests = EVERYDAY_PARAMS.mapNotNull { params ->
+            val category = byParams[params] ?: return@mapNotNull null
+            async { category.title to curatedCategory(params, languageTag, country, limit = 8) }
+        }
+        val used = HashSet<String>()
+        val everyday = everydayRequests.awaitAll().mapNotNull { (title, playlists) ->
+            playlists.firstOrNull { it.artworkUrl.isNotBlank() && used.add(it.id) }?.copy(subtitle = title)
+        }
+        val decades = decadeRequest.await()
+        CuratedCollections(
+            decades = MoodsParser.decadePlaylists(decades),
+            everyday = everyday,
+            categories = providerCategories.filter { it.sectionIndex >= 0 && it.params != DECADES_PARAMS && it.section.isNotBlank() } +
+                MoodsParser.decades(decades)
+        )
+    }
+
+    suspend fun curatedCategory(params: String, languageTag: String, country: String, limit: Int = 40): List<MoodPlaylist> = withContext(dispatcher) {
+        if (params.isBlank()) return@withContext emptyList()
+        music.browse(languageTag, country, CATEGORY_BROWSE_ID, params)?.let(MoodsParser::playlists).orEmpty().take(limit)
     }
 
     suspend fun decades(languageTag: String, country: String): List<MoodCategory> =
         MoodsParser.decades(shelves(DECADES_PARAMS, languageTag, country))
 
-    private fun browse(languageTag: String, country: String, browseId: String, params: String, continuation: String = "", visitorData: String = ""): JSONObject? {
-        val client = JSONObject()
-            .put("clientName", "WEB_REMIX")
-            .put("clientVersion", CLIENT_VERSION)
-            .put("hl", innerTubeLanguage(languageTag))
-            .put("gl", country.trim().uppercase().take(2).ifBlank { "US" })
-        if (visitorData.isNotBlank()) client.put("visitorData", visitorData)
-        val payload = JSONObject().put("context", JSONObject().put("client", client))
-        if (continuation.isNotBlank()) payload.put("continuation", continuation) else payload.put("browseId", browseId)
-        if (continuation.isBlank() && params.isNotBlank()) payload.put("params", params)
-        val request = Request.Builder()
-            .url(BROWSE_URL)
-            .post(payload.toString().toRequestBody(JSON))
-            .header("Content-Type", "application/json")
-            .header("Origin", ORIGIN)
-            .header("Referer", "$ORIGIN/")
-            .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
-            .header("X-Youtube-Client-Name", "67")
-            .header("X-Youtube-Client-Version", CLIENT_VERSION)
-            .apply { if (visitorData.isNotBlank()) header("X-Goog-Visitor-Id", visitorData) }
-            .build()
-        return runCatching {
-            this.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                val bytes = response.peekBody(MAX_BYTES + 1).bytes()
-                if (bytes.size > MAX_BYTES) null else JSONObject(bytes.toString(Charsets.UTF_8))
-            }
-        }.getOrNull()
-    }
-
     companion object {
         const val DECADES_PARAMS = "ggMPOg1uX1V4cTVVT0JjY0xI"
         private const val HOME_BROWSE_ID = "FEmusic_home"
-        private const val CURATED_PAGES = 5
+        private const val MIXED_BROWSE_ID = "FEmusic_mixed_for_you"
+        private const val EXPLORE_BROWSE_ID = "FEmusic_explore"
+        private const val FEATURED_PAGES = 3
+        private const val FEATURED_SHELF_SIZE = 7
+        private const val FEATURED_PLAYLIST_ID = "RDTMAK5uy_lr0LWzGrq6FU9GIxWvFHTRPQD2LHMqlFA"
+        private val EVERYDAY_PARAMS = listOf(
+            "ggMPOg1uXzIxYkNac21YZ2Z0", "ggMPOg1uX0NvNGNhWThMYWRh",
+            "ggMPOg1uX1JOQWZFeDByc2Jm", "ggMPOg1uX1MxaFQ3Z0JMZkN4",
+            "ggMPOg1uX2w1aW1CRDFTSUNo", "ggMPOg1uX044Z2o5WERLckpU",
+            "ggMPOg1uXzZQbDB5eThLRTQ3"
+        )
         private const val ROOT_BROWSE_ID = "FEmusic_moods_and_genres"
         private const val CATEGORY_BROWSE_ID = "FEmusic_moods_and_genres_category"
-        private const val ORIGIN = "https://music.youtube.com"
-        private const val BROWSE_URL = "$ORIGIN/youtubei/v1/browse?prettyPrint=false"
-        private const val CLIENT_VERSION = "1.20260804.16.00"
-        private const val MAX_BYTES = 6L * 1024 * 1024
         private const val MAX_CACHED_SHELVES = 160
-        private val JSON = "application/json".toMediaType()
 
-        fun innerTubeLanguage(tag: String): String = when (tag) {
-            "pt" -> "pt-PT"
-            "zh" -> "zh-CN"
-            "zh-Hant" -> "zh-TW"
-            else -> tag.ifBlank { "en" }
-        }
+        fun innerTubeLanguage(tag: String): String = YoutubeMusicBrowse.innerTubeLanguage(tag)
     }
 }
 
@@ -141,8 +184,9 @@ internal object MoodsParser {
     fun categories(root: JSONObject): List<MoodCategory> {
         val result = LinkedHashMap<String, MoodCategory>()
         objects(root, setOf("gridRenderer")).forEachIndexed { sectionIndex, grid ->
+            val section = grid.optJSONObject("header")?.optJSONObject("gridHeaderRenderer")?.text("title").orEmpty()
             objects(grid.optJSONArray("items"), setOf("musicNavigationButtonRenderer")).forEach { button ->
-                category(button, sectionIndex)?.let { result.putIfAbsent(it.params, it) }
+                category(button, sectionIndex)?.copy(section = section)?.let { result.putIfAbsent(it.params, it) }
             }
         }
         if (result.isEmpty()) {
@@ -167,8 +211,67 @@ internal object MoodsParser {
         }
     }
 
+    fun homeShelves(root: JSONObject): List<MoodShelf> =
+        objects(root, setOf("musicCarouselShelfRenderer")).mapNotNull { shelf ->
+            val header = shelf.optJSONObject("header")?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
+                ?: return@mapNotNull null
+            val title = header.text("title")
+            val contents = shelf.optJSONArray("contents") ?: return@mapNotNull null
+            val candidates = (0 until contents.length()).mapNotNull(contents::optJSONObject)
+                .filterNot { it.has("musicNavigationButtonRenderer") }
+            val playlists = candidates.map { entry -> objects(entry, setOf("musicTwoRowItemRenderer")).firstNotNullOfOrNull(::playlist) }
+            val items = playlists.filterNotNull().distinctBy { it.id }
+            if (title.isBlank() || items.isEmpty()) return@mapNotNull null
+            val browseId = header.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+                ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty()
+            MoodShelf(title, items, subtitle = header.text("strapline"), browseId = browseId, playlistOnly = playlists.none { it == null })
+        }
+
+    fun playlists(root: JSONObject): List<MoodPlaylist> =
+        objects(root, setOf("musicTwoRowItemRenderer")).mapNotNull(::playlist).distinctBy { it.id }
+
+    fun orderCurated(shelves: List<MoodShelf>, featured: MoodPlaylist?): List<MoodShelf> {
+        val ordered = shelves.map { shelf ->
+            val chart = shelf.playlists.firstOrNull { it.title.contains("Trending 20", ignoreCase = true) }
+            if (chart == null) shelf else shelf.copy(playlists = listOf(chart) + shelf.playlists.filterNot { it.id == chart.id })
+        }
+        if (featured == null) return ordered
+        if (ordered.any { shelf -> shelf.playlists.any { it.id == featured.id } }) {
+            if (featured.artworkUrl.isBlank()) return ordered
+            return ordered.map { shelf ->
+                shelf.copy(playlists = shelf.playlists.map { if (it.id == featured.id) it.copy(artworkUrl = featured.artworkUrl) else it })
+            }
+        }
+        return ordered.mapIndexed { index, shelf ->
+            if (index != 0) shelf else shelf.copy(playlists = shelf.playlists.take(1) + featured + shelf.playlists.drop(1))
+        }
+    }
+
+    fun featuredPlaylist(root: JSONObject, id: String): MoodPlaylist? =
+        objects(root, setOf("musicDetailHeaderRenderer", "musicResponsiveHeaderRenderer"))
+            .firstNotNullOfOrNull { header ->
+                header.text("title").takeIf(String::isNotBlank)?.let { title ->
+                    MoodPlaylist(id, title, header.text("subtitle"), desktopArtistArtworkUrl(bestThumbnail(header), 544))
+                }
+            }
+
     fun continuation(root: JSONObject): String? =
-        objects(root, setOf("nextContinuationData")).firstNotNullOfOrNull { it.optString("continuation").takeIf(String::isNotBlank) }
+        listOf("nextContinuationData" to "continuation", "reloadContinuationData" to "continuation", "continuationCommand" to "token")
+            .firstNotNullOfOrNull { (renderer, field) ->
+                objects(root, setOf(renderer)).firstNotNullOfOrNull { it.optString(field).takeIf(String::isNotBlank) }
+            }
+
+    fun decadePlaylists(shelves: List<MoodShelf>): List<MoodPlaylist> {
+        val byDecade = sortedMapOf<Int, MoodPlaylist>()
+        val used = HashSet<String>()
+        shelves.forEach { shelf ->
+            val decade = decadeOf(shelf.title)?.takeIf { it in FIRST_DECADE..LAST_DECADE } ?: return@forEach
+            if (decade in byDecade) return@forEach
+            val playlist = shelf.playlists.firstOrNull { it.artworkUrl.isNotBlank() && used.add(it.id) } ?: return@forEach
+            byDecade[decade] = playlist.copy(subtitle = shelf.title)
+        }
+        return byDecade.values.toList()
+    }
 
     fun decades(shelves: List<MoodShelf>): List<MoodCategory> {
         val byDecade = sortedMapOf<Int, MoodCategory>()
@@ -247,6 +350,9 @@ internal object MoodsParser {
             is JSONArray -> for (index in 0 until value.length()) collect(value.opt(index), visit)
         }
     }
+
+    private fun JSONObject.text(key: String): String =
+        optJSONObject(key)?.let { it.optJSONArray("runs")?.joinText() ?: it.optString("simpleText") }.orEmpty()
 
     private fun JSONArray.joinText(): String =
         (0 until length()).joinToString("") { optJSONObject(it)?.optString("text").orEmpty() }.trim()

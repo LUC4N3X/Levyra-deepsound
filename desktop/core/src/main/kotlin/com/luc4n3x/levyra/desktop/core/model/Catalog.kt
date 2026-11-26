@@ -59,12 +59,17 @@ data class ArtistDetail(
     val videos: List<Track> = emptyList(),
     val albums: List<CollectionRef> = emptyList(),
     val playlists: List<CollectionRef> = emptyList(),
-    val relatedArtists: List<CollectionRef> = emptyList()
+    val relatedArtists: List<CollectionRef> = emptyList(),
+    val singles: List<CollectionRef> = emptyList(),
+    val compilations: List<CollectionRef> = emptyList(),
+    val featuredPlaylists: List<CollectionRef> = emptyList(),
+    val monthlyListeners: Long? = null,
+    val viewsLabel: String = ""
 ) {
     val hasContent: Boolean
         get() = tracks.isNotEmpty() ||
             videos.isNotEmpty() ||
-            albums.isNotEmpty() ||
+            albums.isNotEmpty() || singles.isNotEmpty() || compilations.isNotEmpty() || featuredPlaylists.isNotEmpty() ||
             playlists.isNotEmpty() ||
             relatedArtists.isNotEmpty() ||
             biography.isNotBlank()

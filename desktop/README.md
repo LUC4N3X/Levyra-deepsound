@@ -102,28 +102,13 @@ Direct YouTube, YouTube Music, and `youtu.be` URLs are also accepted. When Levyr
 
 ## Windows Updates
 
-Android and Desktop use completely separate versioning.
+Android, Windows, and Linux read `levyraVersionName` in the root `gradle.properties`. The APK, Windows installers, and Linux packages have distinct GitHub releases for the same version.
 
-The Windows version is changed only in:
-
-```properties
-# desktop/version.properties
-levyraDesktopVersion=1.1.0
-```
-
-The Android `levyraVersionName` value in the root `gradle.properties` file does not control, trigger, or publish the Desktop build.
-
-Windows releases use independent tags:
-
-```text
-desktop-v1.0.0
-desktop-v1.0.1
-desktop-v1.1.0
-```
+For Levyra 3.2.5, the tags are `v3.2.5`, `desktop-v3.2.5`, and `desktop-linux-v3.2.5`.
 
 The app checks only releases whose tag starts with `desktop-v`. When a newer version is available, Levyra:
 
-1. displays a translated update notification;
+1. opens the same animated release screen as Android, adapted for a desktop window;
 2. downloads the correct Windows MSI;
 3. verifies the `.sha256` file published with the installer;
 4. closes the app;
@@ -192,13 +177,12 @@ Arabic, Hebrew, and Persian enable RTL layout in both onboarding and the entire 
 | VLC | 64-bit 3.0.x, or a libvlc runtime bundled with the app |
 | WiX Toolset | 3.14, required only to generate `.msi` and `.exe` packages |
 
-The Desktop build is independent from Android. The `desktop/` directory has its own `settings.gradle.kts`, dependency catalog, Gradle wrapper, and version file.
+The Desktop build is independent from Android. The `desktop/` directory has its own `settings.gradle.kts`, dependency catalog, and Gradle wrapper. The shared version is in the root `gradle.properties`.
 
 ## Project Structure
 
 ```text
 desktop/
-  version.properties
   core/      models, YouTube extractor, stream resolution, downloads, and persistence
   player/    audio-player abstraction, libvlc implementation, and playback queue
   app/       Compose UI, onboarding, Library, lifecycle, updates, and Windows packaging
@@ -229,9 +213,9 @@ cd desktop
 ./gradlew packageReleaseExe
 ```
 
-Artifacts are generated in `app/build/compose/binaries/main-release/`. The workflow automatically reads `levyraDesktopVersion` from `desktop/version.properties`.
+Artifacts are generated in `app/build/compose/binaries/main-release/`. The workflow reads `levyraVersionName` from the root `gradle.properties`.
 
-After a merge into `main`, the MSI, EXE, portable ZIP, and SHA-256 checksums are published to the independent `desktop-v<version>` release. Android `v<version>` releases remain separate and are never modified by the Desktop workflow. Pull requests generate only temporary workflow artifacts.
+After the APK release succeeds and its published checksums are verified, the Windows and Linux workflows package the same commit and publish separate releases. Windows includes the MSI, EXE, portable ZIP, and SHA-256 checksums. Linux includes the DEB, RPM, portable archive, and SHA-256 checksums. Pull requests generate temporary workflow artifacts.
 
 ## VLC Runtime
 
@@ -334,7 +318,7 @@ Update checks select the distribution's DEB or RPM and only
 `desktop-linux-v<version>` releases, verify SHA-256, then open the verified file
 in the system package manager. They never start a Windows installer on Linux.
 Other distributions use the portable archive and manual updates.
-Linux and Windows retain independent release tags; Android is unchanged.
+Linux uses the `desktop-linux-v<version>` tag for the same version published for Android and Windows.
 
 The Linux CI runs native libVLC tests and rendered UI previews, installs the real
 DEB, and checks the installed app through MPRIS: local WAV playback, seek,

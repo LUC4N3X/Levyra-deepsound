@@ -85,11 +85,15 @@ object PhoneLibraryImport {
                 playlists.map { if (it.id == existing.id) merged else it }
             }
         }
-        val history = (current.history + phone.history)
-            .sortedByDescending { it.playedAt }
+        val knownHistory = current.history.mapTo(HashSet()) { it.track.id }
+        val entries = current.history + phone.history
+        val playCounts = entries.groupingBy { it.track.id }
+            .fold(0) { count, entry -> maxOf(count, entry.playCount) }
+        val history = entries.sortedByDescending { it.playedAt }
             .distinctBy { it.track.id }
             .take(maxHistory)
-        val addedHistory = history.count { entry -> current.history.none { it.track.id == entry.track.id } }
+            .map { it.copy(playCount = playCounts.getValue(it.track.id)) }
+        val addedHistory = history.count { it.track.id !in knownHistory }
         val updated = current.copy(favorites = current.favorites + addedFavorites, playlists = playlists, history = history)
         return updated to PhoneImportResult(addedFavorites.size, addedPlaylists, addedHistory)
     }

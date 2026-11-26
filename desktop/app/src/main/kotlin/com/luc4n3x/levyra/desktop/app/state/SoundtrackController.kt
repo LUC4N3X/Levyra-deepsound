@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
+import com.luc4n3x.levyra.desktop.core.catalog.artistCreditMatches
+import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.ui.HomeSoundtrackPortraits
@@ -30,8 +32,8 @@ class SoundtrackController(
     private val state = MutableStateFlow(SoundtrackUiState())
     val soundtrack: StateFlow<SoundtrackUiState> = state.asStateFlow()
     private var job: Job? = null
-    private val portraits = MutableStateFlow<Map<String, String>>(emptyMap())
-    val artistPortraits: StateFlow<Map<String, String>> = portraits.asStateFlow()
+    private val artists = MutableStateFlow<Map<String, CollectionRef>>(emptyMap())
+    val artistReferences: StateFlow<Map<String, CollectionRef>> = artists.asStateFlow()
     private val requestedPortraits = ConcurrentHashMap.newKeySet<String>()
 
     fun requestPortraits(names: List<String>) {
@@ -41,8 +43,12 @@ class SoundtrackController(
             .take(PORTRAIT_BATCH_LIMIT)
             .forEach { name ->
                 scope.launch {
-                    val url = safely { catalog.search(name, SearchFilter.ARTISTS) }?.collections?.firstOrNull()?.artworkUrl.orEmpty()
-                    if (url.isNotBlank()) portraits.update { it + (name.lowercase() to highResolutionPortrait(url)) }
+                    val ref = safely { catalog.findArtist(name) }
+                    if (ref != null) {
+                        artists.update { it + (name.lowercase() to ref.copy(artworkUrl = highResolutionPortrait(ref.artworkUrl))) }
+                    } else {
+                        requestedPortraits.remove(name.lowercase())
+                    }
                 }
             }
     }
@@ -52,13 +58,18 @@ class SoundtrackController(
         val current = state.value
         if (current.artist == artist && (current.loading || current.tracks.isNotEmpty())) return
         job?.cancel()
-        state.value = SoundtrackUiState(artist = artist, portraitUrl = HomeSoundtrackPortraits.fixedPortrait(artist).orEmpty(), loading = true)
+        val selectedPortrait = if (artist.equals("Billie Eilish", ignoreCase = true)) BILLIE_PORTRAIT else HomeSoundtrackPortraits.fixedPortrait(artist).orEmpty()
+        state.value = SoundtrackUiState(artist = artist, portraitUrl = selectedPortrait, loading = true)
         job = scope.launch {
-            val portrait = async { safely { catalog.search(artist, SearchFilter.ARTISTS) }?.collections?.firstOrNull()?.artworkUrl.orEmpty() }
+            val portrait = async {
+                if (selectedPortrait.isNotBlank()) return@async selectedPortrait
+                safely { catalog.search(artist, SearchFilter.ARTISTS) }?.collections.orEmpty()
+                    .firstOrNull { artistCreditMatches(it.title, artist) && it.artworkUrl.isNotBlank() }?.artworkUrl.orEmpty()
+            }
             val songs = async { safely { catalog.search(artist, SearchFilter.SONGS) }?.tracks.orEmpty() }
             val tracks = songs.await().filter { soundtrackPrimaryArtist(it.artist).equals(soundtrackPrimaryArtist(artist), ignoreCase = true) }
             state.value = state.value.copy(
-                portraitUrl = state.value.portraitUrl.ifBlank { highResolutionPortrait(portrait.await()) },
+                portraitUrl = highResolutionPortrait(portrait.await()),
                 tracks = tracks.take(SOUNDTRACK_LEAD_LIMIT),
                 loading = false
             )
@@ -74,6 +85,7 @@ class SoundtrackController(
     }
 
     private companion object {
+        const val BILLIE_PORTRAIT = "https://www.apple.com/newsroom/images/2024/11/billie-eilish-is-apple-musics-artist-of-the-year-for-2024/article/Apple-Music-2024-Artist-of-the-Year-Billie-Eilish_big.jpg.large_2x.jpg"
         const val SOUNDTRACK_LEAD_LIMIT = 10
         const val PORTRAIT_BATCH_LIMIT = 16
     }

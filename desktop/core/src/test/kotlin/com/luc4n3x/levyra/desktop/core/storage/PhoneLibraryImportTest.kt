@@ -72,4 +72,17 @@ class PhoneLibraryImportTest {
         assertEquals(listOf("Road", "Gym"), merged.playlists.map { it.name })
         assertEquals(PhoneImportResult(favorites = 1, playlists = 1, history = 1), result)
     }
+
+    @Test
+    fun newerPhoneHistoryKeepsDesktopPlayCountAcrossRepeatedImports() {
+        val track = Track(id = "a", title = "Desktop title", videoUrl = "https://youtube.com/watch?v=a")
+        val current = LibraryData(history = listOf(HistoryEntry(track, playedAt = 10L, playCount = 50)))
+        val phoneTrack = track.copy(title = "Phone title")
+        val phone = PhoneLibrary(history = listOf(HistoryEntry(phoneTrack, playedAt = 20L)))
+        val (merged, result) = PhoneLibraryImport.merge(current, phone, maxHistory = 200, nowMillis = 21L) { "new" }
+
+        assertEquals(HistoryEntry(phoneTrack, playedAt = 20L, playCount = 50), merged.history.single())
+        assertEquals(0, result.history)
+        assertEquals(merged, PhoneLibraryImport.merge(merged, phone, maxHistory = 200, nowMillis = 22L) { "new" }.first)
+    }
 }

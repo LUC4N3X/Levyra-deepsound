@@ -4,8 +4,16 @@ on:
   pull_request:
     paths:
       - "desktop/**"
+      - "gradle.properties"
       - "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/**"
       - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackConcurrency.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/spotify/SpotifyArtistAudience.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/spotify/SpotifyHttpBody.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/update/LevyraReleaseContent.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/theme/LevyraTypeRhythm.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/update/AppUpdateProgress.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/update/ReleaseHighlights.kt"
+      - "app/src/main/res/drawable*/onboarding_levyra_brand.*"
       - "app/src/main/java/com/luc4n3x/levyra/domain/**"
       - "app/src/main/java/com/luc4n3x/levyra/ui/i18n/**"
       - "app/src/main/java/com/luc4n3x/levyra/player/offline/TidalDashFlac.kt"
@@ -17,21 +25,30 @@ on:
     branches: [main]
     paths:
       - "desktop/**"
+      - "gradle.properties"
       - ".github/workflows/desktop-linux.yml"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Version of the verified Android release
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: desktop-linux-${{ github.ref }}
-  cancel-in-progress: true
+  group: desktop-linux-${{ github.ref }}-${{ inputs.release_version || 'build' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   linux:
     name: Linux x64 packages and native playback
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,6 +57,19 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Resolve Levyra version
+        id: version
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^levyraVersionName=//p' gradle.properties | tr -d '\r')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$ ]]
+          if [[ -n "$RELEASE_VERSION" && "$version" != "$RELEASE_VERSION" ]]; then
+            echo "::error::Linux version $version does not match Android release $RELEASE_VERSION"
+            exit 1
+          fi
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
       - name: Install Linux runtime and packaging dependencies
         run: |
           sudo apt-get update
@@ -82,3 +112,72 @@ jobs:
             desktop/app/build/previews/
             desktop/build/linux-smoke.log
           retention-days: 14
+
+  publish:
+    name: Publish Linux release
+    if: inputs.release_version != '' && github.ref == 'refs/heads/main'
+    needs: linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: Levyra-Linux-x64
+          path: release-assets
+      - name: Publish checksummed Linux release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.linux.outputs.version }}
+        working-directory: release-assets
+        run: |
+          set -euo pipefail
+          tag="desktop-linux-v$VERSION"
+          packages=("LEVYRA-Linux-$VERSION-x64.deb" "LEVYRA-Linux-$VERSION-x64.rpm" "LEVYRA-Linux-$VERSION-portable-x64.tar.gz")
+          assets=()
+          patterns=()
+          for package in "${packages[@]}"; do
+            sha256sum --check "$package.sha256"
+            assets+=("$package" "$package.sha256")
+            patterns+=(--pattern "$package" --pattern "$package.sha256")
+          done
+
+          tag_commit=$(git rev-list -n1 "refs/tags/$tag" 2>/dev/null || true)
+          [[ -z "$tag_commit" || "$tag_commit" == "$GITHUB_SHA" ]]
+          draft=false
+          if release=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,targetCommitish,assets); then
+            draft=$(jq -r '.isDraft' <<< "$release")
+            if [[ "$draft" == true ]]; then
+              [[ "$tag_commit" == "$GITHUB_SHA" || "$(jq -r '.targetCommitish' <<< "$release")" == "$GITHUB_SHA" ]]
+              for asset in "${assets[@]}"; do
+                if ! jq -e --arg asset "$asset" '.assets | any(.name == $asset)' <<< "$release" >/dev/null; then
+                  gh release upload "$tag" "$asset" --repo "$GITHUB_REPOSITORY"
+                fi
+              done
+            fi
+          else
+            flags=()
+            if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+            android_notes=$(gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json body --jq .body)
+            notes=$(mktemp)
+            printf 'Linux packages for Levyra %s, built from the Android release revision.\n\n' "$VERSION" > "$notes"
+            sed -n '/<!-- levyra-highlights/,/-->/p' <<< "$android_notes" >> "$notes"
+            gh release create "$tag" "${assets[@]}" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "Levyra Linux $VERSION" --latest=false \
+              --notes-file "$notes" "${flags[@]}"
+          fi
+
+          verified=$(mktemp -d)
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$verified" "${patterns[@]}"
+          cd "$verified"
+          for package in "${packages[@]}"; do
+            sha256sum --check "$package.sha256"
+          done
+          if [[ "$draft" == true ]]; then
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+          fi

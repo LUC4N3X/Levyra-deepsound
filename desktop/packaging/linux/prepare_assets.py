@@ -8,9 +8,11 @@ import tempfile
 
 
 def prepare(root: Path) -> None:
-    version = (root / 'desktop/version.properties').read_text().strip().split('=', 1)[1]
-    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-        raise ValueError('Invalid Desktop package version')
+    properties = (root / 'gradle.properties').read_text(encoding='utf-8')
+    match = re.search(r'(?m)^levyraVersionName=([0-9]+\.[0-9]+\.[0-9]+(?:[-.+][0-9A-Za-z.-]+)?)$', properties)
+    if not match:
+        raise ValueError('Invalid levyraVersionName in gradle.properties')
+    version = match[1]
     binaries = root / 'desktop/app/build/compose/binaries/main-release'
     output = root / 'desktop/build/linux-assets'
     output.mkdir(parents=True, exist_ok=True)

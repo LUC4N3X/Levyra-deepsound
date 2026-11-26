@@ -51,6 +51,7 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.PlayerBar
 import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
+import com.luc4n3x.levyra.desktop.app.ui.screens.ArtistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.CuratedPlaylistsScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.ExploreScreen
@@ -69,6 +70,7 @@ import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
+import com.luc4n3x.levyra.desktop.core.model.CollectionKind
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
@@ -100,9 +102,9 @@ fun LevyraRoot(model: LevyraAppModel) {
     val collection by model.catalogController.collection.collectAsState()
     val discover by model.discoverController.discover.collectAsState()
     val soundtrack by model.soundtrackController.soundtrack.collectAsState()
-    val artistPortraits by model.soundtrackController.artistPortraits.collectAsState()
+    val artistReferences by model.soundtrackController.artistReferences.collectAsState()
+    val artistPortraits = remember(artistReferences) { artistReferences.mapValues { it.value.artworkUrl } }
     val homeFeed by model.homeFeedController.feed.collectAsState()
-    var curatedTitle by remember { mutableStateOf("") }
     var localSearchResults by remember { mutableStateOf<List<Track>>(emptyList()) }
 
     LaunchedEffect(localMusic.index, search.query) {
@@ -271,22 +273,13 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 onTogglePlayback = model.playbackController::togglePlayPause,
                                                 actions = actions,
                                                 onRequestPortraits = model.soundtrackController::requestPortraits,
-                                                onOpenArtist = { name ->
-                                                    model.catalogController.clearSearch()
-                                                    model.catalogController.setFilter(SearchFilter.ARTISTS)
-                                                    model.catalogController.onQueryChange(name)
-                                                    model.catalogController.submit(name)
-                                                    model.navigate(Destination.SEARCH)
-                                                },
+                                                onOpenArtist = model::openTrendingArtist,
                                                 onOpenDiscover = { model.navigate(Destination.DISCOVER) },
                                                 onOpenMoods = {
                                                     model.moodsController.close()
                                                     model.navigate(Destination.MOODS)
                                                 },
-                                                onOpenCuratedAll = { title ->
-                                                    curatedTitle = title
-                                                    model.navigate(Destination.CURATED)
-                                                },
+                                                onOpenCuratedAll = { model.navigate(Destination.CURATED) },
                                                 onOpenPodcast = { model.navigate(Destination.PODCAST) },
                                                 onOpenNewReleases = {
                                                     model.catalogController.clearSearch()
@@ -302,12 +295,19 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 }
                                             )
 
-                                            Destination.CURATED -> CuratedPlaylistsScreen(
-                                                title = curatedTitle,
-                                                shelves = homeFeed.curatedShelves,
-                                                onOpen = model::openCollection,
-                                                onBack = model::back
-                                            )
+                                            Destination.CURATED -> {
+                                                val curatedPage by model.homeFeedController.curatedPage.collectAsState()
+                                                LaunchedEffect(settings.language, settings.contentCountry) {
+                                                    model.homeFeedController.loadCuratedCollections(settings.language.tag, settings.contentCountry)
+                                                }
+                                                CuratedPlaylistsScreen(
+                                                    shelves = homeFeed.curatedShelves,
+                                                    page = curatedPage,
+                                                    onSelectCategory = model.homeFeedController::selectCuratedCategory,
+                                                    onOpen = model::openCollection,
+                                                    onBack = model::back
+                                                )
+                                            }
 
                                             Destination.RADIO -> RadioHost(model, settings.contentCountry, playback.current?.id)
 
@@ -337,28 +337,60 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 localResults = localSearchResults
                                             )
 
-                                            Destination.COLLECTION -> CollectionScreen(
-                                                state = collection,
-                                                actions = actions,
-                                                onBack = model::back,
-                                                onLoadMore = model.catalogController::loadMoreCollection,
-                                                onPlayAll = { actions.onPlay(collection.page.tracks, 0) },
-                                                onShuffleAll = {
-                                                    model.playbackController.playShuffled(
-                                                        collection.page.tracks.map {
-                                                            model.downloadController.completedTrack(it) ?: it
-                                                        }
-                                                    )
-                                                },
-                                                onEnqueueAll = {
-                                                    model.playbackController.enqueueLast(
-                                                        collection.page.tracks.map {
-                                                            model.downloadController.completedTrack(it) ?: it
-                                                        }
-                                                    )
-                                                },
-                                                onOpenCollection = model::openCollection
-                                            )
+                                            Destination.COLLECTION -> {
+                                                val activeId = collection.ref?.id
+                                                androidx.compose.runtime.key(activeId) {
+                                                    if (collection.ref?.kind == CollectionKind.ARTIST) {
+                                                        ArtistScreen(
+                                                            state = collection,
+                                                            library = library,
+                                                            contentCountry = settings.contentCountry,
+                                                            vlcDirectory = settings.vlcDirectory,
+                                                            motionEnabled = playback.current?.musicVideo != true,
+                                                            actions = actions,
+                                                            onBack = model::back,
+                                                            onShuffle = { tracks ->
+                                                                model.playbackController.playShuffled(
+                                                                    tracks.map { model.downloadController.completedTrack(it) ?: it }
+                                                                )
+                                                            },
+                                                            onEnqueue = { tracks ->
+                                                                model.playbackController.enqueueLast(
+                                                                    tracks.map { model.downloadController.completedTrack(it) ?: it }
+                                                                )
+                                                            },
+                                                            onDownload = model::downloadArtistTracks,
+                                                            onToggleFollow = model::toggleFollowArtist,
+                                                            onTogglePin = model::togglePinnedArtist,
+                                                            onToggleExclude = model::toggleExcludedArtist,
+                                                            onOpen = model::openCollection
+                                                        )
+                                                    } else {
+                                                        CollectionScreen(
+                                                            state = collection,
+                                                            actions = actions,
+                                                            onBack = model::back,
+                                                            onLoadMore = model.catalogController::loadMoreCollection,
+                                                            onPlayAll = { actions.onPlay(collection.page.tracks, 0) },
+                                                            onShuffleAll = {
+                                                                model.playbackController.playShuffled(
+                                                                    collection.page.tracks.map {
+                                                                        model.downloadController.completedTrack(it) ?: it
+                                                                    }
+                                                                )
+                                                            },
+                                                            onEnqueueAll = {
+                                                                model.playbackController.enqueueLast(
+                                                                    collection.page.tracks.map {
+                                                                        model.downloadController.completedTrack(it) ?: it
+                                                                    }
+                                                                )
+                                                            },
+                                                            onOpenCollection = model::openCollection
+                                                        )
+                                                    }
+                                                }
+                                            }
 
                                             Destination.LIBRARY -> LibraryHost(
                                                 model = model,
@@ -679,6 +711,7 @@ private fun LibraryHost(
         downloads = downloads,
         actions = actions,
         onOpenPlaylist = model::openPlaylist,
+        onOpenArtist = model::openCollection,
         onCreatePlaylist = { name -> model.libraryStore.createPlaylist(name) },
         onImportUrl = model::openCollectionFromUrl,
         onImportPlaylist = {

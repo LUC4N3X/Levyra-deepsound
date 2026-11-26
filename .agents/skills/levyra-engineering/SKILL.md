@@ -48,7 +48,7 @@ Before editing, state internally:
 
 - Current repository content is authoritative; do not rely on remembered versions.
 - Prefer one source of truth and existing infrastructure over adapters that duplicate state or behavior.
-- Keep Android and Desktop versioning and release behavior independent.
+- Keep APK features and user-facing changes aligned with Windows and Linux in the same PR. Share the version and keep platform release tags and downloads separate.
 - Make security, persistence, lifecycle, and cancellation behavior explicit at subsystem boundaries.
 - Avoid broad refactors unless the requested result cannot be achieved safely within current architecture.
 - Run focused validation per subsystem, then inspect the complete integrated diff.

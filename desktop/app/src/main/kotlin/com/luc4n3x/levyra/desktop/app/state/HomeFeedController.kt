@@ -3,10 +3,15 @@ package com.luc4n3x.levyra.desktop.app.state
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.charts.MusicVideoChart
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.desktop.core.moods.CuratedCollections
+import com.luc4n3x.levyra.desktop.core.moods.MoodPlaylist
+import com.luc4n3x.levyra.desktop.core.moods.MoodShelf
+import com.luc4n3x.levyra.desktop.core.moods.MoodsRepository
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,34 +28,52 @@ data class DailyPick(val track: Track, val seed: Track)
 data class HomeFeedState(
     val videos: List<Track> = emptyList(),
     val daily: List<DailyPick> = emptyList(),
-    val curated: List<com.luc4n3x.levyra.desktop.core.moods.MoodPlaylist> = emptyList(),
-    val curatedShelves: List<com.luc4n3x.levyra.desktop.core.moods.MoodShelf> = emptyList()
+    val curatedShelves: List<MoodShelf> = emptyList()
+)
+
+data class CuratedPageState(
+    val collections: CuratedCollections? = null,
+    val loading: Boolean = false,
+    val category: String = "",
+    val categoryLoading: Boolean = false,
+    val playlists: List<MoodPlaylist> = emptyList()
 )
 
 class HomeFeedController(
     private val scope: CoroutineScope,
     private val catalog: CatalogRepository,
     private val libraryStore: LibraryStore,
-    private val moods: com.luc4n3x.levyra.desktop.core.moods.MoodsRepository,
+    private val moods: MoodsRepository,
     private val videoChart: MusicVideoChart = MusicVideoChart(catalog)
 ) {
     private val state = MutableStateFlow(HomeFeedState())
     val feed: StateFlow<HomeFeedState> = state.asStateFlow()
     private var videosCountry = ""
     private var dailyKey = ""
-    private var curatedKey = ""
+    private var curatedRegion: Pair<String, String>? = null
+    private var curatedJob: Job? = null
+    private var collectionsJob: Job? = null
+    private var categoryJob: Job? = null
+    private val categories = mutableMapOf<String, List<MoodPlaylist>>()
+    private val curatedState = MutableStateFlow(CuratedPageState())
+    val curatedPage: StateFlow<CuratedPageState> = curatedState.asStateFlow()
 
+    @Synchronized
     fun load(country: String, languageTag: String) {
-        val curatedRegion = "$languageTag|${country.trim().uppercase()}"
-        if (curatedRegion != curatedKey) {
-            curatedKey = curatedRegion
-            scope.launch {
-                val shelves = safely { moods.curatedShelves(languageTag, country) }.orEmpty().distinctBy { it.title }
-                val playlists = shelves
-                    .flatMap { it.playlists }
-                    .distinctBy { it.id }
-                    .take(CURATED_LIMIT)
-                if (curatedKey == curatedRegion) state.update { it.copy(curated = playlists, curatedShelves = shelves) }
+        val locale = languageTag to country
+        if (locale != curatedRegion) {
+            curatedRegion = locale
+            curatedJob?.cancel()
+            collectionsJob?.cancel()
+            categoryJob?.cancel()
+            categories.clear()
+            curatedState.value = CuratedPageState()
+            state.update { it.copy(curatedShelves = emptyList()) }
+            curatedJob = scope.launch {
+                val shelves = safely { moods.curatedShelves(languageTag, country) }.orEmpty()
+                synchronized(this@HomeFeedController) {
+                    if (curatedRegion == locale) state.update { it.copy(curatedShelves = shelves) }
+                }
             }
         }
         val region = country.trim().uppercase().take(2).ifBlank { "US" }
@@ -62,6 +85,40 @@ class HomeFeedController(
             }
         }
         loadDaily()
+    }
+
+    @Synchronized
+    fun loadCuratedCollections(language: String, country: String) {
+        if (curatedRegion != (language to country)) load(country, language)
+        if (curatedState.value.collections != null || collectionsJob?.isActive == true) return
+        curatedState.update { it.copy(loading = true) }
+        collectionsJob = scope.launch {
+            val collections = safely { moods.curatedCollections(language, country) }
+            synchronized(this@HomeFeedController) {
+                if (curatedRegion != (language to country)) return@synchronized
+                curatedState.update { it.copy(collections = collections?.takeIf { it.categories.isNotEmpty() || it.decades.isNotEmpty() || it.everyday.isNotEmpty() }, loading = false) }
+                collections?.categories?.firstOrNull()?.let { selectCuratedCategory(it.params) }
+            }
+        }
+    }
+
+    @Synchronized
+    fun selectCuratedCategory(params: String) {
+        val (language, country) = curatedRegion ?: return
+        val current = curatedState.value
+        if (current.category == params && (current.categoryLoading || current.playlists.isNotEmpty())) return
+        categoryJob?.cancel()
+        val cached = categories[params]
+        curatedState.update { it.copy(category = params, categoryLoading = cached == null, playlists = cached.orEmpty()) }
+        if (cached != null) return
+        categoryJob = scope.launch {
+            val playlists = safely { moods.curatedCategory(params, language, country) }.orEmpty()
+            synchronized(this@HomeFeedController) {
+                if (curatedRegion != (language to country) || curatedState.value.category != params) return@synchronized
+                if (playlists.isNotEmpty()) categories[params] = playlists
+                curatedState.update { it.copy(categoryLoading = false, playlists = playlists) }
+            }
+        }
     }
 
     private fun loadDaily() {
@@ -124,7 +181,6 @@ class HomeFeedController(
         const val SEED_COUNT = 4
         const val RADIO_LIMIT = 20
         const val PICKS_PER_SEED = 4
-        const val CURATED_LIMIT = 20
         const val SEARCH_PARALLELISM = 4
         const val MIN_SONG_MS = 90_000L
         const val MAX_SONG_MS = 480_000L

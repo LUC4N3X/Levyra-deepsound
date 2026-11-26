@@ -145,9 +145,9 @@ Protect, in order:
 Artwork, lyrics, refresh, diagnostics, prefetch, metadata enrichment and
 animation must never delay or destabilize direct playback.
 
-Android and Desktop versioning, packaging, tags, artifacts and releases are
-independent. Never change one platform's version merely because the other
-platform is changing.
+Android, Windows, and Linux use the version from the root `gradle.properties`.
+Each platform publishes its own packages and tags. Include Windows and Linux
+equivalents for user-facing APK changes in the same PR.
 
 ## Engineering behavior
 

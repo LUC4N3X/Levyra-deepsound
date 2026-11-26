@@ -75,7 +75,7 @@ class LevyraAppModel internal constructor(
             settingsStore.settings.collect { value ->
                 if (value.onboardingCompleted) {
                     ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
-                    discoverController.load(value.contentCountry)
+                    discoverController.load(value.effectiveChartCountry, value.contentCountry)
                     soundtrackController.load(value.language.tag)
                     homeFeedController.load(value.contentCountry, value.language.tag)
                 }
@@ -132,6 +132,17 @@ class LevyraAppModel internal constructor(
         navigate(Destination.COLLECTION)
     }
 
+    fun openTrendingArtist(name: String) {
+        val cached = soundtrackController.artistReferences.value[name.lowercase()]
+        if (cached != null) {
+            openCollection(cached)
+        } else {
+            catalogController.clearCollectionHistory()
+            catalogController.openArtist(name)
+            navigate(Destination.COLLECTION)
+        }
+    }
+
     fun openCollectionFromUrl(url: String) {
         if (destinationState.value == Destination.COLLECTION) {
             catalogController.pushCollectionHistory()
@@ -141,9 +152,26 @@ class LevyraAppModel internal constructor(
         catalogController.openCollectionFromUrl(url) { navigate(Destination.COLLECTION) }
     }
 
+    fun toggleFollowArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.toggleFollowArtist(artist) }
+    }
+
+    fun togglePinnedArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.togglePinnedArtist(artist) }
+    }
+
+    fun toggleExcludedArtist(artist: CollectionRef) {
+        scope.launch { libraryStore.toggleExcludedArtist(artist) }
+    }
+
+    fun downloadArtistTracks(tracks: List<Track>) {
+        scope.launch { tracks.forEach(downloadController::enqueue) }
+    }
+
     fun refreshDiscover() {
         if (settingsStore.current.onboardingCompleted) {
-            discoverController.load(settingsStore.current.contentCountry, force = true)
+            val settings = settingsStore.current
+            discoverController.load(settings.effectiveChartCountry, settings.contentCountry, force = true)
         }
     }
 

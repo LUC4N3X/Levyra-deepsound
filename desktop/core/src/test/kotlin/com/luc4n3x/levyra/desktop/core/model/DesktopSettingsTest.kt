@@ -7,6 +7,20 @@ import org.junit.Test
 
 class DesktopSettingsTest {
     @Test
+    fun languageChangesChartCountryAndPreservesContentCountry() {
+        val original = DesktopSettings(language = AppLanguage.ITALIAN, contentCountry = "IT")
+        assertEquals("IT", original.effectiveChartCountry)
+
+        val english = original.withLanguage(AppLanguage.ENGLISH).sanitized()
+        assertEquals("US", english.effectiveChartCountry)
+        assertEquals("IT", english.contentCountry)
+
+        val manual = english.copy(chartCountry = "de").sanitized()
+        assertEquals("DE", manual.effectiveChartCountry)
+        assertEquals(manual, manual.withLanguage(AppLanguage.ENGLISH))
+    }
+
+    @Test
     fun crossfadeIsSnappedToASupportedStep() {
         assertEquals(0, DesktopSettings.normalizeCrossfade(-500))
         assertEquals(0, DesktopSettings.normalizeCrossfade(500))

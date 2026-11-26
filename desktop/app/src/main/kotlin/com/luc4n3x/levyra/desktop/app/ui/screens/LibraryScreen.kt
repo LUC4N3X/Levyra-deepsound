@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -44,8 +45,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
+import com.luc4n3x.levyra.desktop.app.ui.components.CollectionCard
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
@@ -53,6 +56,7 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
+import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.HistoryEntry
 import com.luc4n3x.levyra.desktop.core.storage.DownloadData
@@ -69,6 +73,7 @@ fun LibraryScreen(
     downloads: DownloadData,
     actions: TrackActions,
     onOpenPlaylist: (String) -> Unit,
+    onOpenArtist: (CollectionRef) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onImportUrl: (String) -> Unit,
     onImportPlaylist: () -> Unit,
@@ -185,6 +190,18 @@ fun LibraryScreen(
                         onOpenRecent = { selectedTab = LibraryTab.HISTORY },
                         onOpenMostPlayed = { selectedTab = LibraryTab.MOST_PLAYED }
                     )
+                }
+                if (library.followedArtists.isNotEmpty()) {
+                    item(key = "library-followed-artists") {
+                        Column(Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(shared.artists, style = MaterialTheme.typography.titleLarge)
+                            ShelfRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                items(library.followedArtists, key = { it.id }) { artist ->
+                                    CollectionCard(artist, onClick = { onOpenArtist(artist) }, modifier = Modifier.width(152.dp))
+                                }
+                            }
+                        }
+                    }
                 }
                 if (recent.isNotEmpty()) {
                     item(key = "library-history-shelf") {

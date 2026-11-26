@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 120
     outputs:
       publish: ${{ steps.version.outputs.publish }}
+      desktop_release_version: ${{ steps.verify_release.outputs.desktop_release_version || steps.retry_desktop.outputs.desktop_release_version }}
     env:
       LEVYRA_SIGNING_CERT_SHA256: 90221b5db83ec605c349fb256efe6801a4b0f2e6ed5da19e18dba6fa1f23e97b
       ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
@@ -371,6 +372,7 @@ jobs:
           fi
 
       - name: Verify Published Release
+        id: verify_release
         if: steps.version.outputs.publish == 'true'
         shell: bash
         env:
@@ -414,11 +416,51 @@ jobs:
           jq -r '.body' published-release.json | grep -Fx "# Levyra ${VERSION}"
           jq -r '.body' published-release.json | grep -Fx -- "- Version code: \`${VERSION_CODE}\`"
           jq -r '.url' published-release.json
+          if [[ "${REFRESH_APK}" != "true" ]]; then
+            printf 'desktop_release_version=%s\n' "${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Skip Existing Release
         if: steps.version.outputs.publish != 'true'
         shell: bash
         run: echo "Release ${TAG} already exists; no assets or release notes were overwritten."
+
+      - name: Recover desktop jobs for a verified release on this commit
+        id: retry_desktop
+        if: steps.version.outputs.publish != 'true' && (github.run_attempt > 1 || github.event_name == 'workflow_dispatch')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "$(git rev-list -n1 "refs/tags/$TAG")" != "$GITHUB_SHA" ]]; then
+            exit 0
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft == false' | grep -Fx true
+          verified=$(mktemp -d)
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "$APK_NAME" --pattern "$CHECKSUM_NAME" --dir "$verified"
+          cd "$verified"
+          sha256sum --check "$CHECKSUM_NAME"
+          printf 'desktop_release_version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+
+  desktop-windows:
+    needs: release
+    if: needs.release.outputs.desktop_release_version != '' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop-windows.yml
+    with:
+      release_version: ${{ needs.release.outputs.desktop_release_version }}
+
+  desktop-linux:
+    needs: release
+    if: needs.release.outputs.desktop_release_version != '' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop-linux.yml
+    with:
+      release_version: ${{ needs.release.outputs.desktop_release_version }}
 
   fdroid:
     name: Build and Publish Reproducible F-Droid APK

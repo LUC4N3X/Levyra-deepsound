@@ -162,8 +162,10 @@ object ChartsCatalog {
         storedRegionId: String,
         currentRegionId: String,
         previousLanguageCode: String,
-        languageCode: String
+        languageCode: String,
+        followNewLanguage: Boolean = false
     ): ChartRegion {
+        if (followNewLanguage) return region(LevyraContentLocales.catalogLocale(languageCode).chartRegionId)
         val current = supportedRegion(currentRegionId)
         return when {
             current == null -> defaultRegionForLanguage(languageCode)

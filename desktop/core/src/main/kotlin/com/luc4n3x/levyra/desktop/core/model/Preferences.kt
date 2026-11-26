@@ -157,11 +157,21 @@ data class DesktopSettings(
     val playbackSpeed: Float = DEFAULT_SPEED,
     val vlcDirectory: String = "",
     val audioOutputDeviceId: String = "",
-    val equalizer: EqualizerSettings = EqualizerSettings()
+    val equalizer: EqualizerSettings = EqualizerSettings(),
+    val chartCountry: String = ""
 ) {
+    val effectiveChartCountry: String get() = chartCountry.ifBlank { contentCountry }
+
+    fun withLanguage(language: AppLanguage): DesktopSettings =
+        if (language == this.language) this else copy(
+            language = language,
+            chartCountry = if (language == AppLanguage.ENGLISH) "US" else language.defaultCountry
+        )
+
     fun sanitized(): DesktopSettings = copy(
         highQualityAudioMode = com.luc4n3x.levyra.domain.HighQualityAudioMode.fromStorage(highQualityAudioMode).storageValue,
         contentCountry = contentCountry.trim().uppercase(Locale.ROOT).take(2).ifBlank { language.defaultCountry },
+        chartCountry = chartCountry.trim().uppercase(Locale.ROOT).takeIf { it.matches(Regex("[A-Z]{2}")) }.orEmpty(),
         displayName = displayName.trim().take(MAX_DISPLAY_NAME_LENGTH),
         selectedTasteIds = selectedTasteIds.map { it.trim().lowercase(Locale.ROOT) }
             .filter { it in VALID_TASTE_IDS }

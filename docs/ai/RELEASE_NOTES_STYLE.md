@@ -147,7 +147,7 @@ Examples:
 - no account, advertising identifier, analytics, or tracking system was added;
 - existing favorites, playlists, downloads, queue, history, settings, playback
   state, and backups remain compatible;
-- Android and Desktop versions remain independently versioned.
+- Android, Windows, and Linux share a version and have separate release tags.
 
 Only include claims that are true for the current release.
 
@@ -176,7 +176,7 @@ Keep the exact canonical values required by the release workflow:
 ```
 
 For Android-only releases, explicitly state that Levyra Desktop remains
-independently versioned when applicable. Do the inverse for Desktop-only
+distributed through their own release pages. Do the inverse for Desktop-only
 releases.
 
 ## Upgrade notes

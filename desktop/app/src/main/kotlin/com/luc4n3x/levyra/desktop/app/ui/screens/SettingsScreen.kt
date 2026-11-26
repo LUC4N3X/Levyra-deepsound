@@ -44,6 +44,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
+import com.luc4n3x.levyra.desktop.core.model.AppLanguage
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.EqualizerPreset
@@ -327,20 +328,7 @@ private fun SettingsPrimaryPages(
                     selected = settings.language,
                     label = strings.settingsLanguage,
                     contentDescription = strings.onboardingLanguageQuestion,
-                    onSelected = { language ->
-                        onUpdate {
-                            it.copy(
-                                language = language,
-                                contentCountry = if (
-                                    it.contentCountry.equals(it.language.defaultCountry, ignoreCase = true)
-                                ) {
-                                    language.defaultCountry
-                                } else {
-                                    it.contentCountry
-                                }
-                            )
-                        }
-                    }
+                    onSelected = { language -> onUpdate { it.withLanguage(language) } }
                 )
             }
             SettingsRow(
@@ -349,11 +337,17 @@ private fun SettingsPrimaryPages(
             ) {
                 CountryPicker(
                     selectedCode = settings.contentCountry,
+                    label = strings.settingsCountry,
+                    contentDescription = strings.settingsCountryBody,
+                    onSelected = { country -> onUpdate { it.copy(contentCountry = country) } }
+                )
+            }
+            SettingsRow(title = SharedStrings.forCode(settings.language.tag).top50Charts) {
+                CountryPicker(
+                    selectedCode = settings.effectiveChartCountry,
                     label = strings.chartsCountry,
                     contentDescription = strings.chartsSelectCountry,
-                    onSelected = { country ->
-                        onUpdate { it.copy(contentCountry = country) }
-                    }
+                    onSelected = { country -> onUpdate { it.copy(chartCountry = country) } }
                 )
             }
         }

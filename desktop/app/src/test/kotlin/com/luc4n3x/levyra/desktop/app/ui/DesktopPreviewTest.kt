@@ -71,6 +71,36 @@ class DesktopPreviewTest {
         return node.children.firstNotNullOfOrNull { findDescription(it, label) }
     }
 
+    @Test fun renderUpdateReleaseAndDownloadProgress() {
+        assumeTrue(System.getenv("LEVYRA_RENDER_PREVIEWS") == "1")
+        val release = DesktopRelease(
+            version = "3.2.5",
+            name = "Levyra 3.2.5",
+            notes = "<!-- levyra-highlights {\"en\":[\"Explore more curated playlists and updated artist pages on Desktop.\"]} -->",
+            installer = DesktopReleaseAsset("Levyra.msi", "", 125_000_000L),
+            checksum = DesktopReleaseAsset("Levyra.msi.sha256", "", 64L),
+            publishedAtEpochMs = 1_795_651_200_000L
+        )
+        val available = DesktopUpdateUiState(phase = DesktopUpdatePhase.AVAILABLE, release = release)
+        val downloading = available.copy(
+            phase = DesktopUpdatePhase.DOWNLOADING,
+            totalBytes = release.installer.size,
+            bytesDownloaded = 42_000_000L
+        )
+        val output = Files.createDirectories(Path.of("build", "previews"))
+        for ((width, height) in listOf(1280 to 800, 740 to 510)) {
+            for (state in listOf(available, downloading)) {
+                renderComposeScene(width, height) {
+                    LevyraTheme(ThemeMode.DARK) {
+                        DesktopUpdateScreen(state, AppLanguage.ENGLISH, {}, {}, animated = false)
+                    }
+                }.use { image ->
+                    Files.write(output.resolve("update-${state.phase.name.lowercase()}-$width.png"), image.encodeToData()!!.bytes)
+                }
+            }
+        }
+    }
+
     @Test fun renderWideCompactAndRtlNowPlaying() {
         assumeTrue(System.getenv("LEVYRA_RENDER_PREVIEWS") == "1")
         val track = Track("preview", "Tum Hi Ho", "Arijit Singh", "Aashiqui 2", "", durationMs = 262_000)

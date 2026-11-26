@@ -28,12 +28,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -69,6 +72,7 @@ internal fun SoundtrackHero(
     title: String,
     lead: String,
     portraitUrl: String,
+    fallbackArtworkUrl: String,
     companionArtworkUrls: List<String>,
     playing: Boolean,
     loading: Boolean,
@@ -78,14 +82,16 @@ internal fun SoundtrackHero(
     modifier: Modifier = Modifier
 ) {
     val canvas = MaterialTheme.colorScheme.surfaceContainerLowest
-    val portraitTint by produceState(LevyraBrand.cyan, portraitUrl) {
-        value = ArtworkPalette.accentFor(portraitUrl) ?: LevyraBrand.cyan
+    var portraitFailed by remember(portraitUrl) { mutableStateOf(false) }
+    val artworkUrl = portraitUrl.takeUnless { portraitFailed || it.isBlank() }.orEmpty().ifBlank { fallbackArtworkUrl }
+    val portraitTint by produceState(LevyraBrand.cyan, artworkUrl) {
+        value = ArtworkPalette.accentFor(artworkUrl) ?: LevyraBrand.cyan
     }
     val glow by animateColorAsState(portraitTint, tween(500))
-    val portrait = rememberArtworkRequest(portraitUrl)
+    val portrait = rememberArtworkRequest(artworkUrl)
     val portraitAlpha by animateFloatAsState(if (portrait != null) 1f else 0f, tween(420))
 
-    Box(modifier = modifier.fillMaxWidth().height(HeroHeight)) {
+    Box(modifier = modifier.fillMaxWidth().height(HeroHeight).clipToBounds()) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -110,11 +116,9 @@ internal fun SoundtrackHero(
                     model = portrait,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    alignment = BiasAlignment(0f, -0.35f),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .fillMaxHeight()
-                        .fillMaxWidth(PortraitShare)
+                    alignment = BiasAlignment(0f, -0.92f),
+                    onError = { if (artworkUrl == portraitUrl) portraitFailed = true },
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.82f).fillMaxHeight().clipToBounds()
                         .graphicsLayer {
                             alpha = portraitAlpha
                             compositingStrategy = CompositingStrategy.Offscreen
@@ -122,7 +126,7 @@ internal fun SoundtrackHero(
                         .drawWithContent {
                             drawContent()
                             drawRect(
-                                Brush.horizontalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.85f), 1f to Color.Black),
+                                Brush.horizontalGradient(0f to Color.Transparent, 0.54f to Color.Black, 1f to Color.Black),
                                 blendMode = BlendMode.DstIn
                             )
                         }
@@ -246,4 +250,3 @@ private fun highlighted(text: String, highlight: String): AnnotatedString = buil
 
 private val HeroHeight = 360.dp
 private val HeroInset = 32.dp
-private const val PortraitShare = 0.74f

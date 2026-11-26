@@ -10,7 +10,7 @@ description: Implement, debug, or review Levyra Desktop for Windows, including K
 1. Read the root `AGENTS.md` and `desktop/AGENTS.md`.
 2. Read `desktop/README.md` and the relevant architecture documentation.
 3. Inspect the affected `desktop/core`, `desktop/player`, and `desktop/app` code plus nearby tests.
-4. Inspect Desktop workflows and `desktop/version.properties` when packaging, updates, or releases are involved.
+4. Inspect Desktop workflows and `levyraVersionName` in the root `gradle.properties` when packaging, updates, or releases are involved.
 
 ## Architecture boundaries
 

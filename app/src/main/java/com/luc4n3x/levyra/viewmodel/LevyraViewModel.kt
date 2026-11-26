@@ -7572,7 +7572,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalizedLanguage = LevyraLanguageCatalog.normalize(code)
         if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
-        applyLanguageContent(normalizedLanguage, refreshRemote = true)
+        applyLanguageContent(normalizedLanguage, refreshRemote = true, followNewLanguage = true)
         _state.value.artistProfile?.takeIf { _state.value.showArtist }?.let(::startArtistLore)
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
@@ -7605,7 +7605,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyLanguageContent(languageCode, refreshRemote = true)
     }
 
-    private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
+    private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean, followNewLanguage: Boolean = false) {
         NewPipeRuntime.setLanguage(languageCode)
         searchEngine.reset()
         pendingHomeSectionsSnapshot.set(null)
@@ -7616,8 +7616,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             storedRegionId = preferences.chartRegionId(),
             currentRegionId = _state.value.selectedChartId,
             previousLanguageCode = _state.value.languageCode,
-            languageCode = languageCode
+            languageCode = languageCode,
+            followNewLanguage = followNewLanguage
         )
+        if (followNewLanguage) preferences.setChartRegionId(selectedChartRegion.id)
         val localizedMoods = moodEngine.moodsForLanguage(languageCode)
         val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
         val homeSections = LevyraStartupCatalog.repairHomeSections(

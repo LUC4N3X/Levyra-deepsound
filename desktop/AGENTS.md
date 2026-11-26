@@ -32,7 +32,8 @@ For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape
 ## Updates and release safety
 
 - Verify update assets and SHA-256 data before installation; do not weaken verification.
-- Desktop versioning lives only in `desktop/version.properties` and uses `desktop-v<version>` tags.
+- Windows and Linux share Android's `levyraVersionName` from the root `gradle.properties`. Windows uses `desktop-v<version>` tags and Linux uses `desktop-linux-v<version>` tags.
+- Deliver Windows and Linux equivalents of APK features and user-facing changes in the same PR. Verify the shared Desktop implementation on each runtime where available.
 - Never change Android version values for a Desktop release.
 - Preserve the rule that Desktop releases do not replace the Android release as the repository's Latest release.
 - Do not commit bundled proprietary/native runtime files unless licensing, size, source, and repository policy have been explicitly reviewed.

@@ -1,6 +1,12 @@
 package com.luc4n3x.levyra.desktop.core.catalog
 
 import com.luc4n3x.levyra.desktop.core.charts.PlayableMatcher
+import com.luc4n3x.levyra.data.spotify.SpotifyArtistAudience
+import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
+import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
+import com.luc4n3x.levyra.desktop.core.extractor.YoutubeMusicBrowse
+import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.domain.isSingleLike
 import com.luc4n3x.levyra.desktop.core.model.ArtistDetail
 import com.luc4n3x.levyra.desktop.core.model.CatalogPage
 import com.luc4n3x.levyra.desktop.core.model.CollectionDetail
@@ -11,6 +17,9 @@ import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +38,8 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 class CatalogRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
+    private val music = YoutubeMusicBrowse()
+    private val artistAudience = SpotifyArtistAudience(clientFactory = { ExtractorHttp.client })
     private val service: StreamingService get() = ServiceList.YouTube
 
     suspend fun search(query: String, filter: SearchFilter): CatalogPage = withContext(dispatcher) {
@@ -59,6 +70,14 @@ class CatalogRepository(
         CatalogMapper.toPage(page.items.orEmpty(), page.nextPage, filter)
     }
 
+    suspend fun artistMonthlyListeners(name: String): Long? = artistAudience.monthlyListeners(name)
+
+    suspend fun findArtist(name: String): CollectionRef? {
+        val identity = desktopArtistIdentity(name)
+        if (identity.isBlank()) return null
+        return search(name, SearchFilter.ARTISTS).collections.firstOrNull { desktopArtistIdentity(it.title) == identity }
+    }
+
     suspend fun suggestions(query: String): List<String> = withContext(dispatcher) {
         val trimmed = query.trim()
         if (trimmed.length < 2) return@withContext emptyList()
@@ -72,7 +91,16 @@ class CatalogRepository(
     suspend fun collection(ref: CollectionRef): CollectionDetail = withContext(dispatcher) {
         when (ref.kind) {
             CollectionKind.ARTIST -> artistDetail(ref)
-            else -> playlistDetail(ref)
+            CollectionKind.ALBUM -> {
+                val browseId = ref.url.removePrefix("https://music.youtube.com/browse/")
+                if (browseId.startsWith("MPRE")) {
+                    val tracks = musicBrowse(browseId)?.let { YoutubeMusicArtistPage.tracks(it, ref.subtitle, videos = false) }.orEmpty()
+                    CollectionDetail(ref, CatalogPage(tracks = tracks))
+                } else {
+                    playlistDetail(ref)
+                }
+            }
+            CollectionKind.PLAYLIST -> playlistDetail(ref)
         }
     }
 
@@ -149,6 +177,53 @@ class CatalogRepository(
     }
 
     private suspend fun artistDetail(ref: CollectionRef): CollectionDetail {
+        val id = ref.id.takeIf { it.startsWith("UC") } ?: CatalogMapper.collectionIdOf(ref.url).takeIf { it.startsWith("UC") }
+        val root = id?.let { musicBrowse(it) }
+        if (root != null) {
+            val preview = YoutubeMusicArtistPage.parse(root, ref.copy(id = id))
+            if (preview != null && preview.tracks.isNotEmpty()) {
+                val expanded = coroutineScope {
+                    YoutubeMusicArtistPage.shelves(root).mapNotNull { shelf ->
+                        val endpoint = shelf.more ?: return@mapNotNull null
+                        val browseId = endpoint.optString("browseId")
+                        val params = endpoint.optString("params")
+                        if (shelf.type == ReleaseType.Unknown && !browseId.startsWith("VL")) return@mapNotNull null
+                        Triple(shelf.type, browseId, params)
+                    }.distinct().take(6).map { (type, browseId, params) ->
+                        async { type to musicBrowse(browseId, params) }
+                    }.awaitAll()
+                }
+                val releases = expanded.flatMap { (type, page) -> page?.let { YoutubeMusicArtistPage.releases(it, type) }.orEmpty() }
+                val moreTracks = expanded.filter { it.first == ReleaseType.Unknown }.flatMap { (_, page) ->
+                    page?.let { YoutubeMusicArtistPage.tracks(it, preview.name, videos = false) }.orEmpty()
+                }
+                val artist = preview.copy(
+                    tracks = (preview.tracks + moreTracks).distinctBy { it.id }.take(50),
+                    albums = (preview.albums + releases.filter { it.first == ReleaseType.Album }.map { it.second }).distinctBy { it.id },
+                    singles = (preview.singles + releases.filter { it.first.isSingleLike }.map { it.second }).distinctBy { it.id },
+                    compilations = (preview.compilations + releases.filter { it.first == ReleaseType.Compilation }.map { it.second }).distinctBy { it.id }
+                )
+                return CollectionDetail(
+                    ref.copy(id = id, title = artist.name, artworkUrl = artist.portraitUrl, itemCount = artist.tracks.size.toLong()),
+                    CatalogPage(
+                        tracks = artist.tracks,
+                        collections = artist.albums + artist.singles + artist.compilations + artist.playlists + artist.featuredPlaylists + artist.relatedArtists
+                    ),
+                    artist
+                )
+            }
+        }
+        return extractorArtistDetail(ref)
+    }
+
+    private fun musicBrowse(id: String, params: String = "") = music.browse(
+        ExtractorRuntime.localization().languageCode,
+        ExtractorRuntime.contentCountry().countryCode,
+        id,
+        params
+    )
+
+    private suspend fun extractorArtistDetail(ref: CollectionRef): CollectionDetail {
         val info = ChannelInfo.getInfo(service, ref.url)
         val resolvedName = chooseDesktopArtistName(ref.title, info.name.orEmpty())
         val tabPages = info.tabs.orEmpty().mapNotNull { handler ->
@@ -336,7 +411,15 @@ internal fun desktopArtistArtworkUrl(url: String, size: Int = 720): String {
     return "$base=s${size.coerceIn(256, 1280)}-c-k-c0x00ffffff-no-rj"
 }
 
-private fun artistLabelMatches(candidate: String, artistName: String): Boolean {
+fun artistCreditMatches(credit: String, artistName: String): Boolean {
+    val identity = desktopArtistIdentity(artistName)
+    if (identity.isBlank()) return false
+    return desktopArtistIdentity(credit) == identity || ArtistCreditSeparator.split(credit).any { desktopArtistIdentity(it) == identity }
+}
+
+private val ArtistCreditSeparator = Regex(""",| & | feat\. | feat | featuring | x """, RegexOption.IGNORE_CASE)
+
+internal fun artistLabelMatches(candidate: String, artistName: String): Boolean {
     val candidateKey = desktopArtistIdentity(candidate)
     val artistKey = desktopArtistIdentity(artistName)
     if (candidateKey.isBlank() || artistKey.isBlank()) return false
@@ -345,7 +428,9 @@ private fun artistLabelMatches(candidate: String, artistName: String): Boolean {
         artistKey.contains(candidateKey)
 }
 
+private val DesktopArtistSeparators = Regex("""[^\p{L}\p{N}]+""")
+
 private fun desktopArtistIdentity(value: String): String = CatalogMapper.cleanArtist(value)
     .lowercase(Locale.ROOT)
-    .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+    .replace(DesktopArtistSeparators, " ")
     .trim()
