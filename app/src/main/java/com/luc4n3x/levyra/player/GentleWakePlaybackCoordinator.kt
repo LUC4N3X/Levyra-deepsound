@@ -12,6 +12,8 @@ import com.luc4n3x.levyra.domain.GentleWakeSettings
 import com.luc4n3x.levyra.domain.GentleWakeSourceType
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.RadioStore
+import com.luc4n3x.levyra.feature.radio.RadioUrlPolicy
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode
 import java.io.File
 import org.json.JSONArray
@@ -24,6 +26,10 @@ internal data class GentleWakeResolvedSource(
 )
 
 internal object GentleWakePlaybackCoordinator {
+    const val SOURCE_STALL_TIMEOUT_MS = 20_000L
+    private const val PAYLOAD_STREAM_URL = "streamUrl"
+    private const val LIVE_RADIO_ID_PREFIX = "live-radio:"
+
     suspend fun resolveAlarmSource(
         context: Context,
         settings: GentleWakeSettings,
@@ -89,12 +95,15 @@ internal object GentleWakePlaybackCoordinator {
     }
 
     private suspend fun radioTracks(context: Context, settings: GentleWakeSettings): List<Track> {
-        val payloadTracks = decodePayloadTracks(settings.sourcePayloadJson)
-        if (payloadTracks.isNotEmpty()) return payloadTracks
-        val radioStore = RadioStore(context)
-        val station = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
-            .firstOrNull { it.uuid == settings.sourceId || "live-radio:${it.uuid}" == settings.sourceId }
-        return station?.let { listOf(it.toTrack(artwork = it.safeFaviconUrl)) }.orEmpty()
+        val stationId = settings.sourceId.removePrefix(LIVE_RADIO_ID_PREFIX)
+        val station = runCatching {
+            val radioStore = RadioStore(context)
+            (radioStore.favorites() + radioStore.customStations() + radioStore.recent() +
+                listOfNotNull(radioStore.playbackStation()))
+                .firstOrNull { it.uuid == stationId && it.preferredStreamUrl.isNotBlank() }
+        }.getOrNull()
+        if (station != null) return listOf(station.toTrack(artwork = station.safeFaviconUrl))
+        return decodePayloadTracks(settings.sourcePayloadJson).filter { it.isLiveRadio() }
     }
 
     private fun localAudioTracks(
@@ -137,15 +146,23 @@ internal object GentleWakePlaybackCoordinator {
             ?: track.streamUrl.takeIf { isLocalUri(it) && isLocalUriReadable(context, it) }
         return when {
             localUri != null -> track.copy(streamUrl = localUri)
-            online && (track.streamUrl.isNotBlank() || track.id.isNotBlank()) -> track
+            online && isRemoteAlarmCandidate(track) -> track
             else -> null
         }
+    }
+
+    internal fun isRemoteAlarmCandidate(track: Track): Boolean = if (track.isLiveRadio()) {
+        RadioUrlPolicy.isAllowed(track.streamUrl)
+    } else {
+        track.streamUrl.isNotBlank() || track.id.isNotBlank()
     }
 
     fun encodePayloadTracks(tracks: List<Track>): String {
         val array = JSONArray()
         tracks.take(25).forEach { track ->
-            array.put(TrackJson.toJson(track))
+            val json = TrackJson.toJson(track)
+            if (isDurablePayloadStream(track, track.streamUrl)) json.put(PAYLOAD_STREAM_URL, track.streamUrl)
+            array.put(json)
         }
         return array.toString()
     }
@@ -159,14 +176,35 @@ internal object GentleWakePlaybackCoordinator {
                 buildList {
                     for (index in 0 until array.length()) {
                         val obj = array.optJSONObject(index) ?: continue
-                        runCatching { TrackJson.fromJson(obj) }.getOrNull()?.let(::add)
+                        runCatching { decodePayloadTrack(obj) }.getOrNull()?.let(::add)
                     }
                 }
             } else {
-                listOfNotNull(runCatching { TrackJson.fromJson(JSONObject(trimmed)) }.getOrNull())
+                listOfNotNull(runCatching { decodePayloadTrack(JSONObject(trimmed)) }.getOrNull())
             }
         }.getOrDefault(emptyList())
     }
+
+    private fun decodePayloadTrack(json: JSONObject): Track? {
+        val track = TrackJson.fromJson(json) ?: return null
+        val streamUrl = json.optString(PAYLOAD_STREAM_URL)
+        return if (isDurablePayloadStream(track, streamUrl)) track.copy(streamUrl = streamUrl) else track
+    }
+
+    private fun isDurablePayloadStream(track: Track, streamUrl: String): Boolean = when {
+        streamUrl.isBlank() -> false
+        track.isLiveRadio() -> RadioUrlPolicy.isAllowed(streamUrl)
+        else -> isLocalUri(streamUrl)
+    }
+
+    internal fun shouldFallBackToTone(
+        hasPlayerError: Boolean,
+        playWhenReady: Boolean,
+        playbackReady: Boolean,
+        lastHealthyAtMs: Long,
+        nowMs: Long
+    ): Boolean = hasPlayerError ||
+        (playWhenReady && !playbackReady && nowMs - lastHealthyAtMs >= SOURCE_STALL_TIMEOUT_MS)
 
     private fun isLocalUri(uriString: String): Boolean {
         return uriString.startsWith("file://") ||

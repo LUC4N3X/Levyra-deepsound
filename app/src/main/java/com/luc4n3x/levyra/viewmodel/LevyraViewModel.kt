@@ -2239,11 +2239,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _smartListening.update { it.copy(morningResumeSnapshot = snapshot) }
             }
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val radioStore = RadioStore(application)
-            val stations = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
-                .distinctBy { it.uuid }
-            _smartListening.update { it.copy(availableRadioStations = stations) }
+            combine(
+                radioStore.observeFavorites(),
+                radioStore.observeCustomStations(),
+                radioStore.observeRecent()
+            ) { favorites, custom, recent ->
+                (favorites + custom.filter(RadioStation::isCustom) + recent.sortedByDescending(RadioStation::lastPlayedAt))
+                    .distinctBy { it.uuid }
+            }.collect { stations ->
+                _smartListening.update { it.copy(availableRadioStations = stations) }
+            }
         }
         sleepTimerCollectorJob = viewModelScope.launch {
             PlaybackService.sleepTimerStateFlow.collect { timerState ->
@@ -2286,10 +2293,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
         player.onRecoverableStreamError = { track, positionMs, videoMode, playWhenReady, errorMessage ->
-            if (track.isLiveRadio()) {
-                recoverLiveRadioStream(track, playWhenReady, errorMessage)
-            } else {
-                recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
+            when {
+                PlaybackService.gentleWakeRuntimeStateFlow.value.active -> Unit
+                track.isLiveRadio() -> recoverLiveRadioStream(track, playWhenReady, errorMessage)
+                else -> recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
             }
         }
         player.onVideoStall = { onVideoMidPlayStall() }

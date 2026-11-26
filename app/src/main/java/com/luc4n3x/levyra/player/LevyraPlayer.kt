@@ -267,6 +267,7 @@ class LevyraPlayer(context: Context) {
                     if (NativeAudioIntegration.consumeRecoveredControllerError(error)) return
                     if (VideoDecoderFallback.Shared.consumeRecoveredControllerError(error)) return
                     if (ignoreEndedFromManualStop || connected.mediaItemCount == 0) return
+                    if (PlaybackService.gentleWakeRuntimeStateFlow.value.active) return
                     val track = loadedTrack ?: return
                     val message = cleanError(error)
                     if (isLocalPlayback(track) || track.isPersonalCollectionTrack()) {
