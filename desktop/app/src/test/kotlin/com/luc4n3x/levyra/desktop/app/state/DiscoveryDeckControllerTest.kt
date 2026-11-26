@@ -118,6 +118,37 @@ class DiscoveryDeckControllerTest {
     }
 
     @Test
+    fun previewCannotStartWhileASaveIsBeingWritten() {
+        var urlRequests = 0
+        val controller = DiscoveryDeckController(
+            scope = scope,
+            libraryStore = libraryStore(),
+            dismissedStore = JsonFileStore(temporary.root.toPath().resolve("held.json"), ListSerializer(String.serializer()), { emptyList() }),
+            previewUrl = { urlRequests += 1; "" },
+            playerFactory = { error("unused") },
+            pauseMain = { false },
+            resumeMain = {},
+            playFullTrack = {},
+            language = { "it" },
+            today = { monday },
+            io = kotlinx.coroutines.Dispatchers.Unconfined
+        )
+        controller.open(listOf(pick("a"), pick("b")))
+        kotlinx.coroutines.runBlocking {
+            val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val writer = controller.javaClass.getDeclaredField("diskWork").apply { isAccessible = true }.get(controller)
+            @Suppress("UNCHECKED_CAST")
+            (writer as kotlinx.coroutines.channels.SendChannel<suspend () -> Unit>).send { gate.await() }
+            controller.save()
+            controller.togglePreview()
+            assertEquals(0, urlRequests)
+            assertEquals(DiscoveryPreviewStatus.Idle, controller.deck.value.previewStatus)
+            gate.complete(Unit)
+        }
+        assertEquals("b", controller.deck.value.current?.track?.id)
+    }
+
+    @Test
     fun swipeDecisionForAnOlderCardIsIgnored() {
         val library = libraryStore()
         val controller = controller(library)

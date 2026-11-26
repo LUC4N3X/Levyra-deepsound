@@ -215,7 +215,7 @@ class DiscoveryDeckController(
 
     fun togglePreview() {
         val pick = state.value.current ?: return
-        if (state.value.previewStatusFor(pick) != DiscoveryPreviewStatus.Idle) stopPreview() else startPreview(pick)
+        if (state.value.previewStatusFor(pick) != DiscoveryPreviewStatus.Idle) stopPreview() else if (!writing.get()) startPreview(pick)
     }
 
     fun playFull() {
