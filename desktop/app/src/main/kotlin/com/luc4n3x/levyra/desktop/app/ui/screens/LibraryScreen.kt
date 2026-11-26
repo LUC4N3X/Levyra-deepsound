@@ -124,7 +124,7 @@ fun LibraryScreen(
                     LibraryTab.MOST_PLAYED -> shared.formatTrackCount(mostPlayed.size)
                 },
                 backLabel = shared.back,
-                onBack = if (selectedTab != null) ({ selectedTab = null }) else null
+                onBack = { selectedTab = null }.takeIf { selectedTab != null }
             ) {
                 when (selectedTab) {
                     LibraryTab.PLAYLISTS -> OutlinedButton(onClick = onImportPlaylist) { Text(strings.playlistImport) }
