@@ -22,7 +22,7 @@ const sharp = require(sharpModule.startsWith('.') || sharpModule.includes('/') |
   : sharpModule);
 
 const W = 3630;
-const H = 2060;
+let H = 2060;
 const brandColors = { ink: '#161F33', muted: '#4D5C7A' };
 
 function svg(body, w = W, h = H) {
@@ -195,6 +195,7 @@ const clippedWin = await sharp(resized.data)
 
 const outerW = winW + bezel * 2;
 const outerH = winH + bezel;
+H = outerH + 466;
 const winLeft = Math.round((W - outerW) / 2);
 const winTop = H - outerH;
 
