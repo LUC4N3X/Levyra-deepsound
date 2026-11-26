@@ -128,6 +128,20 @@ function windowShadowSvg(x, y, w, h, r) {
   `);
 }
 
+function windowGlintSvg(x, y, w, h, r) {
+  const path = `M ${x + r} ${y} H ${x + w - r} A ${r} ${r} 0 0 1 ${x + w} ${y + r} V ${y + h} H ${x} V ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} Z`;
+  return svg(`
+    <defs>
+      <linearGradient id="winGlint" x1="0" y1="0" x2="0.72" y2="0.62">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".055"/>
+        <stop offset="30%" stop-color="#FFFFFF" stop-opacity=".015"/>
+        <stop offset="56%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${path}" fill="url(#winGlint)"/>
+  `);
+}
+
 function windowFrameSvg(x, y, w, h, r) {
   const outer = `M ${x + r} ${y} H ${x + w - r} A ${r} ${r} 0 0 1 ${x + w} ${y + r} V ${y + h + 20} H ${x} V ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} Z`;
   const rim = `M ${x + 1.5} ${y + h + 20} V ${y + r} A ${r - 1.5} ${r - 1.5} 0 0 1 ${x + r} ${y + 1.5} H ${x + w - r} A ${r - 1.5} ${r - 1.5} 0 0 1 ${x + w - 1.5} ${y + r} V ${y + h + 20}`;
@@ -187,7 +201,12 @@ const radius = 32;
 const innerRadius = radius - bezel;
 
 const rawWin = await readFile(sourcePath);
-const resized = await sharp(rawWin).resize({ width: winW }).png().toBuffer({ resolveWithObject: true });
+const resized = await sharp(rawWin)
+  .resize({ width: winW, kernel: sharp.kernel.lanczos3 })
+  .modulate({ brightness: 1.02, saturation: 1.07 })
+  .linear(1.04, -3)
+  .sharpen({ sigma: 0.75, m1: 0.9, m2: 1.4 })
+  .png().toBuffer({ resolveWithObject: true });
 const winH = resized.info.height;
 const clippedWin = await sharp(resized.data)
   .composite([{ input: topRoundedMask(winW, winH, innerRadius), blend: 'dest-in' }])
@@ -205,6 +224,7 @@ const banner = await sharp(backdropSvg())
     { input: windowShadowSvg(winLeft, winTop, outerW, outerH, radius) },
     { input: windowFrameSvg(winLeft, winTop, outerW, outerH, radius) },
     { input: clippedWin, left: winLeft + bezel, top: winTop + bezel },
+    { input: windowGlintSvg(winLeft + bezel, winTop + bezel, winW, winH, innerRadius) },
     ...textLayers,
   ])
   .png().toBuffer();
