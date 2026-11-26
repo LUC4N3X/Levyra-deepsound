@@ -32,7 +32,6 @@ permissions:
 concurrency:
   group: publish-release-apk-${{ github.ref }}
   cancel-in-progress: false
-  queue: max
 
 jobs:
   release:
