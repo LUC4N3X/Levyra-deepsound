@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
@@ -150,7 +150,7 @@ fun CollectionScreen(
 
         if (state.page.collections.isNotEmpty()) {
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ShelfRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.page.collections, key = { it.id }) { ref ->
                         CollectionCard(
                             ref = ref,

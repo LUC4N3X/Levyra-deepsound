@@ -103,6 +103,16 @@ class LibraryStore(
 
     fun clearRecentSearches() = mutate { data -> data.copy(recentSearches = emptyList()) }
 
+    fun importPhoneLibrary(phone: PhoneLibrary): PhoneImportResult {
+        var result = PhoneImportResult(0, 0, 0)
+        mutate { data ->
+            val (updated, counts) = PhoneLibraryImport.merge(data, phone, MAX_HISTORY, nowMillis()) { UUID.randomUUID().toString() }
+            result = counts
+            updated
+        }
+        return result
+    }
+
     @Synchronized
     private fun mutate(transform: (LibraryData) -> LibraryData) {
         val updated = transform(state.value)

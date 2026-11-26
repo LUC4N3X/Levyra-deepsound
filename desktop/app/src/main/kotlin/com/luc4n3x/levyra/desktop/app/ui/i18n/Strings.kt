@@ -259,6 +259,8 @@ fun stringsFor(
     hour: Int = LocalTime.now().hour
 ): LevyraStrings {
     val shared = SharedLevyraStrings.forCode(language.tag)
+    val regional = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(language.tag)
+    val appearance = com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings.forCode(language.tag)
     val extras = DesktopExtras.forTag(language.tag)
     return LevyraStrings(
         languageCode = language.tag,
@@ -402,12 +404,12 @@ fun stringsFor(
         settingsEqualizerReset = shared.clear,
         settingsInterface = shared.design,
         settingsTheme = shared.theme,
-        settingsThemeSystem = shared.app,
-        settingsThemeLight = shared.brightness,
-        settingsThemeDark = shared.atmosphere,
+        settingsThemeSystem = regional.automatic,
+        settingsThemeLight = appearance.light,
+        settingsThemeDark = appearance.dark,
         settingsLanguage = shared.language,
-        settingsCountry = shared.localWaveName,
-        settingsCountryBody = shared.showChartsCountry,
+        settingsCountry = regional.contentCountryTitle,
+        settingsCountryBody = regional.contentCountryBody,
         settingsProfile = shared.smartMusicProfile,
         settingsProfileName = shared.nameQuestion,
         settingsRedoOnboarding = shared.redoQuestionnaire,

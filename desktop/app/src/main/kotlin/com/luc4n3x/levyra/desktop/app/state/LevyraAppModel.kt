@@ -26,16 +26,25 @@ enum class Destination {
     LOCAL_MUSIC,
     PLAYLIST,
     SETTINGS,
-    NOW_PLAYING
+    NOW_PLAYING,
+    MOODS,
+    PODCAST,
+    RADIO
 }
 
-class LevyraAppModel(
+class LevyraAppModel internal constructor(
     private val scope: CoroutineScope,
     val paths: AppPaths,
     private val settingsStore: SettingsStore,
     val libraryStore: LibraryStore,
     val catalogController: CatalogController,
     val discoverController: DiscoverController,
+    val soundtrackController: SoundtrackController,
+    val moodsController: MoodsController,
+    val homeFeedController: HomeFeedController,
+    internal val radioController: RadioController,
+    val exploreController: ExploreController,
+    val podcastController: PodcastController,
     val lyricsController: LyricsController,
     val playbackController: PlaybackController,
     val downloadController: OfflineDownloadController,
@@ -61,6 +70,8 @@ class LevyraAppModel(
                 if (value.onboardingCompleted) {
                     ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
                     discoverController.load(value.contentCountry)
+                    soundtrackController.load(value.language.tag)
+                    homeFeedController.load(value.contentCountry, value.language.tag)
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.ui.screens
 
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,7 +63,8 @@ fun SettingsScreen(
     onVerifyVlc: () -> Unit,
     onOpenDataFolder: () -> Unit,
     onRefreshAudioOutputDevices: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onImportPhoneBackup: () -> Unit = {}
 ) {
     val strings = LocalStrings.current
 
@@ -70,16 +72,15 @@ fun SettingsScreen(
         onRefreshAudioOutputDevices(false)
     }
 
+    var page by remember { mutableStateOf(SettingsPage.INTERFACE) }
+    Row(modifier.fillMaxSize()) {
+    SettingsHubList(strings = strings, selected = page, appVersion = appVersion, onSelect = { page = it })
     ScrollableColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.weight(1f).fillMaxHeight(),
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        item {
-            Text(text = strings.navSettings, style = MaterialTheme.typography.displaySmall)
-        }
-
-        item {
+        if (page == SettingsPage.PROFILE) item {
             SettingsSection(title = strings.settingsProfile) {
                 var nameDraft by remember(settings.displayName) {
                     mutableStateOf(settings.displayName)
@@ -126,7 +127,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.INTERFACE) item {
             SettingsSection(title = strings.settingsInterface) {
                 ChoiceRow(
                     title = strings.settingsTheme,
@@ -178,7 +179,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.AUDIO) item {
             SettingsSection(title = strings.settingsAudio) {
                 val shared = SharedStrings.forCode(settings.language.tag)
                 ChoiceRow(
@@ -281,7 +282,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.AUDIO) item {
             SettingsSection(title = strings.settingsEqualizer) {
                 Text(
                     text = strings.settingsEqualizerBody,
@@ -352,7 +353,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.PLAYBACK) item {
             SettingsSection(title = strings.settingsPlayback) {
                 ChoiceRow(
                     title = strings.settingsSpeed,
@@ -408,7 +409,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.SHORTCUTS) item {
             SettingsSection(title = strings.settingsShortcuts) {
                 val shortcuts = listOf(
                     "Space" to "${strings.playbackPlay} / ${strings.playbackPause}",
@@ -427,7 +428,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.VLC) item {
             SettingsSection(title = strings.settingsVlc) {
                 Text(
                     text = strings.settingsVlcBody,
@@ -482,7 +483,7 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.STORAGE) item {
             SettingsSection(title = strings.settingsStorage) {
                 Text(
                     text = strings.settingsStorageBody,
@@ -501,7 +502,21 @@ fun SettingsScreen(
             }
         }
 
-        item {
+        if (page == SettingsPage.STORAGE) item {
+            val shared = com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode(strings.languageCode)
+            SettingsSection(title = shared.backupRestoreSection) {
+                Text(
+                    text = shared.restoreBackupSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.material3.Button(onClick = onImportPhoneBackup) {
+                    Text(shared.restoreBackup)
+                }
+            }
+        }
+
+        if (page == SettingsPage.ABOUT) item {
             SettingsSection(title = strings.settingsAbout) {
                 Text(
                     text = strings.settingsAboutBody,
@@ -516,6 +531,7 @@ fun SettingsScreen(
                 )
             }
         }
+    }
     }
 }
 
@@ -628,7 +644,7 @@ private fun SettingsToggle(
 }
 
 @Composable
-private fun equalizerPresetLabel(preset: EqualizerPreset): String {
+internal fun equalizerPresetLabel(preset: EqualizerPreset): String {
     val strings = LocalStrings.current
     return when (preset) {
         EqualizerPreset.FLAT -> strings.equalizerPresetFlat

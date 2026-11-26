@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import com.luc4n3x.levyra.desktop.app.ui.components.ShelfRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -395,7 +395,7 @@ private fun ArtistCollectionSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ArtistSectionTitle(title)
-        LazyRow(
+        ShelfRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(end = 18.dp)
         ) {
@@ -418,7 +418,7 @@ private fun ArtistRelatedSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ArtistSectionTitle(title)
-        LazyRow(
+        ShelfRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(end = 18.dp)
         ) {

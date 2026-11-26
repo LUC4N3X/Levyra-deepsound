@@ -79,10 +79,17 @@ fun rememberArtworkRequest(url: String): ImageRequest? {
     return remember(url, context) {
         when (val source = ArtworkSources.of(url)) {
             null -> null
-            is ArtworkSource.Remote -> imageRequest(context, source.url)
+            is ArtworkSource.Remote -> imageRequest(context, highResolutionArtwork(source.url))
             is ArtworkSource.LocalFile -> imageRequest(context, source.path.toFile())
         }
     }
+}
+
+internal fun highResolutionArtwork(url: String): String = when {
+    "googleusercontent.com" in url || "ggpht.com" in url ->
+        url.replace(Regex("""=w\d+-h\d+[^&?/]*$"""), "=w600-h600-l90-rj").replace(Regex("""=s\d+[^&?/]*$"""), "=s600")
+    "i.ytimg.com/vi/" in url -> url.replace(Regex("""/(default|mqdefault)\.jpg"""), "/hqdefault.jpg")
+    else -> url
 }
 
 private fun imageRequest(context: PlatformContext, data: Any): ImageRequest =

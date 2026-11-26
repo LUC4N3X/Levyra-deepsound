@@ -13,7 +13,7 @@ data class LevyraLanguageOption(
 object LevyraLanguageCatalog {
     const val BRAZILIAN_PORTUGUESE = "pt-BR"
 
-    val languages: List<LevyraLanguageOption> = AppLanguage.entries.map { language ->
+    val languages: List<LevyraLanguageOption> = AppLanguage.entries.filter { it.tag != BRAZILIAN_PORTUGUESE }.map { language ->
         LevyraLanguageOption(
             code = language.tag,
             flag = language.flag,
@@ -35,8 +35,8 @@ object LevyraLanguageCatalog {
     fun deviceDefault(): String = normalize(Locale.getDefault().toLanguageTag())
 
     fun displayName(code: String): String {
-        val language = languages.firstOrNull { it.code == normalize(code) }
-        return language?.let { "${it.flag} ${it.nativeName}" } ?: "🇬🇧 English"
+        val language = AppLanguage.fromTag(code)
+        return "${language.flag} ${language.nativeName}"
     }
 
     fun isRtl(code: String): Boolean = normalize(code) in rtlCodes

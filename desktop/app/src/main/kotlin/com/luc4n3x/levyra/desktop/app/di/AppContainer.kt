@@ -8,7 +8,17 @@ import com.luc4n3x.levyra.desktop.app.state.LocalMusicController
 import com.luc4n3x.levyra.desktop.app.state.LyricsController
 import com.luc4n3x.levyra.desktop.app.state.OfflineDownloadController
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
+import com.luc4n3x.levyra.desktop.app.state.SoundtrackController
+import com.luc4n3x.levyra.desktop.app.state.MoodsController
+import com.luc4n3x.levyra.desktop.app.state.HomeFeedController
+import com.luc4n3x.levyra.desktop.app.state.RadioController
+import com.luc4n3x.levyra.desktop.app.state.ExploreController
+import com.luc4n3x.levyra.desktop.app.state.PodcastController
+import com.luc4n3x.levyra.desktop.core.moods.MoodsRepository
+import com.luc4n3x.levyra.desktop.core.podcast.PodcastRepository
+import com.luc4n3x.levyra.desktop.core.podcast.PodcastLibraryStore
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
+import com.luc4n3x.levyra.desktop.core.stream.DirectStreamResolver
 import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
 import com.luc4n3x.levyra.desktop.core.charts.EditorialCatalog
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
@@ -50,10 +60,10 @@ class AppContainer {
     }
     private val catalogRepository = CatalogRepository()
     private val youtubeResolver = YoutubeStreamResolver()
-    private val streamResolver = DesktopHighQualityResolver.create(scope, youtubeResolver, paths.root.resolve("cache"),
-        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) })
-    private val downloadResolver = DesktopHighQualityResolver.create(scope, YoutubeStreamResolver(), paths.root.resolve("cache"),
-        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }, forDownload = true)
+    private val streamResolver = DirectStreamResolver(DesktopHighQualityResolver.create(scope, youtubeResolver, paths.root.resolve("cache"),
+        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }))
+    private val downloadResolver = DirectStreamResolver(DesktopHighQualityResolver.create(scope, YoutubeStreamResolver(), paths.root.resolve("cache"),
+        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }, forDownload = true))
     private val chartsRepository = ChartsRepository(editorial = EditorialCatalog(paths.root.resolve("cache/editorial.json")))
     private val lyricsRepository = LyricsRepository()
     private val sponsorBlockRepository = SponsorBlockRepository()
@@ -108,10 +118,27 @@ class AppContainer {
         charts = chartsRepository
     )
 
+    private val soundtrackController = SoundtrackController(
+        scope = scope,
+        catalog = catalogRepository
+    )
+
     private val lyricsController = LyricsController(
         scope = scope,
         repository = lyricsRepository
     )
+
+    private val moodsRepository = MoodsRepository()
+
+    private val moodsController = MoodsController(scope, moodsRepository)
+
+    private val homeFeedController = HomeFeedController(scope, catalogRepository, libraryStore, moodsRepository)
+
+    private val radioController = RadioController(scope, paths)
+
+    private val exploreController = ExploreController(scope, chartsRepository)
+
+    private val podcastController = PodcastController(scope, PodcastRepository(), PodcastLibraryStore.create(paths), playbackController)
 
     val appModel: LevyraAppModel = LevyraAppModel(
         scope = scope,
@@ -120,6 +147,12 @@ class AppContainer {
         libraryStore = libraryStore,
         catalogController = catalogController,
         discoverController = discoverController,
+        soundtrackController = soundtrackController,
+        moodsController = moodsController,
+        homeFeedController = homeFeedController,
+        radioController = radioController,
+        exploreController = exploreController,
+        podcastController = podcastController,
         lyricsController = lyricsController,
         playbackController = playbackController,
         downloadController = downloadController,

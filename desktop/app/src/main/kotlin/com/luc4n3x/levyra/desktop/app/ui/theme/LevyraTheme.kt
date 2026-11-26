@@ -9,194 +9,149 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 
-private val LevyraCyan = Color(0xFF2997FF) // Apple Sky Link Blue for dark, Action Blue for light
-private val LevyraViolet = Color(0xFFA58BFF)
-private val LevyraDeepBlue = Color(0xFF000000)
+private val LevyraCyan = Color(0xFF2997FF)
+private val LevyraViolet = Color(0xFF818CF8)
+private val LevyraPink = Color(0xFFEC4899)
+private val LevyraDeepBlue = Color(0xFF030303)
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF2997FF),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF004499),
-    onPrimaryContainer = Color(0xFFD4F8FF),
-    secondary = Color(0xFF7A7A7A), // Muted text/icons
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFF333333),
-    onSecondaryContainer = Color(0xFFFFFFFF),
-    tertiary = Color(0xFF5EE0B6),
-    onTertiary = Color(0xFF000000),
-    background = Color(0xFF101418),
-    onBackground = Color(0xFFFFFFFF),
-    surface = Color(0xFF171C21),
-    onSurface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFF252D34),
-    onSurfaceVariant = Color(0xFFCCCCCC),
-    surfaceContainerLowest = Color(0xFF0B0F13),
-    surfaceContainerLow = Color(0xFF171C21),
-    surfaceContainer = Color(0xFF1D242B),
-    surfaceContainerHigh = Color(0xFF273039),
-    surfaceContainerHighest = Color(0xFF323C46),
-    outline = Color(0xFF404040),
-    outlineVariant = Color(0xFF333333),
-    error = Color(0xFFFF453A),
-    onError = Color(0xFF000000),
+    primary = LevyraCyan,
+    onPrimary = Color(0xFF030303),
+    primaryContainer = Color(0xFF0B3A66),
+    onPrimaryContainer = Color(0xFFD3E6FF),
+    secondary = Color(0xFF98CFEA),
+    onSecondary = Color(0xFF00344A),
+    secondaryContainer = Color(0xFF1B2733),
+    onSecondaryContainer = Color(0xFFD7ECF8),
+    tertiary = LevyraViolet,
+    onTertiary = Color(0xFF030303),
+    tertiaryContainer = Color(0xFF2A2D52),
+    onTertiaryContainer = Color(0xFFE0E2FF),
+    background = Color(0xFF0B0B0C),
+    onBackground = Color(0xFFF5F5F7),
+    surface = Color(0xFF0B0B0C),
+    onSurface = Color(0xFFF5F5F7),
+    surfaceVariant = Color(0xFF1D1D1F),
+    onSurfaceVariant = Color(0xFF98989F),
+    surfaceTint = Color.Transparent,
+    surfaceDim = Color(0xFF030303),
+    surfaceBright = Color(0xFF2D2D2F),
+    surfaceContainerLowest = Color(0xFF030303),
+    surfaceContainerLow = Color(0xFF141416),
+    surfaceContainer = Color(0xFF1A1A1C),
+    surfaceContainerHigh = Color(0xFF242426),
+    surfaceContainerHighest = Color(0xFF2E2E31),
+    inverseSurface = Color(0xFFF5F5F7),
+    inverseOnSurface = Color(0xFF0A0A0A),
+    inversePrimary = Color(0xFF0066CC),
+    outline = Color(0x33FFFFFF),
+    outlineVariant = Color(0x1AFFFFFF),
+    error = Color(0xFFFF6B7A),
+    onError = Color(0xFF030303),
     errorContainer = Color(0xFF4A1620),
     onErrorContainer = Color(0xFFFFD9DE)
 )
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF0066CC),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE5F0FF),
-    onPrimaryContainer = Color(0xFF004499),
-    secondary = Color(0xFF7A7A7A), // Muted text/icons
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE0E0E0),
-    onSecondaryContainer = Color(0xFF1D1D1F),
-    tertiary = Color(0xFF007A5D),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6E8FF),
+    onPrimaryContainer = Color(0xFF00305F),
+    secondary = Color(0xFF00708F),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD5ECF7),
+    onSecondaryContainer = Color(0xFF00283A),
+    tertiary = Color(0xFF5A63C8),
     onTertiary = Color.White,
-    background = Color(0xFFF7FAFE),
-    onBackground = Color(0xFF1D1D1F),
-    surface = Color(0xFFF5F5F7), // Apple Parchment
-    onSurface = Color(0xFF1D1D1F),
-    surfaceVariant = Color(0xFFE8ECF2),
-    onSurfaceVariant = Color(0xFF333333),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFFAFAFC),
-    surfaceContainer = Color(0xFFF5F5F7),
-    surfaceContainerHigh = Color(0xFFE0E0E0),
-    surfaceContainerHighest = Color(0xFFCCCCCC),
-    outline = Color(0xFFE0E0E0),
-    outlineVariant = Color(0xFFF0F0F0),
+    tertiaryContainer = Color(0xFFE2E4FF),
+    onTertiaryContainer = Color(0xFF151A5C),
+    background = Color(0xFFF3F3F5),
+    onBackground = Color(0xFF111114),
+    surface = Color(0xFFF3F3F5),
+    onSurface = Color(0xFF111114),
+    surfaceVariant = Color(0xFFE6E6EA),
+    onSurfaceVariant = Color(0xFF5E5E66),
+    surfaceTint = Color.Transparent,
+    surfaceDim = Color(0xFFE2E2E6),
+    surfaceBright = Color.White,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFFAFAFB),
+    surfaceContainer = Color(0xFFEFEFF2),
+    surfaceContainerHigh = Color(0xFFE7E7EB),
+    surfaceContainerHighest = Color(0xFFDDDDE2),
+    inverseSurface = Color(0xFF1D1D1F),
+    inverseOnSurface = Color(0xFFF5F5F7),
+    inversePrimary = LevyraCyan,
+    outline = Color(0x29000000),
+    outlineVariant = Color(0x14000000),
     error = Color(0xFFBA1A2B),
     onError = Color.White
 )
 
 private val LevyraTypography = Typography(
-    headlineLarge = TextStyle(
-        fontSize = 40.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.28).sp,
-        lineHeight = 44.sp
-    ),
-    headlineMedium = TextStyle(
-        fontSize = 34.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.37).sp,
-        lineHeight = 38.sp
-    ),
-    headlineSmall = TextStyle(
-        fontSize = 28.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = 0.2.sp,
-        lineHeight = 32.sp
-    ),
-    titleLarge = TextStyle(
-        fontSize = 21.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.23.sp,
-        lineHeight = 25.sp
-    ),
-    titleMedium = TextStyle(
-        fontSize = 17.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.37).sp,
-        lineHeight = 21.sp
-    ),
-    titleSmall = TextStyle(
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.2).sp,
-        lineHeight = 20.sp
-    ),
-    bodyLarge = TextStyle(
-        fontSize = 17.sp,
-        fontWeight = FontWeight.Normal,
-        letterSpacing = (-0.37).sp,
-        lineHeight = 25.sp
-    ),
-    bodyMedium = TextStyle(
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Normal,
-        letterSpacing = (-0.24).sp,
-        lineHeight = 22.sp
-    ),
-    bodySmall = TextStyle(
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Normal,
-        letterSpacing = (-0.08).sp,
-        lineHeight = 18.sp
-    ),
-    labelLarge = TextStyle(
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.22).sp
-    ),
-    labelMedium = TextStyle(
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.12).sp
-    ),
-    labelSmall = TextStyle(
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.08).sp
-    )
+    displayLarge = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.SemiBold, lineHeight = 52.sp, letterSpacing = (-0.4).sp),
+    displayMedium = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.SemiBold, lineHeight = 42.sp, letterSpacing = (-0.3).sp),
+    displaySmall = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.SemiBold, lineHeight = 36.sp, letterSpacing = (-0.2).sp),
+    headlineLarge = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.SemiBold, lineHeight = 36.sp, letterSpacing = (-0.2).sp),
+    headlineMedium = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp, letterSpacing = (-0.15).sp),
+    headlineSmall = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 28.sp),
+    titleLarge = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 28.sp),
+    titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp),
+    titleSmall = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp),
+    bodyLarge = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Normal, lineHeight = 22.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp),
+    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp),
+    labelSmall = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Medium, lineHeight = 14.sp)
 )
 
 private val LevyraShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(6.dp),
+    medium = RoundedCornerShape(8.dp),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(16.dp)
 )
 
 object LevyraBrand {
     val cyan: Color get() = LevyraCyan
     val violet: Color get() = LevyraViolet
+    val pink: Color get() = LevyraPink
     val deepBlue: Color get() = LevyraDeepBlue
+    val soft: Color = Color(0xFF98CFEA)
+    val onSoft: Color = Color(0xFF00344A)
+}
+
+object LevyraChrome {
+    fun caption(dark: Boolean): Int = if (dark) 0x0B0B0C else 0xF3F3F5
+    fun captionText(dark: Boolean): Int = if (dark) 0xD8D8DC else 0x1D1D1F
+    fun border(dark: Boolean): Int = if (dark) 0x1F1F22 else 0xD8D8DE
 }
 
 object LevyraMotion {
-    const val HOVER_ALPHA = 0.08f
-    const val SELECTED_ALPHA = 0.12f
+    const val HOVER_ALPHA = 0.06f
+    const val SELECTED_ALPHA = 0.10f
 }
 
 val LocalAccentColor = compositionLocalOf { LevyraCyan }
 
 @Composable
-fun LevyraTheme(themeMode: ThemeMode, accent: Color = LevyraCyan, content: @Composable () -> Unit) {
+fun LevyraTheme(themeMode: ThemeMode, content: @Composable () -> Unit) {
     val dark = when (themeMode) {
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val colors = remember(dark, accent) {
-        val base = if (dark) DarkColors else LightColors
-        val primary = lerp(accent, if (dark) Color.White else Color.Black, if (dark) 0.38f else 0.3f)
-        val onPrimary = if (primary.luminance() > 0.179f) Color.Black else Color.White
-        base.copy(
-            primary = primary,
-            onPrimary = onPrimary,
-            primaryContainer = lerp(base.surface, primary, if (dark) 0.23f else 0.12f),
-            onPrimaryContainer = base.onSurface,
-            surfaceTint = primary,
-            secondaryContainer = lerp(base.surface, primary, 0.09f),
-            onSecondaryContainer = base.onSurface
-        )
-    }
     MaterialTheme(
-        colorScheme = colors,
+        colorScheme = if (dark) DarkColors else LightColors,
         typography = LevyraTypography,
         shapes = LevyraShapes,
         content = content

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.ui
 
+import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,7 +43,8 @@ class DesktopPreviewTest {
                 LevyraTheme(ThemeMode.DARK) {
                     CompositionLocalProvider(LocalStrings provides strings) {
                         PlayerBar(state, MutableStateFlow(state), false, false,
-                            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+                            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                            settings = DesktopSettings(), onUpdateSettings = {})
                     }
                 }
             }.use { scene ->

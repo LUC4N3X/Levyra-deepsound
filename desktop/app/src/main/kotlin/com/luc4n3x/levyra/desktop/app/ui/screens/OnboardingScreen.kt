@@ -1,5 +1,19 @@
 package com.luc4n3x.levyra.desktop.app.ui.screens
 
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.animation.animateColorAsState
+import com.luc4n3x.levyra.desktop.app.ui.components.CookieShape
+import com.luc4n3x.levyra.desktop.core.model.ThemeMode
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -67,9 +81,11 @@ fun OnboardingScreen(
     initialSettings: DesktopSettings,
     onLanguagePreview: (AppLanguage) -> Unit,
     onComplete: (String, AppLanguage, Set<String>, String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onThemePreview: (ThemeMode) -> Unit = {}
 ) {
-    var step by remember { mutableStateOf(OnboardingStep.LANGUAGE) }
+    var step by remember { mutableStateOf(OnboardingStep.INTRO) }
+    var theme by remember { mutableStateOf(initialSettings.themeMode) }
     var language by remember { mutableStateOf(initialSettings.language) }
     var name by remember { mutableStateOf(initialSettings.displayName) }
     var tastes by remember { mutableStateOf(initialSettings.selectedTasteIds) }
@@ -88,89 +104,158 @@ fun OnboardingScreen(
         LocalStrings provides strings,
         LocalLayoutDirection provides layoutDirection
     ) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
+        Row(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            OnboardingHero(step = step, appName = strings.appName, modifier = Modifier.weight(0.42f).fillMaxHeight())
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 1280.dp)
-                    .heightIn(min = 680.dp, max = 820.dp),
-                shape = RoundedCornerShape(30.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 30.dp
+                    .weight(0.58f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 56.dp, vertical = 44.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    OnboardingRail(
-                        current = step,
-                        language = language,
-                        modifier = Modifier.width(264.dp)
-                    )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .padding(horizontal = 36.dp, vertical = 30.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        AnimatedContent(
-                            targetState = step,
-                            transitionSpec = {
-                                fadeIn(tween(190)) togetherWith fadeOut(tween(120))
-                            },
-                            modifier = Modifier.weight(1f).fillMaxWidth()
-                        ) { current ->
-                            when (current) {
-                                OnboardingStep.LANGUAGE -> LanguageStep(
-                                    selected = language,
-                                    onSelect = { selected ->
-                                        language = selected
-                                        country = selected.defaultCountry
-                                        onLanguagePreview(selected)
-                                    }
-                                )
-                                OnboardingStep.PROFILE -> ProfileStep(
-                                    name = name,
-                                    onNameChange = { value ->
-                                        name = value.take(DesktopSettings.MAX_DISPLAY_NAME_LENGTH)
-                                    }
-                                )
-                                OnboardingStep.TASTE -> TasteStep(
-                                    language = language,
-                                    selected = tastes,
-                                    onToggle = { id ->
-                                        tastes = if (id in tastes) tastes - id else tastes + id
-                                    }
-                                )
-                                OnboardingStep.REGION -> RegionStep(
-                                    selectedCode = country,
-                                    onSelect = { country = it.code }
-                                )
-                            }
-                        }
-
-                        OnboardingFooter(
-                            step = step,
-                            canAdvance = canAdvance,
-                            onBack = { step = step.previous() },
-                            onSkip = { step = step.next() },
-                            onAdvance = {
-                                if (step == OnboardingStep.REGION) {
-                                    onComplete(name.trim(), language, tastes, country)
-                                } else {
-                                    step = step.next()
-                                }
+                OnboardingProgress(step)
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(140)) },
+                    modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 28.dp)
+                ) { current ->
+                    when (current) {
+                        OnboardingStep.INTRO -> IntroStep(strings.onboardingWelcomeBadge, strings.onboardingWelcomeTitle)
+                        OnboardingStep.LANGUAGE -> LanguageStep(
+                            selected = language,
+                            onSelect = { selected ->
+                                language = selected
+                                country = selected.defaultCountry
+                                onLanguagePreview(selected)
                             }
                         )
+                        OnboardingStep.APPEARANCE -> AppearanceStep(language, theme) { mode ->
+                            theme = mode
+                            onThemePreview(mode)
+                        }
+                        OnboardingStep.PROFILE -> ProfileStep(
+                            name = name,
+                            onNameChange = { value -> name = value.take(DesktopSettings.MAX_DISPLAY_NAME_LENGTH) }
+                        )
+                        OnboardingStep.TASTE -> TasteStep(
+                            language = language,
+                            selected = tastes,
+                            onToggle = { id -> tastes = if (id in tastes) tastes - id else tastes + id }
+                        )
+                        OnboardingStep.REGION -> RegionStep(selectedCode = country, onSelect = { country = it.code })
                     }
+                }
+                OnboardingFooter(
+                    step = step,
+                    canAdvance = canAdvance,
+                    onBack = { step = step.previous() },
+                    onSkip = { step = step.next() },
+                    onAdvance = {
+                        if (step == OnboardingStep.REGION) onComplete(name.trim(), language, tastes, country) else step = step.next()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingHero(step: OnboardingStep, appName: String, modifier: Modifier = Modifier) {
+    val accent by animateColorAsState(step.accent, tween(420))
+    val surface = MaterialTheme.colorScheme.surfaceContainerLowest
+    Box(
+        modifier
+            .background(surface)
+            .drawBehind {
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(accent.copy(alpha = 0.34f), Color.Transparent),
+                        center = Offset(size.width * 0.5f, size.height * 0.46f),
+                        radius = size.minDimension * 0.75f
+                    )
+                )
+            }
+            .padding(40.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Image(levyraIconPainter(), contentDescription = null, modifier = Modifier.size(40.dp))
+            Text(appName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .size(300.dp)
+                .clip(CookieShape)
+                .background(accent),
+            contentAlignment = Alignment.Center
+        ) {
+            if (step == OnboardingStep.INTRO) {
+                Image(levyraIconPainter(), contentDescription = null, modifier = Modifier.size(210.dp))
+            } else {
+                Icon(step.glyph, contentDescription = null, tint = Color(0xFF14121C), modifier = Modifier.size(120.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingProgress(step: OnboardingStep) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OnboardingStep.entries.forEach { item ->
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(if (item.ordinal <= step.ordinal) step.accent else MaterialTheme.colorScheme.surfaceContainerHighest)
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntroStep(badge: String, title: String) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+        Text(badge.uppercase(), style = MaterialTheme.typography.labelLarge, color = LevyraBrand.soft)
+        Spacer(Modifier.height(12.dp))
+        Text(title, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun AppearanceStep(language: AppLanguage, selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val copy = remember(language) { LevyraOnboardingAppearanceStrings.forCode(language.tag) }
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+        StepHeader(copy.title, copy.body)
+        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            listOf(
+                Triple(ThemeMode.DARK, copy.dark, copy.darkBody),
+                Triple(ThemeMode.LIGHT, copy.light, copy.lightBody)
+            ).forEach { (mode, title, body) ->
+                val active = selected == mode
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(if (active) LevyraBrand.soft.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainer)
+                        .border(2.dp, if (active) LevyraBrand.soft else Color.Transparent, RoundedCornerShape(28.dp))
+                        .clickable { onSelect(mode) }
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp))
+                            .background(if (mode == ThemeMode.DARK) Color(0xFF0B0B0C) else Color(0xFFF3F3F5)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(Modifier.size(64.dp).clip(CookieShape).background(LevyraBrand.soft))
+                    }
+                    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
+        Text(copy.footnote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -188,7 +273,7 @@ private fun OnboardingFooter(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (step == OnboardingStep.LANGUAGE) {
+        if (step == OnboardingStep.INTRO) {
             Spacer(modifier = Modifier.width(112.dp))
         } else {
             OutlinedButton(onClick = onBack) {
@@ -197,34 +282,20 @@ private fun OnboardingFooter(
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OnboardingStep.entries.forEach { item ->
-                Box(
-                    modifier = Modifier
-                        .size(if (item == step) 24.dp else 8.dp, 8.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (item == step) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceContainerHighest
-                        )
-                )
-            }
-        }
-
-        Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (step != OnboardingStep.REGION) {
-                OutlinedButton(onClick = onSkip) {
+            if (step != OnboardingStep.REGION && step != OnboardingStep.INTRO) {
+                TextButton(onClick = onSkip) {
                     Text(strings.onboardingSkip)
                 }
             }
             Button(
                 enabled = canAdvance,
-                onClick = onAdvance
+                onClick = onAdvance,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = LevyraBrand.soft, contentColor = LevyraBrand.onSoft),
+                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 14.dp)
             ) {
                 Text(
                     if (step == OnboardingStep.REGION) {
@@ -234,120 +305,6 @@ private fun OnboardingFooter(
                     }
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun OnboardingRail(
-    current: OnboardingStep,
-    language: AppLanguage,
-    modifier: Modifier = Modifier
-) {
-    val strings = LocalStrings.current
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(28.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(13.dp)
-            ) {
-                Image(
-                    painter = levyraIconPainter(),
-                    contentDescription = strings.appName,
-                    modifier = Modifier.size(50.dp)
-                )
-                Text(
-                    text = strings.appName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = strings.onboardingWelcomeBadge.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = strings.onboardingWelcomeTitle,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OnboardingStep.entries.forEachIndexed { index, item ->
-                val active = item == current
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                            else Color.Transparent
-                        )
-                        .padding(horizontal = 10.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        modifier = Modifier.size(30.dp),
-                        shape = CircleShape,
-                        color = if (active) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = (index + 1).toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (active) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                        }
-                    }
-                    Text(
-                        text = when (item) {
-                            OnboardingStep.LANGUAGE -> strings.settingsLanguage
-                            OnboardingStep.PROFILE -> strings.settingsProfile
-                            OnboardingStep.TASTE -> strings.searchMoods
-                            OnboardingStep.REGION -> strings.chartsCountry
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (active) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            CountryFlag(language.defaultCountry)
-            Text(
-                text = language.nativeName,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -653,25 +610,17 @@ private fun SelectableCard(
     }
 }
 
-private enum class OnboardingStep {
-    LANGUAGE,
-    PROFILE,
-    TASTE,
-    REGION;
+private enum class OnboardingStep(val accent: Color, val glyph: ImageVector) {
+    INTRO(Color(0xFF98CFEA), LevyraIcons.Disc),
+    LANGUAGE(Color(0xFF9FB2FF), LevyraIcons.Chart),
+    APPEARANCE(Color(0xFFB9A2F5), LevyraIcons.Settings),
+    PROFILE(Color(0xFFF2A4C4), LevyraIcons.Artist),
+    TASTE(Color(0xFFF4C27A), LevyraIcons.HeartFilled),
+    REGION(Color(0xFF8FD9B6), LevyraIcons.Radio);
 
-    fun next(): OnboardingStep = when (this) {
-        LANGUAGE -> PROFILE
-        PROFILE -> TASTE
-        TASTE -> REGION
-        REGION -> REGION
-    }
+    fun next(): OnboardingStep = entries.getOrElse(ordinal + 1) { this }
 
-    fun previous(): OnboardingStep = when (this) {
-        LANGUAGE -> LANGUAGE
-        PROFILE -> LANGUAGE
-        TASTE -> PROFILE
-        REGION -> TASTE
-    }
+    fun previous(): OnboardingStep = entries.getOrElse(ordinal - 1) { this }
 }
 
 private data class TasteOption(val id: String, val emoji: String, val label: String)
