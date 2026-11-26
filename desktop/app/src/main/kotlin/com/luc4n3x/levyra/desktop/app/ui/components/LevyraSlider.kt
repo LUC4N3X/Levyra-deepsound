@@ -28,6 +28,12 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 
 @Composable
 fun LevyraSlider(
@@ -89,6 +95,19 @@ private fun Modifier.sliderInput(
     change: (Float) -> Unit,
     finished: () -> Unit
 ): Modifier = this
+    .onPreviewKeyEvent { event ->
+        val step = when (event.key) {
+            Key.DirectionRight, Key.DirectionUp -> KEY_STEP
+            Key.DirectionLeft, Key.DirectionDown -> -KEY_STEP
+            else -> return@onPreviewKeyEvent false
+        }
+        if (event.type == KeyEventType.KeyDown) {
+            change((fraction + step).coerceIn(0f, 1f))
+            finished()
+        }
+        true
+    }
+    .focusable()
     .sliderSemantics(fraction, description) { target ->
         change(target)
         finished()
@@ -118,3 +137,5 @@ private fun Modifier.sliderInput(
             }
         )
     }
+
+private const val KEY_STEP = 0.05f

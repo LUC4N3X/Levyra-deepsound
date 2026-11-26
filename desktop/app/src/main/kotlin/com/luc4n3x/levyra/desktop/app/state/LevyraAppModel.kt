@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.FlowPreview::class)
+
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
@@ -15,6 +17,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 enum class Destination {
@@ -75,6 +80,16 @@ class LevyraAppModel internal constructor(
                     homeFeedController.load(value.contentCountry, value.language.tag)
                 }
             }
+        }
+        scope.launch {
+            libraryStore.library
+                .map { library -> library.favorites.size to library.history.firstOrNull()?.track?.id }
+                .distinctUntilChanged()
+                .debounce(DAILY_SEED_DEBOUNCE_MS)
+                .collect {
+                    val value = settingsStore.settings.value
+                    if (value.onboardingCompleted) homeFeedController.load(value.contentCountry, value.language.tag)
+                }
         }
         scope.launch {
             playbackController.messages.collect { message -> noticeFlow.tryEmit(message) }
@@ -149,3 +164,5 @@ class LevyraAppModel internal constructor(
         noticeFlow.tryEmit(message)
     }
 }
+
+private const val DAILY_SEED_DEBOUNCE_MS = 20_000L

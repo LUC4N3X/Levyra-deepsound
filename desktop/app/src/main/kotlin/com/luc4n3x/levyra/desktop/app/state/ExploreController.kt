@@ -79,7 +79,10 @@ class ExploreController(
                 open = state.value.open,
                 loading = false
             )
-            if (loadedKey == key) state.value = result
+            if (loadedKey == key) {
+                state.value = result
+                if (result.daily.isEmpty() && result.news.isEmpty() && result.localReleases.isEmpty()) loadedKey = ""
+            }
         }
     }
 
