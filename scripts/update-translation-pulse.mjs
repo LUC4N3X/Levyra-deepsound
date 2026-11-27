@@ -217,14 +217,14 @@ const scriptGroupFor = code => {
 const shortDisplayName = name => name.replace(/\s*\([^)]*\)/g, '')
 
 const getTheme = isDark => ({
-  hero: isDark ? '#2A1D29' : '#F9EAF2',
-  heroBorder: isDark ? '#3F2C3D' : '#E8CEDD',
-  ink: isDark ? '#FBF2F7' : '#2B1624',
-  muted: isDark ? '#CFBDC9' : '#684C5F',
-  accent: isDark ? '#F6B8D6' : '#8A3562',
-  stampBg: isDark ? '#FAE3B4' : '#FCE0B8',
-  stampInk: '#4B3409',
-  footer: isDark ? '#A694A1' : '#6E5A68',
+  hero: isDark ? '#FAF0E6' : '#FBF2EA',
+  heroBorder: isDark ? 'none' : '#EAD8CA',
+  ink: '#2C1523',
+  muted: '#614656',
+  accent: '#8A3260',
+  stampBg: '#E4CEFA',
+  stampInk: '#3A1B59',
+  footer: isDark ? '#A898A3' : '#6E5A68',
   tiles: isDark
     ? [
         { bg: '#F6D2E0', ink: '#5A2238', muted: '#75334D' },
@@ -292,7 +292,7 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
     .tile-examples { font-size: 12px; font-weight: 550; }
     .footer { fill: ${theme.footer}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <path d="${heroPath}" fill="${theme.hero}" stroke="${theme.heroBorder}" stroke-width="1"/>
+  <path d="${heroPath}" fill="${theme.hero}"${theme.heroBorder === 'none' ? '' : ` stroke="${theme.heroBorder}" stroke-width="1"`}/>
   <text x="52" y="52" class="eyebrow">LOCAL EVERYWHERE</text>
   <text x="50" y="114" class="hero">${languages.length} languages</text>
   <text x="52" y="144" class="meta">Five writing systems · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
@@ -338,7 +338,7 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
     .tile-examples { font-size: 12.6px; font-weight: 550; }
     .footer { fill: ${theme.footer}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <path d="${heroPath}" fill="${theme.hero}" stroke="${theme.heroBorder}" stroke-width="1"/>
+  <path d="${heroPath}" fill="${theme.hero}"${theme.heroBorder === 'none' ? '' : ` stroke="${theme.heroBorder}" stroke-width="1"`}/>
   <text x="54" y="68" class="eyebrow">LOCAL EVERYWHERE</text>
   <text x="50" y="170" class="hero">${languages.length}</text>
   <text x="54" y="206" class="hero-label">languages</text>

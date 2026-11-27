@@ -3,21 +3,21 @@
   <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português (Portugal): 100%, Português (Brasil): 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; }
-    .eyebrow { fill: #F6B8D6; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
-    .hero { fill: #FBF2F7; font-size: 54px; font-weight: 760; letter-spacing: -2px; }
-    .meta { fill: #CFBDC9; font-size: 14px; font-weight: 550; }
-    .status { fill: #4B3409; font-size: 16px; font-weight: 780; }
-    .status-sub { fill: #4B3409; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; opacity: .85; }
+    .eyebrow { fill: #8A3260; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
+    .hero { fill: #2C1523; font-size: 54px; font-weight: 760; letter-spacing: -2px; }
+    .meta { fill: #614656; font-size: 14px; font-weight: 550; }
+    .status { fill: #3A1B59; font-size: 16px; font-weight: 780; }
+    .status-sub { fill: #3A1B59; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; opacity: .85; }
     .tile-label { font-size: 14.5px; font-weight: 760; letter-spacing: .4px; }
     .tile-count { font-size: 28px; font-weight: 800; }
     .tile-examples { font-size: 12px; font-weight: 550; }
-    .footer { fill: #A694A1; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
+    .footer { fill: #A898A3; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <path d="M 70.00 12.00 H 630.00 A 74 74 0 0 1 704.00 86.00 V 120.00 A 46 46 0 0 1 658.00 166.00 H 90.00 A 74 74 0 0 1 16.00 92.00 V 66.00 A 54 54 0 0 1 70.00 12.00 Z" fill="#2A1D29" stroke="#3F2C3D" stroke-width="1"/>
+  <path d="M 70.00 12.00 H 630.00 A 74 74 0 0 1 704.00 86.00 V 120.00 A 46 46 0 0 1 658.00 166.00 H 90.00 A 74 74 0 0 1 16.00 92.00 V 66.00 A 54 54 0 0 1 70.00 12.00 Z" fill="#FAF0E6"/>
   <text x="52" y="52" class="eyebrow">LOCAL EVERYWHERE</text>
   <text x="50" y="114" class="hero">42 languages</text>
   <text x="52" y="144" class="meta">Five writing systems · 1,271+ app strings</text>
-  <path d="M 614.16 52.29 A 9.98 9.98 0 0 1 633.84 52.29 A 9.98 9.98 0 0 1 650.87 62.13 A 9.98 9.98 0 0 1 660.71 79.16 A 9.98 9.98 0 0 1 660.71 98.84 A 9.98 9.98 0 0 1 650.87 115.87 A 9.98 9.98 0 0 1 633.84 125.71 A 9.98 9.98 0 0 1 614.16 125.71 A 9.98 9.98 0 0 1 597.13 115.87 A 9.98 9.98 0 0 1 587.29 98.84 A 9.98 9.98 0 0 1 587.29 79.16 A 9.98 9.98 0 0 1 597.13 62.13 A 9.98 9.98 0 0 1 614.16 52.29 Z" fill="#FAE3B4"/>
+  <path d="M 614.16 52.29 A 9.98 9.98 0 0 1 633.84 52.29 A 9.98 9.98 0 0 1 650.87 62.13 A 9.98 9.98 0 0 1 660.71 79.16 A 9.98 9.98 0 0 1 660.71 98.84 A 9.98 9.98 0 0 1 650.87 115.87 A 9.98 9.98 0 0 1 633.84 125.71 A 9.98 9.98 0 0 1 614.16 125.71 A 9.98 9.98 0 0 1 597.13 115.87 A 9.98 9.98 0 0 1 587.29 98.84 A 9.98 9.98 0 0 1 587.29 79.16 A 9.98 9.98 0 0 1 597.13 62.13 A 9.98 9.98 0 0 1 614.16 52.29 Z" fill="#E4CEFA"/>
   <text x="624" y="86" text-anchor="middle" class="status">100%</text>
   <text x="624" y="101" text-anchor="middle" class="status-sub">COMPLETE</text>
   <path d="M 63.00 178.00 H 657.00 A 47 47 0 0 1 704.00 225.00 V 225.00 A 47 47 0 0 1 657.00 272.00 H 48.00 A 32 32 0 0 1 16.00 240.00 V 225.00 A 47 47 0 0 1 63.00 178.00 Z" fill="#F6D2E0"/>

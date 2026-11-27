@@ -137,11 +137,11 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-2">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-2">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-2">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-2">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-2" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-3">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-3">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-3">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-3">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-3" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
   </picture>
 </div>
 
