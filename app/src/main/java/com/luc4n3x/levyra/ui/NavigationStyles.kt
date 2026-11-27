@@ -673,6 +673,9 @@ private fun navCompactionSqueeze(floating: Boolean, expansion: NavExpansion?, tu
 private val NavIndicator.expandsAsPill: Boolean
     get() = this == NavIndicator.Pill || this == NavIndicator.Morph || this == NavIndicator.Circle
 
+private fun NavIndicator.pillSettle(visibleHeight: Float, fullHeight: Float): Float =
+    if (expandsAsPill) (visibleHeight / fullHeight).coerceIn(0f, 1f) else 1f
+
 private fun Modifier.navSqueeze(squeeze: Dp, compaction: () -> Float, hold: () -> Float): Modifier =
     if (squeeze <= 0.dp) {
         this
@@ -1749,7 +1752,7 @@ private fun DrawScope.drawExpandingIndicator(
     val presence = (fraction * 1.6f).coerceIn(0f, 1f) * alpha
     if (presence <= 0f) return
     val grown = fraction.coerceIn(0f, 1f)
-    val settle = if (tuning.indicator.expandsAsPill) (visibleHeight / size.height).coerceIn(0f, 1f) else 1f
+    val settle = tuning.indicator.pillSettle(visibleHeight, size.height)
     val inset = expansion.inset.toPx() * settle
     val iconBox = StyledNavIconBox.toPx()
     val scale = tuning.indicatorScale / 100f
