@@ -171,19 +171,14 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <div align="center">
 
-<a href="https://luc4n3x.pages.dev/"><picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-portrait-light.webp?v=m3-creator-2">
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-author-portrait.webp?v=m3-creator-2">
-  <img src="docs/assets/levyra-author-portrait.webp?v=m3-creator-2" width="280" alt="LUC4N3X, creator of Levyra">
-</picture></a>
-
-### LUC4N3X
-
-<p><sub>Creator &amp; maintainer</sub></p>
-
 <p>
-  I built Levyra and still maintain the Android, Windows and Linux apps.<br>
-  I review contributions, fix bugs and handle releases.
+  <a href="https://luc4n3x.pages.dev/"><picture>
+    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-author-card-mobile-light.webp?v=m3-warm-1">
+    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-author-card-mobile.webp?v=m3-warm-1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-card-light.webp?v=m3-warm-1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-author-card.webp?v=m3-warm-1">
+    <img src="docs/assets/levyra-author-card.webp?v=m3-warm-1" width="840" alt="LUC4N3X, creator and maintainer of Levyra">
+  </picture></a>
 </p>
 
 <p align="center">
