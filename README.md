@@ -137,11 +137,11 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-sky-1">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-sky-1">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-sky-1">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-sky-1">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-sky-1" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translations-chart-mobile-light.svg?v=1">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-chart-mobile.svg?v=1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translations-chart-light.svg?v=1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-chart.svg?v=1">
+    <img src="docs/assets/levyra-translations-chart.svg?v=1" alt="Levyra localized strings by feature across 42 languages" width="900">
   </picture>
 </div>
 
