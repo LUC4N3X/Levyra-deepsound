@@ -7,7 +7,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.sql.DriverManager
 import java.util.Properties
-import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.IvParameterSpec
@@ -293,11 +292,7 @@ internal fun chromiumKeyringPassword(kind: BrowserKind): ByteArray? {
         BrowserKind.Opera -> "opera"
         else -> return null
     }
-    val tool = listOf("/usr/bin/secret-tool", "/usr/local/bin/secret-tool").firstOrNull { Files.isExecutable(Path.of(it)) } ?: return null
-    return runCatching {
-        val process = ProcessBuilder(tool, "lookup", "application", application).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        val output = process.inputStream.use { it.readBytes() }
-        if (!process.waitFor(10, TimeUnit.SECONDS) || process.exitValue() != 0) null
-        else String(output, Charsets.UTF_8).trim().takeIf(String::isNotEmpty)?.toByteArray(Charsets.UTF_8)
-    }.getOrNull()
+    val tool = secretToolPath() ?: return null
+    return runSecretTool(listOf(tool, "lookup", "application", application))
+        ?.let { output -> String(output, Charsets.UTF_8).trim().takeIf(String::isNotEmpty)?.toByteArray(Charsets.UTF_8) }
 }

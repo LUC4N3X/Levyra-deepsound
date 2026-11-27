@@ -16,6 +16,8 @@ import javax.crypto.spec.SecretKeySpec
 
 internal class SecretBoxUnavailable : IOException("Secure storage is unavailable")
 
+internal class SecretKeyUnavailable : IOException("Secure storage key is unavailable")
+
 internal interface SecretBox {
     fun seal(plain: ByteArray): ByteArray
     fun open(sealed: ByteArray): ByteArray
@@ -76,35 +78,52 @@ internal object SecretKeys {
     private val random = SecureRandom()
 
     fun keyring(fallbackFile: Path): () -> ByteArray {
-        val key by lazy {
-            (if (Files.isRegularFile(fallbackFile)) null else secretTool()?.let(::keyringKey)) ?: fileKey(fallbackFile)
+        val marker = fallbackFile.resolveSibling("${fallbackFile.fileName}.source")
+        val lock = Any()
+        var cached: ByteArray? = null
+        return {
+            synchronized(lock) {
+                cached ?: resolveKey(fallbackFile, marker).also { cached = it }
+            }.copyOf()
         }
-        return { key.copyOf() }
+    }
+
+    private fun resolveKey(file: Path, marker: Path): ByteArray {
+        val source = runCatching { Files.readString(marker).trim() }.getOrNull()
+        if (source == FILE_SOURCE || (source == null && Files.isRegularFile(file))) return fileKey(file)
+        val tool = secretToolPath()
+        if (source == KEYRING_SOURCE) return tool?.let(::lookup) ?: throw SecretKeyUnavailable()
+        tool?.let(::keyringKey)?.let { key ->
+            writeMarker(marker, KEYRING_SOURCE)
+            return key
+        }
+        return fileKey(file).also { writeMarker(marker, FILE_SOURCE) }
     }
 
     private fun keyringKey(tool: String): ByteArray? {
         lookup(tool)?.let { return it }
         val fresh = ByteArray(32).also(random::nextBytes)
-        val encoded = Base64.getEncoder().encodeToString(fresh)
-        val stored = runCatching {
-            val process = ProcessBuilder(tool, "store", "--label=Levyra YouTube Music", *ATTRIBUTES)
-                .redirectErrorStream(true).start()
-            process.outputStream.use { it.write(encoded.toByteArray(Charsets.US_ASCII)) }
-            process.inputStream.use { it.readBytes() }
-            process.waitFor(TOOL_TIMEOUT_S, TimeUnit.SECONDS) && process.exitValue() == 0
-        }.getOrDefault(false)
-        return if (stored) lookup(tool)?.takeIf { it.contentEquals(fresh) } else null
+        val encoded = Base64.getEncoder().encodeToString(fresh).toByteArray(Charsets.US_ASCII)
+        runSecretTool(listOf(tool, "store", "--label=Levyra YouTube Music", *ATTRIBUTES), encoded) ?: return null
+        return lookup(tool)?.takeIf { it.contentEquals(fresh) }
     }
 
-    private fun lookup(tool: String): ByteArray? = runCatching {
-        val process = ProcessBuilder(tool, "lookup", *ATTRIBUTES).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-        val output = process.inputStream.use { it.readBytes() }
-        if (!process.waitFor(TOOL_TIMEOUT_S, TimeUnit.SECONDS) || process.exitValue() != 0) return null
-        Base64.getDecoder().decode(String(output, Charsets.US_ASCII).trim()).takeIf { it.size == 32 }
-    }.getOrNull()
+    private fun lookup(tool: String): ByteArray? = runSecretTool(listOf(tool, "lookup", *ATTRIBUTES))?.let { output ->
+        runCatching { Base64.getDecoder().decode(String(output, Charsets.US_ASCII).trim()) }.getOrNull()?.takeIf { it.size == 32 }
+    }
 
-    private fun secretTool(): String? = listOf("/usr/bin/secret-tool", "/usr/local/bin/secret-tool", "/bin/secret-tool")
-        .firstOrNull { Files.isExecutable(Path.of(it)) }
+    private fun writeMarker(marker: Path, source: String) {
+        runCatching {
+            Files.createDirectories(marker.parent)
+            val temp = Files.createTempFile(marker.parent, "source", ".tmp")
+            try {
+                Files.writeString(temp, source)
+                moveAtomically(temp, marker)
+            } finally {
+                Files.deleteIfExists(temp)
+            }
+        }
+    }
 
     @Synchronized
     fun fileKey(file: Path): ByteArray {
@@ -126,8 +145,32 @@ internal object SecretKeys {
     }
 
     private val ATTRIBUTES = arrayOf("application", "levyra", "purpose", "youtube-music-session")
-    private const val TOOL_TIMEOUT_S = 10L
+    private const val KEYRING_SOURCE = "keyring"
+    private const val FILE_SOURCE = "file"
 }
+
+internal fun secretToolPath(): String? = listOf("/usr/bin/secret-tool", "/usr/local/bin/secret-tool", "/bin/secret-tool")
+    .firstOrNull { Files.isExecutable(Path.of(it)) }
+
+internal fun runSecretTool(command: List<String>, input: ByteArray? = null, timeoutSeconds: Long = SECRET_TOOL_TIMEOUT_S): ByteArray? {
+    val process = runCatching {
+        ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+    }.getOrNull() ?: return null
+    return try {
+        process.outputStream.use { stream -> input?.let(stream::write) }
+        if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS) || process.exitValue() != 0) null
+        else process.inputStream.use { it.readBytes() }
+    } catch (_: IOException) {
+        null
+    } catch (error: InterruptedException) {
+        Thread.currentThread().interrupt()
+        null
+    } finally {
+        if (process.isAlive) process.destroyForcibly()
+    }
+}
+
+private const val SECRET_TOOL_TIMEOUT_S = 10L
 
 internal fun moveAtomically(source: Path, target: Path) {
     try {

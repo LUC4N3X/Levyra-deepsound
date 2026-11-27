@@ -5,6 +5,7 @@ import java.nio.file.attribute.PosixFilePermission
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -53,5 +54,32 @@ class SecretBoxTest {
         val accounts = DesktopYoutubeMusicAccounts(file, KeyedSecretBox { ByteArray(32) })
         accounts.load()
         assertTrue(accounts.accounts.value.isEmpty())
+    }
+
+    @Test
+    fun missingKeyringKeyIsNeverReplaced() {
+        val root = Files.createTempDirectory("levyra-key")
+        val file = root.resolve("youtube-music.key")
+        Files.writeString(root.resolve("youtube-music.key.source"), "keyring")
+        val key = SecretKeys.keyring(file)
+        try {
+            key()
+            fail("a replacement key was created")
+        } catch (_: SecretKeyUnavailable) {
+        }
+        assertFalse(Files.exists(file))
+    }
+
+    @Test
+    fun unavailableKeyKeepsSavedAccountsAndDoesNotCrash() = runBlocking {
+        val root = Files.createTempDirectory("levyra-accounts")
+        val file = root.resolve("youtube-music-session.bin")
+        Files.write(file, byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
+        val accounts = DesktopYoutubeMusicAccounts(file, KeyedSecretBox { throw SecretKeyUnavailable() })
+        assertFalse(accounts.load())
+        assertFalse(accounts.switchTo("account-1"))
+        assertFalse(accounts.signOut("account-1"))
+        assertTrue(accounts.accounts.value.isEmpty())
+        assertEquals(14, Files.readAllBytes(file).size)
     }
 }

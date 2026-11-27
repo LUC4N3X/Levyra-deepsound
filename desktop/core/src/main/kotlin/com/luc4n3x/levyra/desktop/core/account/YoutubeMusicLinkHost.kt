@@ -74,6 +74,12 @@ class YoutubeMusicLinkHost internal constructor(
     ) {
         var acceptJob: Job? = null
         var expiryJob: Job? = null
+
+        @Volatile
+        var serveJob: Job? = null
+
+        @Volatile
+        var client: Socket? = null
     }
 
     @Synchronized
@@ -101,9 +107,11 @@ class YoutubeMusicLinkHost internal constructor(
         current.acceptJob = scope.launch { acceptLoop(current) }
         current.expiryJob = scope.launch {
             delay(sessionMs)
-            if (session === current && !current.spent.get()) {
-                close(current)
-                _state.value = YoutubeMusicLinkState.Expired
+            synchronized(this@YoutubeMusicLinkHost) {
+                if (session === current && !current.spent.get()) {
+                    close(current)
+                    _state.value = YoutubeMusicLinkState.Expired
+                }
             }
         }
     }
@@ -119,6 +127,8 @@ class YoutubeMusicLinkHost internal constructor(
         if (session === target) session = null
         target.expiryJob?.cancel()
         target.acceptJob?.cancel()
+        target.serveJob?.cancel()
+        runCatching { target.client?.close() }
         runCatching { target.server.close() }
         target.secret.fill(0)
     }
@@ -136,11 +146,13 @@ class YoutubeMusicLinkHost internal constructor(
                 refuse(socket, YoutubeMusicLinkStatus.Closed)
                 continue
             }
-            scope.launch {
+            current.client = socket
+            current.serveJob = scope.launch {
                 try {
-                    serve(current, socket)
+                    if (session === current) serve(current, socket)
                 } finally {
                     current.busy.set(false)
+                    current.client = null
                     runCatching { socket.close() }
                 }
             }
@@ -176,7 +188,7 @@ class YoutubeMusicLinkHost internal constructor(
                     channel.seal(YoutubeMusicDeviceLink.HELLO, true, YoutubeMusicDeviceLink.encodeDevice(device()))
                 )
             )
-            _state.value = YoutubeMusicLinkState.PhoneConnected
+            publish(current, YoutubeMusicLinkState.PhoneConnected)
             socket.soTimeout = confirmMs
             val message = try {
                 YoutubeMusicDeviceLink.readMessage(input)
@@ -200,10 +212,15 @@ class YoutubeMusicLinkHost internal constructor(
                         }
                     } catch (_: YoutubeMusicLinkException) {
                         reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Rejected, emptyList()))
-                        _state.value = YoutubeMusicLinkState.Rejected(LinkRejection.InvalidCode)
+                        publish(current, YoutubeMusicLinkState.Rejected(LinkRejection.InvalidCode))
                         return
                     }
-                    _state.value = YoutubeMusicLinkState.SigningIn
+                    val claimed = synchronized(this) { session === current && current.spent.compareAndSet(false, true) }
+                    if (!claimed) {
+                        runCatching { reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Closed, emptyList())) }
+                        return
+                    }
+                    publish(current, YoutubeMusicLinkState.SigningIn)
                     val result = try {
                         signIn(payload)
                     } catch (error: CancellationException) {
@@ -212,14 +229,20 @@ class YoutubeMusicLinkHost internal constructor(
                         YoutubeMusicLinkResult(YoutubeMusicLinkStatus.SignInFailed, emptyList())
                     }
                     runCatching { reply(output, channel, result) }
-                    if (result.status == YoutubeMusicLinkStatus.Accepted) {
-                        current.spent.set(true)
-                        synchronized(this) { close(current) }
-                        _state.value = YoutubeMusicLinkState.Done(result.accounts)
-                    } else {
-                        _state.value = YoutubeMusicLinkState.Rejected(
-                            if (result.status == YoutubeMusicLinkStatus.Rejected) LinkRejection.InvalidCode else LinkRejection.SignInFailed
-                        )
+                    synchronized(this) {
+                        if (session !== current) return
+                        if (result.status == YoutubeMusicLinkStatus.Accepted) {
+                            close(current)
+                            _state.value = YoutubeMusicLinkState.Done(result.accounts)
+                        } else if (clock() >= current.waiting.expiresAtMs) {
+                            close(current)
+                            _state.value = YoutubeMusicLinkState.Expired
+                        } else {
+                            current.spent.set(false)
+                            _state.value = YoutubeMusicLinkState.Rejected(
+                                if (result.status == YoutubeMusicLinkStatus.Rejected) LinkRejection.InvalidCode else LinkRejection.SignInFailed
+                            )
+                        }
                     }
                 }
                 else -> backToWaiting(current)
@@ -230,7 +253,11 @@ class YoutubeMusicLinkHost internal constructor(
     }
 
     private fun backToWaiting(current: Session) {
-        if (session === current) _state.value = current.waiting
+        publish(current, current.waiting)
+    }
+
+    private fun publish(current: Session, next: YoutubeMusicLinkState) {
+        synchronized(this) { if (session === current) _state.value = next }
     }
 
     private fun reply(output: java.io.OutputStream, channel: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkChannel, result: YoutubeMusicLinkResult) {

@@ -53,11 +53,10 @@ class DesktopYoutubeMusicAccounts internal constructor(
     private val _accounts = MutableStateFlow<List<DesktopYoutubeMusicAccount>>(emptyList())
     val accounts: StateFlow<List<DesktopYoutubeMusicAccount>> = _accounts.asStateFlow()
 
-    suspend fun load() = lock.withLock { ensureLoaded() }
+    suspend fun load(): Boolean = lock.withLock { stored { ensureLoaded() } != null }
 
     internal suspend fun activeSession(): YoutubeMusicSession? = lock.withLock {
-        ensureLoaded()
-        saved.active
+        stored { ensureLoaded() }?.let { saved.active }
     }
 
     val activeAccountId: String? get() = accounts.value.firstOrNull { it.active }?.id
@@ -91,22 +90,34 @@ class DesktopYoutubeMusicAccounts internal constructor(
             client.verify(YoutubeMusicSession(selected, payload.cookie), language())
         }.getOrDefault(selected)
         lock.withLock {
-            ensureLoaded()
-            persist(saved.withLogin(accounts.map { account ->
-                YoutubeMusicSession(if (account.id == selectedVerified.id) selectedVerified else account, payload.cookie)
-            }, selectedVerified.id))
-        }
+            stored {
+                ensureLoaded()
+                persist(saved.withLogin(accounts.map { account ->
+                    YoutubeMusicSession(if (account.id == selectedVerified.id) selectedVerified else account, payload.cookie)
+                }, selectedVerified.id))
+            }
+        } ?: return YoutubeMusicLinkResult(YoutubeMusicLinkStatus.SignInFailed, emptyList())
         return YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Accepted, listOf(selectedVerified.name).filter(String::isNotBlank))
     }
 
-    suspend fun switchTo(id: String) = lock.withLock {
-        ensureLoaded()
-        if (saved.sessions.any { it.account.id == id }) persist(saved.copy(activeId = id))
+    suspend fun switchTo(id: String): Boolean = lock.withLock {
+        stored {
+            ensureLoaded()
+            if (saved.sessions.any { it.account.id == id }) persist(saved.copy(activeId = id))
+        } != null
     }
 
-    suspend fun signOut(id: String) = lock.withLock {
-        ensureLoaded()
-        persist(saved.without(id))
+    suspend fun signOut(id: String): Boolean = lock.withLock {
+        stored {
+            ensureLoaded()
+            persist(saved.without(id))
+        } != null
+    }
+
+    private inline fun <T> stored(block: () -> T): T? = try {
+        block()
+    } catch (_: IOException) {
+        null
     }
 
     internal suspend fun expire(id: String) = signOut(id)

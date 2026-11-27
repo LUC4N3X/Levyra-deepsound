@@ -116,6 +116,19 @@ class YoutubeMusicLinkHostTest {
     }
 
     @Test
+    fun connectedPhoneCannotSignInAfterTheCodeExpires() = runBlocking {
+        sessionMs = 800L
+        host.start()
+        val connection = YoutubeMusicLinkClient.connect(localOffer())
+        awaitState { it == YoutubeMusicLinkState.PhoneConnected }
+        awaitState { it == YoutubeMusicLinkState.Expired }
+        val result = runCatching { connection.send(YoutubeMusicLinkPayload("SAPISID=abc; SID=def", "account-1")) }
+        assertTrue(result.getOrNull()?.status != YoutubeMusicLinkStatus.Accepted)
+        assertTrue(received.isEmpty())
+        assertEquals(YoutubeMusicLinkState.Expired, host.state.value)
+    }
+
+    @Test
     fun closedPortIsUnreachable() = runBlocking {
         val port = ServerSocket(0).use { it.localPort }
         val offer = YoutubeMusicLinkOffer(listOf("127.0.0.1"), port, YoutubeMusicDeviceLink.newHostKeys().public.encoded, YoutubeMusicDeviceLink.newSession())
