@@ -2,11 +2,14 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
+import java.util.Locale
 
 internal data class MusicVideoRecording(val title: String, val artist: String, val alternate: MusicVideoRecording? = null)
 
 internal object MusicVideoTitle {
-    private val decorationSeparator = Regex("\\s+(?:\\||/)\\s+")
+    private val pipeSeparator = Regex("\\s+\\|\\s+")
+    private val slashSeparator = Regex("\\s+/\\s+")
+    private val decorationWords = listOf("official", "video", "klip", "clip", "lyric", "audio", "visualizer", "премьера", "клип", "видео")
     private val artistTitleSeparator = Regex("\\s+(?:--|-|–|—)\\s+")
     private val videoNoise = Regex(
         "[(\\[][^)\\]]*(?:премьера|клип|видео|official|video|audio|lyric|visualizer)[^)\\]]*[)\\]]",
@@ -26,9 +29,7 @@ internal object MusicVideoTitle {
         videoType.isNotBlank() && !videoType.equals(AUDIO_TRACK_VIDEO_TYPE, ignoreCase = true)
 
     fun recording(rawTitle: String, rawArtist: String): MusicVideoRecording {
-        val title = rawTitle
-            .split(decorationSeparator)
-            .first()
+        val title = withoutDecorations(rawTitle, rawArtist)
             .replace(videoNoise, " ")
             .replace(whitespace, " ")
             .trim()
@@ -49,6 +50,22 @@ internal object MusicVideoTitle {
             artist = left,
             alternate = if (channelNamed) null else MusicVideoRecording(title = left, artist = right)
         )
+    }
+
+    private fun withoutDecorations(rawTitle: String, rawArtist: String): String {
+        val head = rawTitle.split(pipeSeparator).first()
+        val slash = slashSeparator.find(head) ?: return head
+        val before = head.substring(0, slash.range.first)
+        val after = head.substring(slash.range.last + 1)
+        return if (slashStartsDecoration(before, after, rawArtist)) before else head
+    }
+
+    private fun slashStartsDecoration(before: String, after: String, rawArtist: String): Boolean {
+        if (artistTitleSeparator.containsMatchIn(before)) return true
+        val channel = MusicIdentityText.normalize(rawArtist)
+        if (channel.isNotBlank() && channel in MusicIdentityText.normalize(after)) return true
+        val tail = after.lowercase(Locale.ROOT)
+        return decorationWords.any { it in tail }
     }
 
     private fun describesVersionOnly(left: String, right: String): Boolean =

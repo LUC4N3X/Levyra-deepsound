@@ -5739,6 +5739,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(audioOffloadPreference = value))
     }
 
+    fun setSpectrumVisualizerStyle(value: com.luc4n3x.levyra.domain.SpectrumVisualizerStyle) {
+        updateAudioSettings(_state.value.audioSettings.copy(spectrumVisualizerStyle = value))
+    }
+
     fun setPlaybackBuffer(value: PlaybackBufferSettings) {
         updateAudioSettings(_state.value.audioSettings.copy(playbackBuffer = value))
     }

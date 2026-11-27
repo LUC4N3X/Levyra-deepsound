@@ -1,5 +1,22 @@
 package com.luc4n3x.levyra.desktop.app.ui.player
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.luc4n3x.levyra.ui.i18n.SpectrumText
+import com.luc4n3x.levyra.ui.i18n.spectrumCopy
+import com.luc4n3x.levyra.desktop.app.ui.OverwriteConfirmingFileChooser
+import java.io.File
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.swing.Swing
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -134,6 +151,9 @@ internal fun SoundPanel(
                 ) {
                     Text(strings.settingsEqualizerReset)
                 }
+                EqualizerExportRow(settings)
+                Spacer(Modifier.height(6.dp))
+                OutputLatencyRow(settings, onUpdate)
             }
         }
     }
@@ -157,3 +177,90 @@ private object AboveAnchor : PopupPositionProvider {
         return IntOffset(x, y)
     }
 }
+
+@Composable
+private fun OutputLatencyRow(settings: DesktopSettings, onUpdate: ((DesktopSettings) -> DesktopSettings) -> Unit) {
+    val copy = SharedStrings.forCode(settings.language.tag).spectrumCopy
+    val offset = settings.outputLatencyOffsetMs
+    val label = when {
+        offset > 0 -> "+$offset ms"
+        offset < 0 -> "−${-offset} ms"
+        else -> "0 ms"
+    }
+    fun shift(delta: Int) = onUpdate { current ->
+        current.copy(
+            outputLatencyOffsetMs = (current.outputLatencyOffsetMs + delta)
+                .coerceIn(-DesktopSettings.MAX_OUTPUT_LATENCY_OFFSET_MS, DesktopSettings.MAX_OUTPUT_LATENCY_OFFSET_MS)
+        )
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(copy[SpectrumText.Latency], style = MaterialTheme.typography.titleSmall)
+            Text(label, style = MaterialTheme.typography.labelLarge, color = LocalAccentColor.current)
+            Text(
+                copy[SpectrumText.LatencyDesc],
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        TextButton(onClick = { shift(-OUTPUT_LATENCY_STEP_MS) }, enabled = offset > -DesktopSettings.MAX_OUTPUT_LATENCY_OFFSET_MS) {
+            Text("−", modifier = Modifier.semantics { contentDescription = copy[SpectrumText.Earlier] })
+        }
+        TextButton(onClick = { shift(OUTPUT_LATENCY_STEP_MS) }, enabled = offset < DesktopSettings.MAX_OUTPUT_LATENCY_OFFSET_MS) {
+            Text("+", modifier = Modifier.semantics { contentDescription = copy[SpectrumText.Later] })
+        }
+        if (offset != 0) {
+            TextButton(onClick = { onUpdate { it.copy(outputLatencyOffsetMs = 0) } }) { Text(copy[SpectrumText.Reset]) }
+        }
+    }
+}
+
+@Composable
+private fun EqualizerExportRow(settings: DesktopSettings) {
+    val copy = SharedStrings.forCode(settings.language.tag).spectrumCopy
+    val strings = LocalStrings.current
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf<String?>(null) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(
+            onClick = {
+                val text = settings.equalizer.toGraphicEq()
+                scope.launch {
+                    val target = chooseEqualizerExportFile(
+                        strings.playlistOverwriteTitle,
+                        strings::formatPlaylistOverwriteConfirm
+                    ) ?: return@launch
+                    val written = withContext(Dispatchers.IO) {
+                        runCatching { target.writeText(text, Charsets.UTF_8) }.isSuccess
+                    }
+                    status = if (written) copy[SpectrumText.Exported] else copy[SpectrumText.ExportFailed]
+                }
+            },
+            enabled = settings.equalizer.enabled
+        ) {
+            Text("${copy[SpectrumText.ExportTitle]} · ${copy[SpectrumText.ExportGraphic]}")
+        }
+        status?.let { message ->
+            Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+private suspend fun chooseEqualizerExportFile(
+    overwriteTitle: String,
+    overwriteMessage: (String) -> String
+): File? = withContext(Dispatchers.Swing) {
+    val chooser = OverwriteConfirmingFileChooser(::equalizerExportTarget, overwriteTitle, overwriteMessage)
+    chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+    chooser.isMultiSelectionEnabled = false
+    chooser.fileFilter = FileNameExtensionFilter("GraphicEQ", "txt")
+    chooser.selectedFile = File(EQUALIZER_EXPORT_FILE_NAME)
+    if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return@withContext null
+    chooser.selectedFile
+}
+
+private fun equalizerExportTarget(selected: File): File =
+    if (selected.extension.isBlank()) File(selected.parentFile, "${selected.name}.txt") else selected
+
+private const val OUTPUT_LATENCY_STEP_MS = 10
+private const val EQUALIZER_EXPORT_FILE_NAME = "Levyra EQ GraphicEQ.txt"

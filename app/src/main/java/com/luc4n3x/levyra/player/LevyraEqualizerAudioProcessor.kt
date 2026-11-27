@@ -218,14 +218,14 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
     companion object {
         const val BAND_COUNT = 10
         internal val FREQUENCIES = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1_000f, 2_000f, 4_000f, 8_000f, 16_000f)
-        private val BASS_WEIGHTS = floatArrayOf(1f, 0.82f, 0.48f, 0.18f, 0f, 0f, 0f, 0f, 0f, 0f)
+        internal val BASS_WEIGHTS = floatArrayOf(1f, 0.82f, 0.48f, 0.18f, 0f, 0f, 0f, 0f, 0f, 0f)
         private val SPEAKER_COMPENSATION = floatArrayOf(-1.5f, -1f, 0f, 0.5f, 0f, 0f, 0.5f, 0.8f, 0.5f, 0f)
         private val WIRED_COMPENSATION = FloatArray(BAND_COUNT)
         private val BLUETOOTH_COMPENSATION = floatArrayOf(0f, 0f, -0.3f, -0.3f, 0f, 0f, 0.2f, 0.5f, 0.5f, 0f)
         private val USB_COMPENSATION = FloatArray(BAND_COUNT)
-        private const val Q = 1.15f
-        private const val MAX_BAND_DB = LevyraAudioPresets.maxBandDb
-        private const val BASS_MAX_DB = 6f
+        internal const val Q = 1.15f
+        internal const val MAX_BAND_DB = LevyraAudioPresets.maxBandDb
+        internal const val BASS_MAX_DB = 6f
         private const val COEFFICIENT_SMOOTHING = 0.22f
         private const val MIX_SMOOTHING = 0.0018f
     }

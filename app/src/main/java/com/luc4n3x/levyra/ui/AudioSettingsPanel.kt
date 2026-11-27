@@ -1,5 +1,24 @@
 package com.luc4n3x.levyra.ui
 
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.PI
+import com.luc4n3x.levyra.ui.lyrics.rememberLyricsAudioOutputRoute
+import com.luc4n3x.levyra.ui.i18n.spectrumCopy
+import com.luc4n3x.levyra.ui.i18n.SpectrumText
+import com.luc4n3x.levyra.player.LevyraEqualizerExport
+import com.luc4n3x.levyra.player.EqualizerExportFormat
+import com.luc4n3x.levyra.domain.SpectrumVisualizerStyle
+import com.luc4n3x.levyra.data.MAX_LYRICS_OFFSET_MS
+import com.luc4n3x.levyra.data.LyricsLatencyProfiles
+import androidx.compose.material.icons.rounded.SaveAlt
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import android.widget.Toast
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.luc4n3x.levyra.ui.player.horizontalFadeEdges
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
@@ -242,6 +261,7 @@ internal fun AudioSettingsPanel(
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
     onAudioOffloadPreference: (AudioOffloadPreference) -> Unit = {},
+    spectrumVisualizer: SpectrumVisualizerControls? = null,
     onPlaybackBuffer: (PlaybackBufferSettings) -> Unit,
     onResetEqualizer: () -> Unit,
     onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
@@ -452,6 +472,7 @@ internal fun AudioSettingsPanel(
                                     enabled = equalizerEnabled,
                                     onClick = { showAutoEqImport = true }
                                 )
+                                AutoEqExportAction(audioSettings)
                             }
                         }
                     }
@@ -515,6 +536,7 @@ internal fun AudioSettingsPanel(
                                     enabled = true,
                                     onClick = { showAutoEqImport = true }
                                 )
+                                AutoEqExportAction(audioSettings)
                             }
                         }
                     }
@@ -759,6 +781,9 @@ internal fun AudioSettingsPanel(
                         preference = audioSettings.audioOffloadPreference,
                         onPreference = onAudioOffloadPreference
                     )
+                }
+                spectrumVisualizer?.let { controls ->
+                    item { SpectrumVisualizerSection(audioSettings.spectrumVisualizerStyle, controls) }
                 }
                 item {
                     AudioSliderRow(
@@ -2772,3 +2797,301 @@ private fun formatBufferSeconds(value: Float, languageCode: String): String =
         minimumFractionDigits = 0
         maximumFractionDigits = 1
     }.format(value.toDouble())
+
+internal class SpectrumVisualizerControls(
+    val latencyProfiles: LyricsLatencyProfiles,
+    val onStyle: (SpectrumVisualizerStyle) -> Unit,
+    val onAdjustLatency: (String?, Boolean, Long) -> Unit
+)
+
+@Composable
+private fun SpectrumVisualizerSection(style: SpectrumVisualizerStyle, controls: SpectrumVisualizerControls) {
+    val copy = LocalLevyraStrings.current.spectrumCopy
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AudioCard {
+            Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(copy[SpectrumText.Title], color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(copy[SpectrumText.Subtitle], color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                SpectrumVisualizerStyle.entries.forEach { option ->
+                    SpectrumStyleRow(
+                        style = option,
+                        title = copy[spectrumTitleKey(option)],
+                        description = copy[spectrumDescriptionKey(option)],
+                        selected = option == style,
+                        onClick = { controls.onStyle(option) }
+                    )
+                }
+            }
+        }
+        if (style.enabled) SpectrumLatencyCard(controls)
+    }
+}
+
+private fun spectrumTitleKey(style: SpectrumVisualizerStyle): SpectrumText = when (style) {
+    SpectrumVisualizerStyle.OFF -> SpectrumText.Off
+    SpectrumVisualizerStyle.BARS -> SpectrumText.Bars
+    SpectrumVisualizerStyle.MIRROR -> SpectrumText.Mirror
+    SpectrumVisualizerStyle.LED -> SpectrumText.Led
+    SpectrumVisualizerStyle.CURVE -> SpectrumText.Curve
+    SpectrumVisualizerStyle.ANALYZER -> SpectrumText.Analyzer
+    SpectrumVisualizerStyle.SPECTROGRAM -> SpectrumText.Spectrogram
+    SpectrumVisualizerStyle.OSCILLOSCOPE -> SpectrumText.Oscilloscope
+}
+
+private fun spectrumDescriptionKey(style: SpectrumVisualizerStyle): SpectrumText = when (style) {
+    SpectrumVisualizerStyle.OFF -> SpectrumText.OffDesc
+    SpectrumVisualizerStyle.BARS -> SpectrumText.BarsDesc
+    SpectrumVisualizerStyle.MIRROR -> SpectrumText.MirrorDesc
+    SpectrumVisualizerStyle.LED -> SpectrumText.LedDesc
+    SpectrumVisualizerStyle.CURVE -> SpectrumText.CurveDesc
+    SpectrumVisualizerStyle.ANALYZER -> SpectrumText.AnalyzerDesc
+    SpectrumVisualizerStyle.SPECTROGRAM -> SpectrumText.SpectrogramDesc
+    SpectrumVisualizerStyle.OSCILLOSCOPE -> SpectrumText.OscilloscopeDesc
+}
+
+@Composable
+private fun SpectrumStyleRow(
+    style: SpectrumVisualizerStyle,
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 56.dp)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        SpectrumStylePreview(
+            style = style,
+            modifier = Modifier
+                .size(width = 54.dp, height = 32.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(LevyraBlack.copy(alpha = if (LevyraIsLight) 0.08f else 0.35f))
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(description, color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
+        }
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(selectedColor = LevyraCyan, unselectedColor = LevyraMuted)
+        )
+    }
+}
+
+private val SpectrumPreviewLevels = floatArrayOf(0.42f, 0.78f, 0.95f, 0.72f, 0.58f, 0.82f, 0.5f, 0.38f, 0.62f, 0.33f, 0.46f, 0.24f)
+
+@Composable
+private fun SpectrumStylePreview(style: SpectrumVisualizerStyle, modifier: Modifier) {
+    val accent = LevyraCyan
+    val muted = LevyraMuted
+    Canvas(modifier.padding(horizontal = 6.dp, vertical = 5.dp)) {
+        drawSpectrumPreview(style, accent, muted)
+    }
+}
+
+private fun DrawScope.drawSpectrumPreview(style: SpectrumVisualizerStyle, accent: Color, muted: Color) {
+    val count = SpectrumPreviewLevels.size
+    val slot = size.width / count
+    when (style) {
+        SpectrumVisualizerStyle.OFF ->
+            drawLine(muted, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = 2.dp.toPx())
+        SpectrumVisualizerStyle.BARS, SpectrumVisualizerStyle.ANALYZER -> {
+            if (style == SpectrumVisualizerStyle.ANALYZER) {
+                for (line in 1..2) {
+                    val y = size.height * line / 3f
+                    drawLine(muted.copy(alpha = 0.45f), Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
+                }
+            }
+            SpectrumPreviewLevels.forEachIndexed { index, level ->
+                val height = level * size.height
+                drawRect(accent, Offset(index * slot + slot * 0.15f, size.height - height), Size(slot * 0.7f, height))
+            }
+        }
+        SpectrumVisualizerStyle.MIRROR -> SpectrumPreviewLevels.forEachIndexed { index, level ->
+            val half = level * size.height / 2f
+            drawRect(accent, Offset(index * slot + slot * 0.15f, size.height / 2f - half), Size(slot * 0.7f, half * 2f))
+        }
+        SpectrumVisualizerStyle.LED -> SpectrumPreviewLevels.forEachIndexed { index, level ->
+            val cells = 6
+            val cell = size.height / cells
+            for (row in 0 until cells) {
+                drawRect(
+                    if (row < (level * cells).toInt()) accent else muted.copy(alpha = 0.25f),
+                    Offset(index * slot + slot * 0.15f, size.height - (row + 1) * cell + cell * 0.2f),
+                    Size(slot * 0.7f, cell * 0.6f)
+                )
+            }
+        }
+        SpectrumVisualizerStyle.CURVE -> {
+            val path = Path()
+            SpectrumPreviewLevels.forEachIndexed { index, level ->
+                val x = index * size.width / (count - 1)
+                val y = size.height - level * size.height
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(path, accent, style = Stroke(width = 2.dp.toPx()))
+        }
+        SpectrumVisualizerStyle.SPECTROGRAM -> {
+            val rows = 5
+            SpectrumPreviewLevels.forEachIndexed { index, level ->
+                for (row in 0 until rows) {
+                    drawRect(
+                        accent.copy(alpha = (level - row * 0.14f).coerceIn(0.08f, 1f)),
+                        Offset(index * slot, size.height - (row + 1) * size.height / rows),
+                        Size(slot, size.height / rows)
+                    )
+                }
+            }
+        }
+        SpectrumVisualizerStyle.OSCILLOSCOPE -> {
+            val path = Path()
+            val steps = 48
+            for (step in 0..steps) {
+                val x = size.width * step / steps
+                val phase = step / steps.toFloat() * 4f * PI.toFloat()
+                val y = size.height / 2f - sin(phase) * size.height * 0.38f * (0.6f + 0.4f * cos(phase / 2f))
+                if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(path, accent, style = Stroke(width = 2.dp.toPx()))
+        }
+    }
+}
+
+@Composable
+private fun SpectrumLatencyCard(controls: SpectrumVisualizerControls) {
+    val copy = LocalLevyraStrings.current.spectrumCopy
+    val route = rememberLyricsAudioOutputRoute()
+    val routeKey = route?.stableKey
+    val bluetooth = route?.bluetooth == true
+    val offsetMs = controls.latencyProfiles.resolve(routeKey, bluetooth)
+    val label = when {
+        offsetMs > 0L -> "+$offsetMs ms"
+        offsetMs < 0L -> "−${-offsetMs} ms"
+        else -> "0 ms"
+    }
+    AudioCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(copy[SpectrumText.Latency], color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = LevyraCyan, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(copy[SpectrumText.LatencyDesc], color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
+                if (offsetMs != 0L) {
+                    AudioTextAction(label = copy[SpectrumText.Reset], enabled = true) {
+                        controls.onAdjustLatency(routeKey, bluetooth, -offsetMs)
+                    }
+                }
+            }
+            AudioStepButton(
+                icon = Icons.Rounded.Remove,
+                contentDescription = copy[SpectrumText.Earlier],
+                enabled = offsetMs > -MAX_LYRICS_OFFSET_MS,
+                onClick = { controls.onAdjustLatency(routeKey, bluetooth, -SPECTRUM_LATENCY_STEP_MS) }
+            )
+            AudioStepButton(
+                icon = Icons.Rounded.Add,
+                contentDescription = copy[SpectrumText.Later],
+                enabled = offsetMs < MAX_LYRICS_OFFSET_MS,
+                onClick = { controls.onAdjustLatency(routeKey, bluetooth, SPECTRUM_LATENCY_STEP_MS) }
+            )
+        }
+    }
+}
+
+private const val SPECTRUM_LATENCY_STEP_MS = 10L
+
+@Composable
+private fun AutoEqExportAction(audioSettings: LevyraAudioSettings) {
+    val strings = LocalLevyraStrings.current
+    val copy = strings.spectrumCopy
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var choosing by remember { mutableStateOf(false) }
+    var pendingFormat by rememberSaveable { mutableStateOf<EqualizerExportFormat?>(null) }
+    val profileName = audioSettings.activeParametricProfile
+        ?.takeIf { audioSettings.parametricEqualizerEnabled }
+        ?.name
+        ?: EQUALIZER_EXPORT_DEFAULT_NAME
+    val exportable = remember(audioSettings, profileName) {
+        LevyraEqualizerExport.currentProfile(audioSettings, profileName) != null
+    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val format = pendingFormat
+        pendingFormat = null
+        if (uri == null || format == null) return@rememberLauncherForActivityResult
+        val profile = LevyraEqualizerExport.currentProfile(audioSettings, profileName)
+            ?: return@rememberLauncherForActivityResult
+        val text = LevyraEqualizerExport.render(profile, format)
+        scope.launch {
+            val written = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+                        stream.write(text.toByteArray(Charsets.UTF_8))
+                    } != null
+                }.getOrDefault(false)
+            }
+            Toast.makeText(
+                context,
+                if (written) copy[SpectrumText.Exported] else copy[SpectrumText.ExportFailed],
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    AudioActionButton(
+        label = copy[SpectrumText.ExportTitle],
+        icon = Icons.Rounded.SaveAlt,
+        primary = false,
+        enabled = exportable,
+        onClick = { choosing = true }
+    )
+    if (choosing) {
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            title = { Text(copy[SpectrumText.ExportTitle]) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(copy[SpectrumText.ExportSubtitle], color = LevyraMuted, fontSize = 13.sp)
+                    EqualizerExportFormat.entries.forEach { format ->
+                        val graphic = format == EqualizerExportFormat.GRAPHIC_EQ
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable(role = Role.Button) {
+                                    choosing = false
+                                    pendingFormat = format
+                                    launcher.launch(LevyraEqualizerExport.fileName(profileName, format))
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                copy[if (graphic) SpectrumText.ExportGraphic else SpectrumText.ExportParametric],
+                                color = LevyraText,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                copy[if (graphic) SpectrumText.ExportGraphicDesc else SpectrumText.ExportParametricDesc],
+                                color = LevyraMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { choosing = false }) { Text(strings.cancel) }
+            }
+        )
+    }
+}
+
+private const val EQUALIZER_EXPORT_DEFAULT_NAME = "Levyra EQ"

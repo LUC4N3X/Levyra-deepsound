@@ -123,6 +123,15 @@ data class EqualizerSettings(
 
     fun flattened(): EqualizerSettings = copy(preamp = 0f, amps = emptyList())
 
+    fun toGraphicEq(): String = BAND_FREQUENCIES.indices.joinToString(
+        separator = "; ",
+        prefix = "GraphicEQ: ",
+        postfix = "\n"
+    ) { index ->
+        val gain = String.format(Locale.ROOT, "%.1f", preamp + ampAt(index))
+        "${BAND_FREQUENCIES[index].toInt()} ${if (gain == "-0.0") "0.0" else gain}"
+    }
+
     companion object {
         const val MIN_GAIN = -20f
         const val MAX_GAIN = 20f
@@ -158,7 +167,8 @@ data class DesktopSettings(
     val vlcDirectory: String = "",
     val audioOutputDeviceId: String = "",
     val equalizer: EqualizerSettings = EqualizerSettings(),
-    val chartCountry: String = ""
+    val chartCountry: String = "",
+    val outputLatencyOffsetMs: Int = 0
 ) {
     val effectiveChartCountry: String get() = chartCountry.ifBlank { contentCountry }
 
@@ -181,11 +191,13 @@ data class DesktopSettings(
         crossfadeMs = normalizeCrossfade(crossfadeMs),
         vlcDirectory = vlcDirectory.trim(),
         audioOutputDeviceId = audioOutputDeviceId.trim().take(MAX_OUTPUT_DEVICE_ID_LENGTH),
-        equalizer = equalizer.sanitized()
+        equalizer = equalizer.sanitized(),
+        outputLatencyOffsetMs = outputLatencyOffsetMs.coerceIn(-MAX_OUTPUT_LATENCY_OFFSET_MS, MAX_OUTPUT_LATENCY_OFFSET_MS)
     )
 
     companion object {
         const val MAX_DISPLAY_NAME_LENGTH = 40
+        const val MAX_OUTPUT_LATENCY_OFFSET_MS = 5_000
         const val MAX_OUTPUT_DEVICE_ID_LENGTH = 512
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 2f

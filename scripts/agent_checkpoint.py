@@ -384,6 +384,7 @@ def _comment_guard_passes() -> bool:
 
 def _record_completed_boundary(state: dict[str, Any]) -> bool:
     hygiene = _load_hygiene()
+    already_recommended = bool(hygiene.get("clear_recommended"))
     signature = hashlib.sha256(
         f"{state.get('goal', '')}|{state.get('edit_generation', 0)}|{','.join(state.get('edited_paths', []))}".encode()
     ).hexdigest()
@@ -393,7 +394,7 @@ def _record_completed_boundary(state: dict[str, Any]) -> bool:
     if int(hygiene.get("completed_since_clear", 0)) >= 2:
         hygiene["clear_recommended"] = True
     _save_hygiene(hygiene)
-    return bool(hygiene.get("clear_recommended"))
+    return bool(hygiene.get("clear_recommended")) and not already_recommended
 
 
 def stop(data: dict[str, Any]) -> int:
