@@ -18,8 +18,7 @@ internal class SpectrumClockPublisher(
 ) : Player.Listener {
     private var enabled = false
     private var refreshJob: Job? = null
-    private var chainRootUid: Any? = null
-    private var chainOffsetUs = 0L
+    private val chain = SpectrumChain(history)
     private var lastPeriodUid: Any? = null
     private var lastDurationUs = 0L
 
@@ -42,7 +41,7 @@ internal class SpectrumClockPublisher(
             player.removeListener(this)
             refreshJob?.cancel()
             refreshJob = null
-            resetChain()
+            chain.reset()
             SpectrumEngine.clock = null
         }
     }
@@ -54,14 +53,9 @@ internal class SpectrumClockPublisher(
             reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
         val previous = lastPeriodUid
         if (!continuous || previous == null || lastDurationUs <= 0L) {
-            resetChain()
-            return
-        }
-        if (chainRootUid == null || history.hasSegment(previous)) {
-            chainRootUid = previous
-            chainOffsetUs = lastDurationUs
+            chain.reset()
         } else {
-            chainOffsetUs += lastDurationUs
+            chain.advance(previous, lastDurationUs)
         }
     }
 
@@ -71,17 +65,12 @@ internal class SpectrumClockPublisher(
         reason: Int
     ) {
         if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
-            resetChain()
+            chain.reset()
         }
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
         if (events.containsAny(*PUBLISH_EVENTS)) publish()
-    }
-
-    private fun resetChain() {
-        chainRootUid = null
-        chainOffsetUs = 0L
     }
 
     private fun publish() {
@@ -93,8 +82,8 @@ internal class SpectrumClockPublisher(
         lastDurationUs = if (durationMs == C.TIME_UNSET || durationMs <= 0L) 0L else durationMs * 1_000L
         SpectrumEngine.clock = PlaybackClockAnchor(
             periodUid = periodUid,
-            chainRootUid = chainRootUid,
-            chainOffsetUs = chainOffsetUs,
+            chainRootUid = chain.root?.periodUid,
+            chainOffsetUs = chain.offsetUs,
             positionUs = player.currentPosition * 1_000L,
             elapsedRealtimeUs = SystemClock.elapsedRealtimeNanos() / 1_000L,
             speed = player.playbackParameters.speed,
@@ -113,5 +102,30 @@ internal class SpectrumClockPublisher(
             Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
             Player.EVENT_TIMELINE_CHANGED
         )
+    }
+}
+
+internal class SpectrumChain(private val history: PcmHistory) {
+    var root: PcmHistory.Segment? = null
+        private set
+    var offsetUs = 0L
+        private set
+
+    fun advance(previous: Any, previousDurationUs: Long) {
+        val current = root
+        val latest = history.latestSegment(previous)
+        if (latest != null && latest !== current && (current == null || latest.startFrame >= current.startFrame)) {
+            root = latest
+            offsetUs = previousDurationUs
+        } else if (current != null) {
+            offsetUs += previousDurationUs
+        } else {
+            reset()
+        }
+    }
+
+    fun reset() {
+        root = null
+        offsetUs = 0L
     }
 }

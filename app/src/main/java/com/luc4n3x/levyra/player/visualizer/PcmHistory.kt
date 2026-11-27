@@ -14,7 +14,10 @@ internal class PcmHistory(capacityLog2: Int = DEFAULT_CAPACITY_LOG2) {
         val sampleRate: Double
     )
 
-    class Location(val endFrame: Long, val sampleRate: Double)
+    class Location {
+        var endFrame = 0L
+        var sampleRate = 0.0
+    }
 
     val capacity: Int = 1 shl capacityLog2
     private val mask = (capacity - 1).toLong()
@@ -116,17 +119,17 @@ internal class PcmHistory(capacityLog2: Int = DEFAULT_CAPACITY_LOG2) {
         writeFrame = frame
     }
 
-    fun locate(periodUid: Any?, positionUs: Long, chainRootUid: Any?, chainOffsetUs: Long): Location? {
+    fun locate(periodUid: Any?, positionUs: Long, chainRootUid: Any?, chainOffsetUs: Long, out: Location): Boolean {
         val snapshot = segments
-        if (snapshot.isEmpty()) return null
+        if (snapshot.isEmpty()) return false
         val head = writeFrame
         val oldest = maxOf(head - capacity + reuseMargin, validFromFrame)
-        locateIn(snapshot, periodUid, positionUs, head, oldest)?.let { return it }
+        if (locateIn(snapshot, periodUid, positionUs, head, oldest, out)) return true
         if (chainRootUid != null && (chainRootUid != periodUid || chainOffsetUs != 0L)) {
-            locateIn(snapshot, chainRootUid, positionUs + chainOffsetUs, head, oldest)?.let { return it }
+            if (locateIn(snapshot, chainRootUid, positionUs + chainOffsetUs, head, oldest, out)) return true
         }
         val latest = snapshot[snapshot.lastIndex]
-        return if (latest.periodUid == null) frameIn(latest, positionUs, head, head, oldest) else null
+        return latest.periodUid == null && frameIn(latest, positionUs, head, head, oldest, out)
     }
 
     private fun locateIn(
@@ -134,29 +137,39 @@ internal class PcmHistory(capacityLog2: Int = DEFAULT_CAPACITY_LOG2) {
         periodUid: Any?,
         positionUs: Long,
         head: Long,
-        oldest: Long
-    ): Location? {
-        if (periodUid == null) return null
+        oldest: Long,
+        out: Location
+    ): Boolean {
+        if (periodUid == null) return false
         var index = snapshot.lastIndex
         while (index >= 0) {
             val segment = snapshot[index]
             if (segment.periodUid == periodUid) {
                 val end = if (index == snapshot.lastIndex) head else snapshot[index + 1].startFrame
-                frameIn(segment, positionUs, end, head, oldest)?.let { return it }
+                if (frameIn(segment, positionUs, end, head, oldest, out)) return true
             }
             index--
         }
-        return null
+        return false
     }
 
-    private fun frameIn(segment: Segment, positionUs: Long, end: Long, head: Long, oldest: Long): Location? {
+    private fun frameIn(
+        segment: Segment,
+        positionUs: Long,
+        end: Long,
+        head: Long,
+        oldest: Long,
+        out: Location
+    ): Boolean {
         val frame = segment.startFrame +
             ((positionUs - segment.offsetUs) * segment.sampleRate / 1_000_000.0).roundToLong()
-        if (frame < segment.startFrame || frame > end || frame > head || frame < oldest) return null
-        return Location(frame, segment.sampleRate)
+        if (frame < segment.startFrame || frame > end || frame > head || frame < oldest) return false
+        out.endFrame = frame
+        out.sampleRate = segment.sampleRate
+        return true
     }
 
-    fun hasSegment(periodUid: Any): Boolean = segments.any { it.periodUid == periodUid }
+    fun latestSegment(periodUid: Any): Segment? = segments.lastOrNull { it.periodUid == periodUid }
 
     fun availableEnd(): Long = writeFrame
 

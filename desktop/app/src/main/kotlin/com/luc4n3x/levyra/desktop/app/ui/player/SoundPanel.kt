@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.luc4n3x.levyra.ui.i18n.SpectrumText
 import com.luc4n3x.levyra.ui.i18n.spectrumCopy
+import com.luc4n3x.levyra.desktop.app.ui.OverwriteConfirmingFileChooser
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -217,6 +218,7 @@ private fun OutputLatencyRow(settings: DesktopSettings, onUpdate: ((DesktopSetti
 @Composable
 private fun EqualizerExportRow(settings: DesktopSettings) {
     val copy = SharedStrings.forCode(settings.language.tag).spectrumCopy
+    val strings = LocalStrings.current
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<String?>(null) }
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -224,7 +226,10 @@ private fun EqualizerExportRow(settings: DesktopSettings) {
             onClick = {
                 val text = settings.equalizer.toGraphicEq()
                 scope.launch {
-                    val target = chooseEqualizerExportFile() ?: return@launch
+                    val target = chooseEqualizerExportFile(
+                        strings.playlistOverwriteTitle,
+                        strings::formatPlaylistOverwriteConfirm
+                    ) ?: return@launch
                     val written = withContext(Dispatchers.IO) {
                         runCatching { target.writeText(text, Charsets.UTF_8) }.isSuccess
                     }
@@ -241,16 +246,21 @@ private fun EqualizerExportRow(settings: DesktopSettings) {
     }
 }
 
-private suspend fun chooseEqualizerExportFile(): File? = withContext(Dispatchers.Swing) {
-    val chooser = JFileChooser()
+private suspend fun chooseEqualizerExportFile(
+    overwriteTitle: String,
+    overwriteMessage: (String) -> String
+): File? = withContext(Dispatchers.Swing) {
+    val chooser = OverwriteConfirmingFileChooser(::equalizerExportTarget, overwriteTitle, overwriteMessage)
     chooser.fileSelectionMode = JFileChooser.FILES_ONLY
     chooser.isMultiSelectionEnabled = false
     chooser.fileFilter = FileNameExtensionFilter("GraphicEQ", "txt")
     chooser.selectedFile = File(EQUALIZER_EXPORT_FILE_NAME)
     if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return@withContext null
-    val selected = chooser.selectedFile ?: return@withContext null
-    if (selected.extension.isBlank()) File(selected.parentFile, "${selected.name}.txt") else selected
+    chooser.selectedFile
 }
+
+private fun equalizerExportTarget(selected: File): File =
+    if (selected.extension.isBlank()) File(selected.parentFile, "${selected.name}.txt") else selected
 
 private const val OUTPUT_LATENCY_STEP_MS = 10
 private const val EQUALIZER_EXPORT_FILE_NAME = "Levyra EQ GraphicEQ.txt"

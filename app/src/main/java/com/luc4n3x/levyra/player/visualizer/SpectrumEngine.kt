@@ -223,6 +223,7 @@ internal class SpectrumProcessor(private val analyzer: SpectrumAnalyzer = Spectr
 
 object SpectrumEngine {
     internal val history = PcmHistory()
+    private val location = PcmHistory.Location()
 
     @Volatile
     internal var clock: PlaybackClockAnchor? = null
@@ -274,8 +275,9 @@ object SpectrumEngine {
         val anchor = clock ?: return false
         if (!anchor.playing || !history.enabled) return false
         val audibleUs = anchor.positionAt(nowUs) - outputLatencyOffsetMs * 1_000L
-        val location = history.locate(anchor.periodUid, audibleUs, anchor.chainRootUid, anchor.chainOffsetUs)
-            ?: return false
+        if (!history.locate(anchor.periodUid, audibleUs, anchor.chainRootUid, anchor.chainOffsetUs, location)) {
+            return false
+        }
         val half = processor.windowSize / 2
         val end = min(location.endFrame + half, history.availableEnd())
         if (!history.read(end, processor.buffer())) return false

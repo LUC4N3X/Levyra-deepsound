@@ -3014,7 +3014,7 @@ private fun AutoEqExportAction(audioSettings: LevyraAudioSettings) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var choosing by remember { mutableStateOf(false) }
-    var pendingFormat by remember { mutableStateOf<EqualizerExportFormat?>(null) }
+    var pendingFormat by rememberSaveable { mutableStateOf<EqualizerExportFormat?>(null) }
     val profileName = audioSettings.activeParametricProfile
         ?.takeIf { audioSettings.parametricEqualizerEnabled }
         ?.name

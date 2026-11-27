@@ -127,6 +127,64 @@ class PcmHistoryTest {
         assertEquals(-0.5f, out[1], 0f)
     }
 
+    @Test
+    fun repeatedChainKeepsAddingPlayedLengths() {
+        val history = history(capacityLog2 = 14)
+        history.beginSegment("A", 0L)
+        history.append(stereoFloat(60_000, 0), C.ENCODING_PCM_FLOAT, 2)
+        val chain = SpectrumChain(history)
+        val durationUs = 500_000L
+        chain.advance("A", durationUs)
+        chain.advance("A", durationUs)
+        assertEquals(1_000_000L, chain.offsetUs)
+        assertEquals(
+            48_000L + 4_800L,
+            history.locate("A", 100_000L, chain.root?.periodUid, chain.offsetUs)?.endFrame
+        )
+    }
+
+    @Test
+    fun staleSegmentOfAnEarlierPlayDoesNotRestartTheChain() {
+        val history = history()
+        history.beginSegment("A", 0L)
+        history.append(stereoFloat(4_800, 0), C.ENCODING_PCM_FLOAT, 2)
+        history.beginSegment("B", 30_000_000L)
+        history.append(stereoFloat(9_600, 0), C.ENCODING_PCM_FLOAT, 2)
+        val chain = SpectrumChain(history)
+        chain.advance("B", 30_100_000L)
+        chain.advance("A", 50_000L)
+        assertEquals("B", chain.root?.periodUid)
+        assertEquals(30_150_000L, chain.offsetUs)
+        assertEquals(
+            4_800L + 7_200L,
+            history.locate("B", 0L, chain.root?.periodUid, chain.offsetUs)?.endFrame
+        )
+    }
+
+    @Test
+    fun newerSegmentBecomesTheChainRoot() {
+        val history = history()
+        history.beginSegment("A", 0L)
+        history.append(stereoFloat(4_800, 0), C.ENCODING_PCM_FLOAT, 2)
+        val chain = SpectrumChain(history)
+        chain.advance("A", 100_000L)
+        history.beginSegment("A", 20_000_000L)
+        history.append(stereoFloat(4_800, 0), C.ENCODING_PCM_FLOAT, 2)
+        chain.advance("A", 20_100_000L)
+        assertEquals(4_800L, chain.root?.startFrame)
+        assertEquals(20_100_000L, chain.offsetUs)
+        chain.reset()
+        assertNull(chain.root)
+        assertEquals(0L, chain.offsetUs)
+    }
+
+    private fun PcmHistory.locate(
+        periodUid: Any?,
+        positionUs: Long,
+        chainRootUid: Any?,
+        chainOffsetUs: Long
+    ): PcmHistory.Location? = PcmHistory.Location().takeIf { locate(periodUid, positionUs, chainRootUid, chainOffsetUs, it) }
+
     private fun <T> assertNotNull(value: T?): T {
         org.junit.Assert.assertNotNull(value)
         return value!!
