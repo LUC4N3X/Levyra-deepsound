@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
+import com.luc4n3x.levyra.data.playlistexport.youtubeVideoIdOrNull
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
@@ -2293,24 +2294,106 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
+    internal data class RemotePlaylistItem(
+        val track: Track,
+        val videoId: String,
+        val setVideoId: String
+    )
+
+    internal data class RemotePlaylistPage(
+        val title: String,
+        val items: List<RemotePlaylistItem>,
+        val continuation: String
+    )
+
     internal fun parsePlaylistTracks(root: JSONObject, playlistId: String): List<Track> {
         return parsePlaylistTrackRenderers(playlistShelfRenderers(root), playlistId)
     }
 
+    internal fun parsePlaylistPageForSync(root: JSONObject, playlistId: String): RemotePlaylistPage {
+        val items = playlistShelfRenderers(root).mapNotNull { renderer ->
+            val track = parsePlaylistRendererTrack(renderer, playlistId) ?: return@mapNotNull null
+            val itemData = renderer.optJSONObject("playlistItemData")
+            val videoId = itemData?.optString("videoId")?.trim()?.takeIf(String::isNotBlank)
+                ?: track.youtubeVideoIdOrNull()
+                ?: return@mapNotNull null
+            val setVideoId = extractPlaylistSetVideoId(renderer, itemData)
+            RemotePlaylistItem(track = track, videoId = videoId, setVideoId = setVideoId)
+        }
+        return RemotePlaylistPage(
+            title = parsePlaylistHeaderTitle(root),
+            items = items,
+            continuation = findPlaylistContinuation(root)
+        )
+    }
+
     private fun parsePlaylistTrackRenderers(renderers: List<JSONObject>, playlistId: String): List<Track> {
         return renderers.mapNotNull { renderer ->
-            val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
-            val albumReference = extractYoutubeMusicAlbumReference(renderer)
-            val artistReferences = extractYoutubeMusicArtistReferences(renderer, track.artist)
-            val trackNumber = extractPlaylistTrackNumber(renderer)
-            track.copy(
-                album = albumReference.first.ifBlank { track.album },
-                albumBrowseId = albumReference.second,
-                artistBrowseIds = artistReferences.map { it.browseId },
-                trackNumber = trackNumber,
-                explicit = renderer.toString().hasExplicitBadge()
-            )
+            parsePlaylistRendererTrack(renderer, playlistId)
         }.distinctBy { it.id }
+    }
+
+    private fun parsePlaylistRendererTrack(renderer: JSONObject, playlistId: String): Track? {
+        val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return null
+        val albumReference = extractYoutubeMusicAlbumReference(renderer)
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, track.artist)
+        val trackNumber = extractPlaylistTrackNumber(renderer)
+        return track.copy(
+            album = albumReference.first.ifBlank { track.album },
+            albumBrowseId = albumReference.second,
+            artistBrowseIds = artistReferences.map { it.browseId },
+            trackNumber = trackNumber,
+            explicit = renderer.toString().hasExplicitBadge()
+        )
+    }
+
+    private fun extractPlaylistSetVideoId(renderer: JSONObject, itemData: JSONObject?): String {
+        val direct = itemData?.optString("playlistSetVideoId")?.trim().orEmpty()
+        if (direct.isNotBlank()) return direct
+        val endpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(renderer.optJSONObject("menu"), "playlistEditEndpoint", endpoints)
+        endpoints.forEach { endpoint ->
+            val actions = endpoint.optJSONArray("actions") ?: return@forEach
+            for (index in 0 until actions.length()) {
+                val action = actions.optJSONObject(index) ?: continue
+                if (action.optString("action") == "ACTION_REMOVE_VIDEO") {
+                    val setVideoId = action.optString("setVideoId").trim()
+                    if (setVideoId.isNotBlank()) return setVideoId
+                }
+            }
+        }
+        return ""
+    }
+
+    private fun parsePlaylistHeaderTitle(root: JSONObject): String {
+        val headers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicPlaylistEditHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicHeaderRenderer", headers)
+        collectObjectsByKey(root, "playlistHeaderRenderer", headers)
+        collectObjectsByKey(root, "musicSidePanelRenderer", headers)
+        headers.forEach { header ->
+            val title = header.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty()
+                .ifBlank { header.optJSONObject("title")?.optString("simpleText").orEmpty() }
+                .ifBlank { header.optJSONObject("title")?.optString("text").orEmpty() }
+                .cleanLabel()
+            if (title.isNotBlank()) return title
+        }
+        val rootHeader = root.optJSONObject("header")
+        if (rootHeader != null) {
+            val title = rootHeader.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty()
+                .ifBlank { rootHeader.optJSONObject("title")?.optString("simpleText").orEmpty() }
+                .cleanLabel()
+            if (title.isNotBlank()) return title
+        }
+        val metadata = root.optJSONObject("metadata")?.optJSONObject("musicPlaylistMetadataRenderer")
+        if (metadata != null) {
+            val title = metadata.optString("title").cleanLabel()
+            if (title.isNotBlank()) return title
+        }
+        return ""
     }
 
     private fun parsePlaylistHeader(root: JSONObject, playlistId: String): YoutubeMusicPlaylistDetail {

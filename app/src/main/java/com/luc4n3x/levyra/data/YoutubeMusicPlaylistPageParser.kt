@@ -59,7 +59,7 @@ internal object YoutubeMusicPlaylistPageParser {
         }
         if (actionContainers.isNotEmpty()) return actionContainers
 
-        canonicalSectionContents(root)?.let { contents ->
+        canonicalSectionContents(root).forEach { contents ->
             shelfKeys.forEach { shelfKey ->
                 for (index in 0 until contents.length()) {
                     contents.optJSONObject(index)?.optJSONObject(shelfKey)?.let { return listOf(it) }
@@ -75,20 +75,35 @@ internal object YoutubeMusicPlaylistPageParser {
         return emptyList()
     }
 
-    private fun canonicalSectionContents(root: JSONObject): JSONArray? {
-        val tabs = root.optJSONObject("contents")
-            ?.optJSONObject("singleColumnBrowseResultsRenderer")
-            ?.optJSONArray("tabs")
-            ?: return null
+    private fun canonicalSectionContents(root: JSONObject): List<JSONArray> {
+        val contentsRoot = root.optJSONObject("contents") ?: return emptyList()
+        val result = mutableListOf<JSONArray>()
+
+        contentsRoot.optJSONObject("twoColumnBrowseResultsRenderer")?.let { twoColumn ->
+            twoColumn.optJSONObject("secondaryContents")
+                ?.optJSONObject("sectionListRenderer")
+                ?.optJSONArray("contents")
+                ?.let(result::add)
+            collectTabSectionContents(twoColumn.optJSONArray("tabs"), result)
+        }
+
+        contentsRoot.optJSONObject("singleColumnBrowseResultsRenderer")?.let { singleColumn ->
+            collectTabSectionContents(singleColumn.optJSONArray("tabs"), result)
+        }
+
+        return result
+    }
+
+    private fun collectTabSectionContents(tabs: JSONArray?, output: MutableList<JSONArray>) {
+        if (tabs == null) return
         for (index in 0 until tabs.length()) {
-            val contents = tabs.optJSONObject(index)
+            tabs.optJSONObject(index)
                 ?.optJSONObject("tabRenderer")
                 ?.optJSONObject("content")
                 ?.optJSONObject("sectionListRenderer")
                 ?.optJSONArray("contents")
-            if (contents != null) return contents
+                ?.let(output::add)
         }
-        return null
     }
 
     private fun renderersFromContainer(container: JSONObject): List<JSONObject> {
@@ -118,10 +133,6 @@ internal object YoutubeMusicPlaylistPageParser {
                     ?.optString("continuation")
                     ?.takeIf(String::isNotBlank)
                     ?.let { return it }
-                item.optJSONObject("reloadContinuationData")
-                    ?.optString("continuation")
-                    ?.takeIf(String::isNotBlank)
-                    ?.let { return it }
             }
         }
 
@@ -148,11 +159,6 @@ internal object YoutubeMusicPlaylistPageParser {
         collectObjectsByKey(container, "continuationCommand", commandNodes)
         commandNodes.forEach { node ->
             node.optString("token").takeIf(String::isNotBlank)?.let { return it }
-        }
-        val reloadNodes = mutableListOf<JSONObject>()
-        collectObjectsByKey(container, "reloadContinuationData", reloadNodes)
-        reloadNodes.forEach { node ->
-            node.optString("continuation").takeIf(String::isNotBlank)?.let { return it }
         }
         return ""
     }

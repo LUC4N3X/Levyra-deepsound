@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.youtubemusic
 
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -11,6 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.security.SecureRandom
@@ -18,6 +20,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal class YoutubeMusicAccountHttpException(val status: Int) : IOException("YouTube Music HTTP $status")
+
+internal data class RemotePlaylistRemoval(val videoId: String, val setVideoId: String)
 
 internal class YoutubeMusicAccountClient {
     suspend fun accounts(cookie: String): List<YoutubeMusicAccount> {
@@ -37,18 +41,92 @@ internal class YoutubeMusicAccountClient {
 
     suspend fun createPlaylist(session: YoutubeMusicSession, title: String): String {
         val body = payload("en").put("title", title).put("description", "").put("privacyStatus", "PRIVATE")
-        return request(session, "youtubei/v1/playlist/create", body).optString("playlistId")
-            .takeIf(String::isNotBlank) ?: throw YoutubeMusicProtocolException()
+        val root = request(session, "youtubei/v1/playlist/create", body)
+        return extractCreatedPlaylistId(root) ?: throw YoutubeMusicProtocolException()
     }
 
     suspend fun addToPlaylist(session: YoutubeMusicSession, playlistId: String, videoIds: List<String>) {
-        val actions = JSONArray()
-        videoIds.forEach { videoId ->
-            actions.put(JSONObject().put("action", "ACTION_ADD_VIDEO").put("addedVideoId", videoId).put("dedupeOption", "DEDUPE_OPTION_SKIP"))
+        val valid = videoIds.map(String::trim).filter(String::isNotBlank)
+        if (valid.isEmpty()) return
+        valid.chunked(EDIT_BATCH_SIZE).forEach { batch ->
+            addVideoBatchWithFallback(session, playlistId, batch)
         }
-        val body = payload("en").put("playlistId", playlistId.removePrefix("VL")).put("actions", actions)
-        val status = request(session, "youtubei/v1/browse/edit_playlist", body).optString("status")
-        if (!status.contains("SUCCEEDED")) throw YoutubeMusicProtocolException()
+    }
+
+    private suspend fun addVideoBatchWithFallback(
+        session: YoutubeMusicSession,
+        playlistId: String,
+        videoIds: List<String>
+    ) {
+        if (videoIds.isEmpty()) return
+        try {
+            editPlaylist(session, buildAddVideosPayload(playlistId, videoIds))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Batch add failed for %d videos to playlist %s, falling back to sub-batches", videoIds.size, playlistId)
+            if (videoIds.size > 1) {
+                val half = videoIds.size / 2
+                addVideoBatchWithFallback(session, playlistId, videoIds.subList(0, half))
+                addVideoBatchWithFallback(session, playlistId, videoIds.subList(half, videoIds.size))
+            } else {
+                Timber.w(error, "Single video %s could not be added to playlist %s", videoIds.first(), playlistId)
+                if (error is YoutubeMusicSessionExpired || error is YoutubeMusicPlaylistNotFoundException || error is IOException) {
+                    throw error
+                }
+            }
+        }
+    }
+
+    suspend fun removeFromPlaylist(
+        session: YoutubeMusicSession,
+        playlistId: String,
+        items: List<RemotePlaylistRemoval>
+    ) {
+        val valid = items.filter { it.videoId.isNotBlank() && it.setVideoId.isNotBlank() }
+        if (valid.isEmpty()) return
+        valid.chunked(EDIT_BATCH_SIZE).forEach { batch ->
+            removeVideoBatchWithFallback(session, playlistId, batch)
+        }
+    }
+
+    private suspend fun removeVideoBatchWithFallback(
+        session: YoutubeMusicSession,
+        playlistId: String,
+        items: List<RemotePlaylistRemoval>
+    ) {
+        if (items.isEmpty()) return
+        try {
+            editPlaylist(session, buildRemoveVideosPayload(playlistId, items))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Batch removal failed for %d items from playlist %s, falling back to sub-batches", items.size, playlistId)
+            if (items.size > 1) {
+                val half = items.size / 2
+                removeVideoBatchWithFallback(session, playlistId, items.subList(0, half))
+                removeVideoBatchWithFallback(session, playlistId, items.subList(half, items.size))
+            } else {
+                Timber.w(error, "Single item %s could not be removed from playlist %s", items.first(), playlistId)
+                if (error is YoutubeMusicSessionExpired || error is YoutubeMusicPlaylistNotFoundException || error is IOException) {
+                    throw error
+                }
+            }
+        }
+    }
+
+    suspend fun renamePlaylist(session: YoutubeMusicSession, playlistId: String, title: String) {
+        val cleanTitle = title.trim().take(MAX_PLAYLIST_TITLE_LENGTH)
+        if (cleanTitle.isEmpty()) return
+        editPlaylist(session, buildRenamePlaylistPayload(playlistId, cleanTitle))
+    }
+
+    private suspend fun editPlaylist(session: YoutubeMusicSession, body: JSONObject) {
+        val root = request(session, "youtubei/v1/browse/edit_playlist", body)
+        if (!isEditPlaylistSuccessResponse(root)) {
+            Timber.w("Unexpected YouTube Music edit_playlist response status=%s", root.optString("status"))
+            throw YoutubeMusicProtocolException()
+        }
     }
 
     suspend fun registerPlayback(session: YoutubeMusicSession, videoId: String) {
@@ -89,10 +167,7 @@ internal class YoutubeMusicAccountClient {
         return String(CharArray(CPN_LENGTH) { CPN_ALPHABET[random.nextInt(CPN_ALPHABET.length)] })
     }
 
-    private fun payload(language: String) = JSONObject().put("context", JSONObject()
-        .put("client", JSONObject().put("clientName", "WEB_REMIX").put("clientVersion", "1.20260423.01.00")
-            .put("hl", language).put("gl", "US"))
-        .put("user", JSONObject().put("lockedSafetyMode", false)))
+    private fun payload(language: String) = youtubeMusicContextPayload(language)
 
     private fun authorized(session: YoutubeMusicSession, url: String): Request.Builder {
         val account = session.account
@@ -122,6 +197,7 @@ internal class YoutubeMusicAccountClient {
                     try {
                         val parsed = response.use {
                             if (it.code == 401 || it.code == 403) throw YoutubeMusicSessionExpired()
+                            if (it.code == 404) throw YoutubeMusicPlaylistNotFoundException()
                             if (!it.isSuccessful) throw YoutubeMusicAccountHttpException(it.code)
                             val responseBody = it.body
                             if (responseBody.contentLength() > MAX_RESPONSE_BYTES) throw YoutubeMusicProtocolException()
@@ -138,9 +214,21 @@ internal class YoutubeMusicAccountClient {
                                 }
                                 output.toString("UTF-8")
                             }
-                            val root = JSONObject(raw.removePrefix(")]}'\n"))
+                            val rawClean = raw.trim()
+                                .removePrefix(")]}'\n")
+                                .removePrefix(")]}'\r\n")
+                                .removePrefix(")]}'")
+                                .trim()
+                            val root = JSONObject(rawClean)
                             if (root.optJSONObject("responseContext")?.optBoolean("loggedOut") == true) throw YoutubeMusicSessionExpired()
-                            if (root.has("error")) throw YoutubeMusicProtocolException()
+                            if (root.has("error")) {
+                                val errObj = root.optJSONObject("error")
+                                val code = errObj?.optInt("code") ?: 0
+                                val errStatus = errObj?.optString("status").orEmpty()
+                                if (code == 404 || errStatus == "NOT_FOUND") throw YoutubeMusicPlaylistNotFoundException()
+                                if (code == 401 || code == 403 || errStatus == "UNAUTHENTICATED") throw YoutubeMusicSessionExpired()
+                                throw YoutubeMusicProtocolException()
+                            }
                             root
                         }
                         if (continuation.isActive) continuation.resume(parsed)
@@ -152,10 +240,122 @@ internal class YoutubeMusicAccountClient {
         }
     }
 
-    private companion object {
+    internal companion object {
         const val MAX_RESPONSE_BYTES = 8 * 1024 * 1024
         const val TRACKING_DOMAIN = "youtube.com"
         const val CPN_LENGTH = 16
         const val CPN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        const val MAX_PLAYLIST_TITLE_LENGTH = 150
+        const val EDIT_BATCH_SIZE = 25
+
+        fun extractCreatedPlaylistId(root: JSONObject): String? {
+            val direct = root.optString("playlistId").trim().ifBlank {
+                root.optJSONObject("playlist")?.optString("playlistId")?.trim()
+            }
+            if (!direct.isNullOrBlank()) return direct
+
+            fun findId(element: Any): String? {
+                when (element) {
+                    is JSONObject -> {
+                        val pid = element.optString("playlistId").trim()
+                        if (pid.isNotBlank()) return pid
+                        val browseId = element.optString("browseId").trim()
+                        if (browseId.isNotBlank() && (browseId.startsWith("VLPL") || browseId.startsWith("PL") || browseId.startsWith("FEmusic_playlist_detail_"))) {
+                            return browseId.removePrefix("VL").removePrefix("FEmusic_playlist_detail_")
+                        }
+                        val keys = element.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            val found = findId(element.get(key))
+                            if (found != null) return found
+                        }
+                    }
+                    is JSONArray -> {
+                        for (i in 0 until element.length()) {
+                            val found = findId(element.get(i))
+                            if (found != null) return found
+                        }
+                    }
+                }
+                return null
+            }
+            return findId(root)
+        }
+
+        fun buildAddVideosPayload(playlistId: String, videoIds: List<String>): JSONObject {
+            val actions = JSONArray()
+            videoIds.forEach { videoId ->
+                actions.put(
+                    JSONObject()
+                        .put("action", "ACTION_ADD_VIDEO")
+                        .put("addedVideoId", videoId)
+                )
+            }
+            return youtubeMusicContextPayload("en")
+                .put("playlistId", playlistId.trim().substringAfter("list=").removePrefix("VL").trim())
+                .put("actions", actions)
+        }
+
+        fun buildRemoveVideosPayload(playlistId: String, items: List<RemotePlaylistRemoval>): JSONObject {
+            val actions = JSONArray()
+            items.forEach { item ->
+                actions.put(
+                    JSONObject()
+                        .put("action", "ACTION_REMOVE_VIDEO")
+                        .put("removedVideoId", item.videoId)
+                        .put("setVideoId", item.setVideoId)
+                )
+            }
+            return youtubeMusicContextPayload("en")
+                .put("playlistId", playlistId.trim().substringAfter("list=").removePrefix("VL").trim())
+                .put("actions", actions)
+        }
+
+        fun isEditPlaylistSuccessResponse(root: JSONObject): Boolean {
+            val status = root.optString("status").trim()
+            if (status.contains("SUCCEEDED", ignoreCase = true) ||
+                status.contains("SUCCESS", ignoreCase = true) ||
+                status.contains("OK", ignoreCase = true) ||
+                status.contains("COMPLETED", ignoreCase = true)
+            ) {
+                return true
+            }
+            if (status.contains("FAIL", ignoreCase = true) ||
+                status.contains("ERROR", ignoreCase = true) ||
+                status.contains("INVALID", ignoreCase = true) ||
+                status.contains("REJECTED", ignoreCase = true)
+            ) {
+                return false
+            }
+            val hasResults = root.has("playlistEditResults") ||
+                (root.optJSONArray("actions")?.length() ?: 0) > 0 ||
+                (root.has("responseContext") && !root.has("error"))
+            return status.isBlank() && hasResults
+        }
+
+        fun buildRenamePlaylistPayload(playlistId: String, title: String): JSONObject {
+            val actions = JSONArray().put(
+                JSONObject()
+                    .put("action", "ACTION_SET_PLAYLIST_NAME")
+                    .put("playlistName", title.trim().take(MAX_PLAYLIST_TITLE_LENGTH))
+            )
+            return youtubeMusicContextPayload("en")
+                .put("playlistId", playlistId.trim().substringAfter("list=").removePrefix("VL").trim())
+                .put("actions", actions)
+        }
     }
 }
+
+private fun youtubeMusicContextPayload(language: String): JSONObject = JSONObject().put(
+    "context",
+    JSONObject()
+        .put(
+            "client",
+            JSONObject()
+                .put("clientName", "WEB_REMIX")
+                .put("clientVersion", "1.20260423.01.00")
+                .put("hl", language)
+                .put("gl", "US")
+        )
+        .put("user", JSONObject().put("lockedSafetyMode", false))
+)

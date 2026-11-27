@@ -380,6 +380,7 @@ class MainActivity : ComponentActivity() {
         preferHighestRefreshRate()
         viewModel.refreshGentleWakeReliability()
         viewModel.refreshDownloads()
+        viewModel.onAppForegrounded()
     }
 
     override fun onUserLeaveHint() {

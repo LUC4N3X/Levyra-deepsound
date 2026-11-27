@@ -1121,6 +1121,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         override fun playlistsChanged() = loadPlaylists()
 
+        override fun playlistAppended(playlistId: String) = playlistSync.scheduleAutoSync(playlistId)
+
         override fun openPlaylist(playlistId: String) = this@LevyraViewModel.openPlaylist(playlistId)
     }
     private val playlistImportEngineDelegate = lazy {
@@ -1242,6 +1244,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
+    internal val playlistSync: PlaylistSyncController by lazy {
+        PlaylistSyncController(
+            scope = viewModelScope,
+            context = application.applicationContext,
+            playlistStore = playlistStore,
+            languageProvider = { _state.value.languageCode },
+            onLocalPlaylistChanged = { playlistId ->
+                loadPlaylists()
+                viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+            }
+        )
+    }
+    internal val playlistSyncs: StateFlow<Map<String, com.luc4n3x.levyra.data.local.PlaylistSyncEntity>> by lazy {
+        playlistSync.syncStates
+            .catch { error -> Timber.w(error, "Playlist sync state observe failed"); emit(emptyMap()) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    }
+    internal val activePlaylistSyncIds: StateFlow<Set<String>> get() = playlistSync.activeSyncIds
+    internal val activeRemotePlaylistSyncIds: StateFlow<Set<String>> get() = playlistSync.activeRemoteBrowseIds
     private val savedPlaylistsStore = com.luc4n3x.levyra.data.SavedPlaylistsStore(database.savedPlaylistsDao())
     val savedPlaylists: StateFlow<List<com.luc4n3x.levyra.domain.SavedPlaylist>> = savedPlaylistsStore.observe()
         .catch { error -> Timber.w(error, "Saved playlists load failed"); emit(emptyList()) }
@@ -1253,6 +1274,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         gateway = PlaylistStudioStoreGateway(application.applicationContext, playlistStore) { playlistId ->
             loadPlaylists()
             viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+            playlistSync.scheduleAutoSync(playlistId)
         }
     )
     val mixLab = MixLabController(
@@ -2700,6 +2722,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             checkForUpdates(silent = true)
             loadReleaseRadar(deferUntilHomeIdle = true)
         }
+        viewModelScope.launch {
+            delay(1_200L)
+            awaitHomeUiIdle(startupPlan)
+            if (!_state.value.isDeviceOffline) {
+                playlistSync.syncAutoSyncPlaylists(force = false)
+            }
+        }
     }
 
     private fun warmPersistentOrbit(tracks: List<Track>, limit: Int, persist: Boolean = false) {
@@ -3828,6 +3857,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadPlaylists()
     }
 
+    internal fun openPlaylistSync(playlist: Playlist) {
+        playlistSync.open(playlist, playlistSyncs.value[playlist.id])
+    }
+
+    internal fun syncYoutubeMusicPlaylistEntry(
+        entry: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLibraryEntry,
+        onCompleted: (String?, com.luc4n3x.levyra.data.youtubemusic.PlaylistSyncOutcome) -> Unit = { _, _ -> }
+    ) {
+        playlistSync.syncRemoteEntry(entry, onCompleted)
+    }
+
+    internal fun publishPlaylistSyncFeedback(outcome: com.luc4n3x.levyra.data.youtubemusic.PlaylistSyncOutcome) {
+        val copy = com.luc4n3x.levyra.ui.i18n.playlistSyncCopy(_state.value.languageCode)
+        val message = when (outcome) {
+            is com.luc4n3x.levyra.data.youtubemusic.PlaylistSyncOutcome.Synced -> copy.summaryText(outcome.summary)
+            is com.luc4n3x.levyra.data.youtubemusic.PlaylistSyncOutcome.Failed -> copy.errorMessage(outcome.error)
+        }
+        _state.update { it.copy(offlineExportMessage = message) }
+    }
+
+    fun onAppForegrounded() {
+        val current = _state.value
+        if (current.showOnboarding || current.isDeviceOffline) return
+        playlistSync.syncAutoSyncPlaylists(force = false)
+    }
+
+    fun onYoutubeMusicConnected() {
+        val current = _state.value
+        if (current.showOnboarding || current.isDeviceOffline) return
+        playlistSync.syncAutoSyncPlaylists(force = true)
+    }
+
     fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
         viewModelScope.launch {
             val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
@@ -3874,6 +3935,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (equivalent != null && original.id in _state.value.favoriteIds) carryFavorite(original, entry)
                 loadPlaylists()
                 refreshOpenPlaylist(playlistId)
+                playlistSync.scheduleAutoSync(playlistId)
             } else {
                 _state.update { current ->
                     current.copy(offlineExportMessage = playlistImportHubCopy(current.languageCode).changeMatchConflict)
@@ -4429,10 +4491,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playlistStore.rename(playlistId, name)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
         }
     }
 
     fun deletePlaylist(playlistId: String) {
+        playlistSync.cancelAutoSync(playlistId)
         SpeedDial.playlistKey(playlistId)?.let(::removeSpeedDialPin)
         viewModelScope.launch {
             playlistStore.delete(playlistId)
@@ -4444,6 +4508,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun deletePlaylists(playlistIds: Collection<String>) {
         val uniqueIds = playlistIds.filter(String::isNotBlank).toSet()
         if (uniqueIds.isEmpty()) return
+        uniqueIds.forEach { playlistSync.cancelAutoSync(it) }
         val pinKeys = uniqueIds.mapNotNullTo(HashSet()) { SpeedDial.playlistKey(it) }
         if (pinKeys.isNotEmpty()) {
             mutateSpeedDial { pins -> pins.filterNot { it.key in pinKeys } }
@@ -4463,6 +4528,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playlistStore.addTrack(playlistId, track.copy(streamUrl = ""))
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
         }
     }
 
@@ -4483,6 +4549,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
             _state.update {
                 it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveSuccess)
             }
@@ -4498,6 +4565,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .getOrDefault(com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Unavailable)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            if (result == com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Added) {
+                playlistSync.scheduleAutoSync(playlistId)
+            }
             _state.update {
                 val copy = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode)
                 val playlistName = it.playlists.firstOrNull { playlist -> playlist.id == playlistId }?.name.orEmpty()
@@ -4543,6 +4613,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (legacyTrackIds.isNotEmpty()) playlistStore.removeTracks(playlistId, legacyTrackIds)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
         }
     }
 
@@ -4586,6 +4657,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playlistStore.removeTrack(playlistId, trackId)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
         }
     }
 
@@ -4596,6 +4668,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playlistStore.removeTracks(playlistId, trackIds)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+            playlistSync.scheduleAutoSync(playlistId)
             _state.update { it.copy(offlineExportMessage = "Rimossi ${trackIds.size} brani dalla playlist") }
         }
     }
@@ -6275,6 +6348,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (HomeOfflinePolicy.shouldRecoverOnReconnect(previouslyOffline, offline)) {
             refreshRemoteHomeContent()
+            playlistSync.syncAutoSyncPlaylists(force = true)
         }
     }
 

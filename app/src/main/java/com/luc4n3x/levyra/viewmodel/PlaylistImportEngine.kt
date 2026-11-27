@@ -43,6 +43,8 @@ interface PlaylistImportHost {
 
     fun playlistsChanged()
 
+    fun playlistAppended(playlistId: String) = Unit
+
     fun openPlaylist(playlistId: String)
 }
 
@@ -114,8 +116,10 @@ class PlaylistImportEngine private constructor(context: Context) {
                 override suspend fun commit(name: String, tracks: List<Track>, playlistId: String) =
                     playlistStore.createWithTracks(name, tracks, playlistId)
 
-                override suspend fun append(playlistId: String, tracks: List<Track>) =
+                override suspend fun append(playlistId: String, tracks: List<Track>) {
                     playlistStore.addTracks(playlistId, tracks)
+                    host?.playlistAppended(playlistId)
+                }
 
                 override fun playlistsChanged() {
                     host?.playlistsChanged()

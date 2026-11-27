@@ -6,6 +6,7 @@ import java.security.MessageDigest
 
 internal class YoutubeMusicAccountStorageException : IOException("YouTube Music session storage is unavailable")
 internal class YoutubeMusicSessionExpired : IOException("YouTube Music session requires sign-in")
+internal class YoutubeMusicPlaylistNotFoundException : IOException("YouTube Music playlist was not found")
 internal class YoutubeMusicProtocolException : IOException("YouTube Music returned an unsupported response")
 internal class YoutubeMusicLibraryLimit : IOException("YouTube Music library exceeds the import limit")
 

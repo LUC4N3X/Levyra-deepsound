@@ -503,6 +503,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     val storyPosts: StoryPostsController get() = root.storyPosts
     fun playStoryPost(post: com.luc4n3x.levyra.data.storypost.StoryPost) = root.playStoryPost(post)
     val savedPlaylists: StateFlow<List<com.luc4n3x.levyra.domain.SavedPlaylist>> get() = root.savedPlaylists
+    internal val playlistSyncs: StateFlow<Map<String, com.luc4n3x.levyra.data.local.PlaylistSyncEntity>> get() = root.playlistSyncs
+    internal val activePlaylistSyncIds: StateFlow<Set<String>> get() = root.activePlaylistSyncIds
     fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) = root.openSavedPlaylist(saved)
     fun removeSavedPlaylist(key: String) = root.removeSavedPlaylist(key)
     fun refreshSmartOffline() = root.refreshSmartOffline()

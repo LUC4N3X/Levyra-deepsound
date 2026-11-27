@@ -20,6 +20,7 @@ import com.luc4n3x.levyra.data.local.PlaybackQueueItemEntity
 import com.luc4n3x.levyra.data.local.PlaybackQueueStateEntity
 import com.luc4n3x.levyra.data.local.PlaylistAlbumEntity
 import com.luc4n3x.levyra.data.local.PlaylistEntity
+import com.luc4n3x.levyra.data.local.PlaylistSyncEntity
 import com.luc4n3x.levyra.data.local.decodePlaylistAlbumTracks
 import com.luc4n3x.levyra.data.local.layoutSlots
 import com.luc4n3x.levyra.data.local.toAlbumHit
@@ -424,6 +425,7 @@ class LevyraBackupManager(private val context: Context) {
                 writeJsonArray(writer, savedPlaylistsStore.load()) { savedPlaylistToJson(it).toString() }
             }
             sections[PLAYLISTS_ENTRY] = writeJsonSection(zip, PLAYLISTS_ENTRY) { writer ->
+                val syncByPlaylist = database.playlistSyncDao().all().associateBy(PlaylistSyncEntity::playlistId)
                 writer.write("[")
                 playlistEntities.forEachIndexed { index, playlist ->
                     if (index > 0) writer.write(",")
@@ -455,6 +457,9 @@ class LevyraBackupManager(private val context: Context) {
                                     .forEach { put(PlaylistAlbumBackupJson.toJson(it)) }
                             }
                         )
+                        .apply {
+                            syncByPlaylist[playlist.id]?.let { sync -> put("sync", playlistSyncToJson(sync)) }
+                        }
                         .toString()
                     writer.write(json)
                 }
@@ -667,6 +672,7 @@ class LevyraBackupManager(private val context: Context) {
 
     private suspend fun currentSnapshot(): VaultSnapshot {
         val snapshot = preferences.snapshot()
+        val syncByPlaylist = database.playlistSyncDao().all().associateBy(PlaylistSyncEntity::playlistId)
         val playlists = database.playlistDao().allPlaylists().map { playlist ->
             val trackRows = database.playlistDao().tracksOf(playlist.id)
             val tracks = trackRows.map { it.toTrack() }
@@ -695,7 +701,8 @@ class LevyraBackupManager(private val context: Context) {
                 hidden = playlist.hidden,
                 tagIds = tagsDao.tagIdsOf(playlist.id),
                 tracks = tracks,
-                albums = playlistAlbumBackups(trackRows, database.playlistDao().albumsOf(playlist.id))
+                albums = playlistAlbumBackups(trackRows, database.playlistDao().albumsOf(playlist.id)),
+                sync = syncByPlaylist[playlist.id]
             )
         }
         return VaultSnapshot(
@@ -824,6 +831,7 @@ class LevyraBackupManager(private val context: Context) {
 
     private suspend fun restorePlaylists(playlists: List<PlaylistBackup>, restoredCoverReferences: MutableSet<String>) {
         val dao = database.playlistDao()
+        val syncDao = database.playlistSyncDao()
         dao.clearAll()
         playlists.forEach { playlist ->
             if (playlist.id.isBlank()) return@forEach
@@ -865,6 +873,7 @@ class LevyraBackupManager(private val context: Context) {
                     }
                 )
             }
+            playlist.sync?.let { syncDao.upsert(it) }
         }
     }
 
@@ -1132,11 +1141,42 @@ class LevyraBackupManager(private val context: Context) {
                         hidden = json.optBoolean("hidden", false),
                         tagIds = json.optJSONArray("tagIds").toStringList(),
                         tracks = json.optJSONArray("tracks").toTrackList(),
-                        albums = PlaylistAlbumBackupJson.parseArray(json.optJSONArray("albums"), createdAt)
+                        albums = PlaylistAlbumBackupJson.parseArray(json.optJSONArray("albums"), createdAt),
+                        sync = parsePlaylistSync(json.optJSONObject("sync"), id)
                     )
                 )
             }
         }
+    }
+
+    private fun playlistSyncToJson(value: PlaylistSyncEntity): JSONObject = JSONObject()
+        .put("accountId", value.accountId)
+        .put("remotePlaylistId", value.remotePlaylistId)
+        .put("remoteTitle", value.remoteTitle)
+        .put("syncedVideoIds", value.syncedVideoIds)
+        .put("autoSync", value.autoSync)
+        .put("lastSyncedAt", value.lastSyncedAt)
+        .put("lastSyncAttemptAt", value.lastSyncAttemptAt)
+        .put("lastSyncError", value.lastSyncError)
+        .put("lastUnmatchedCount", value.lastUnmatchedCount)
+
+    private fun parsePlaylistSync(json: JSONObject?, playlistId: String): PlaylistSyncEntity? {
+        if (json == null) return null
+        val accountId = json.optString("accountId").trim()
+        val remotePlaylistId = json.optString("remotePlaylistId").trim().removePrefix("VL")
+        if (accountId.isBlank() || remotePlaylistId.isBlank()) return null
+        return PlaylistSyncEntity(
+            playlistId = playlistId,
+            accountId = accountId,
+            remotePlaylistId = remotePlaylistId,
+            remoteTitle = json.optString("remoteTitle"),
+            syncedVideoIds = json.optString("syncedVideoIds"),
+            autoSync = json.optBoolean("autoSync", false),
+            lastSyncedAt = json.optLong("lastSyncedAt", 0L).coerceAtLeast(0L),
+            lastSyncAttemptAt = json.optLong("lastSyncAttemptAt", 0L).coerceAtLeast(0L),
+            lastSyncError = json.optString("lastSyncError"),
+            lastUnmatchedCount = json.optInt("lastUnmatchedCount", 0).coerceAtLeast(0)
+        )
     }
 
     private fun settingsToJson(snapshot: LevyraPreferencesSnapshot): JSONObject {
@@ -1688,7 +1728,8 @@ class LevyraBackupManager(private val context: Context) {
         val hidden: Boolean,
         val tagIds: List<String>,
         val tracks: List<Track>,
-        val albums: List<PlaylistAlbumBackup> = emptyList()
+        val albums: List<PlaylistAlbumBackup> = emptyList(),
+        val sync: PlaylistSyncEntity? = null
     )
 
     private data class VaultSnapshot(

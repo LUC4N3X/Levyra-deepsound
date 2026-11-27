@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.playlistexport
 
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.domain.Track
 import java.net.URLEncoder
 
@@ -28,8 +29,16 @@ private val lineBreaks = Regex("[\\r\\n]+")
 private val reservedFileNameCharacters = Regex("[\\\\/:*?\"<>|\\p{Cntrl}]")
 private val whitespaceRuns = Regex("\\s+")
 
-fun Track.youtubeVideoIdOrNull(): String? =
-    listOf(id, audioVideoId).firstOrNull(youtubeVideoId::matches)
+fun Track.youtubeVideoIdOrNull(): String? {
+    listOf(audioVideoId, id, counterpartVideoId).forEach { candidate ->
+        val clean = candidate.trim()
+        if (youtubeVideoId.matches(clean)) return clean
+    }
+    return listOf(videoUrl, id)
+        .asSequence()
+        .map { PlaybackSourceIdentity.extractYoutubeVideoId(it) }
+        .firstOrNull(youtubeVideoId::matches)
+}
 
 fun planRemotePlaylistExport(tracks: List<Track>): RemotePlaylistExportPlan {
     val seen = LinkedHashSet<String>()

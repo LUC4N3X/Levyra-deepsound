@@ -77,6 +77,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Shuffle
@@ -84,11 +85,14 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
+import com.luc4n3x.levyra.ui.i18n.playlistSyncCopy
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
@@ -951,10 +955,14 @@ internal fun PlaylistDetailTopActions(
     onTogglePinToHome: () -> Unit,
     onLikeAll: () -> Unit,
     onSelectAll: () -> Unit,
-    onExport: () -> Unit
+    onExport: () -> Unit,
+    syncLinked: Boolean = false,
+    syncing: Boolean = false,
+    onSync: () -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val exportLabel = remember(strings.code) { playlistExportCopy(strings.code).action }
+    val syncCopy = remember(strings.code) { playlistSyncCopy(strings.code) }
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -1027,6 +1035,20 @@ internal fun PlaylistDetailTopActions(
                     onClick = { menuExpanded = false; onLikeAll() }
                 )
             }
+            DropdownMenuItem(
+                text = { Text(syncCopy.action) },
+                leadingIcon = {
+                    if (syncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.Sync, null, tint = if (syncLinked) LevyraCyan else LocalContentColor.current)
+                    }
+                },
+                trailingIcon = if (syncLinked && !syncing) {
+                    { Icon(Icons.Rounded.Check, null, tint = LevyraCyan) }
+                } else null,
+                onClick = { menuExpanded = false; onSync() }
+            )
             DropdownMenuItem(
                 text = { Text(exportLabel) },
                 leadingIcon = { Icon(Icons.Rounded.IosShare, null) },

@@ -123,6 +123,97 @@ class YoutubeMusicPlaylistPageParserTest {
         assertEquals("TOKEN_AFTER_UNAVAILABLE", YoutubeMusicPlaylistPageParser.continuation(root))
     }
 
+    @Test
+    fun readsTwoColumnBrowseResultsSecondaryShelf() {
+        val root = JSONObject(
+            """
+            {
+              "contents": {
+                "twoColumnBrowseResultsRenderer": {
+                  "tabs": [
+                    {
+                      "tabRenderer": {
+                        "content": {
+                          "sectionListRenderer": {
+                            "contents": []
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "secondaryContents": {
+                    "sectionListRenderer": {
+                      "contents": [
+                        {
+                          "musicPlaylistShelfRenderer": {
+                            "contents": [
+                              ${rendererItem("dQw4w9WgXcQ")}
+                            ],
+                            "continuations": [
+                              {
+                                "nextContinuationData": {
+                                  "continuation": "TWO_COL_NEXT"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("dQw4w9WgXcQ"), rendererVideoIds(root))
+        assertEquals("TWO_COL_NEXT", YoutubeMusicPlaylistPageParser.continuation(root))
+    }
+
+    @Test
+    fun ignoresReloadContinuationDataToPreventSelfRefreshLoops() {
+        val root = JSONObject(
+            """
+            {
+              "contents": {
+                "singleColumnBrowseResultsRenderer": {
+                  "tabs": [
+                    {
+                      "tabRenderer": {
+                        "content": {
+                          "sectionListRenderer": {
+                            "contents": [
+                              {
+                                "musicPlaylistShelfRenderer": {
+                                  "contents": [
+                                    ${rendererItem("dQw4w9WgXcQ")}
+                                  ],
+                                  "continuations": [
+                                    {
+                                      "reloadContinuationData": {
+                                        "continuation": "RELOAD_SELF_TOKEN"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("dQw4w9WgXcQ"), rendererVideoIds(root))
+        assertEquals("", YoutubeMusicPlaylistPageParser.continuation(root))
+    }
+
     private fun rendererVideoIds(root: JSONObject): List<String> =
         YoutubeMusicPlaylistPageParser.renderers(root).map { renderer ->
             renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()

@@ -7,10 +7,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PlaylistExportTest {
-    private fun track(id: String, title: String, artist: String, durationMs: Long = 200_000L, audioVideoId: String = "") = Track(
+    private fun track(
+        id: String,
+        title: String,
+        artist: String,
+        durationMs: Long = 200_000L,
+        audioVideoId: String = "",
+        videoUrl: String = "",
+        counterpartVideoId: String = ""
+    ) = Track(
         id = id, title = title, artist = artist, album = "Album, Deluxe", durationMs = durationMs,
-        streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "test",
+        streamUrl = "", videoUrl = videoUrl, thumbnailUrl = "", largeThumbnailUrl = "", source = "test",
         moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0, accentStart = 0, accentEnd = 0,
+        counterpartVideoId = counterpartVideoId,
         audioVideoId = audioVideoId
     )
 
@@ -28,6 +37,26 @@ class PlaylistExportTest {
         assertEquals(listOf("dQw4w9WgXcQ", "9bZkp7q19f0", "kJQP7kiw5Fk"), plan.videoIds)
         assertEquals(listOf("Home Demo"), plan.unmatched.map { it.title })
         assertEquals(1, plan.duplicates)
+    }
+
+    @Test
+    fun youtubeVideoIdOrNullExtractsFromUrlsAndCounterpartWhileSkippingLocalTracks() {
+        assertEquals(
+            "dQw4w9WgXcQ",
+            track("spotify:1", "Watch URL", "Artist", videoUrl = "https://music.youtube.com/watch?v=dQw4w9WgXcQ").youtubeVideoIdOrNull()
+        )
+        assertEquals(
+            "9bZkp7q19f0",
+            track("chart:1", "Short URL", "Artist", videoUrl = "https://youtu.be/9bZkp7q19f0").youtubeVideoIdOrNull()
+        )
+        assertEquals(
+            "kJQP7kiw5Fk",
+            track("chart:2", "Counterpart", "Artist", counterpartVideoId = "kJQP7kiw5Fk").youtubeVideoIdOrNull()
+        )
+        assertEquals(
+            null,
+            track("local:42", "Local File", "Artist").youtubeVideoIdOrNull()
+        )
     }
 
     @Test

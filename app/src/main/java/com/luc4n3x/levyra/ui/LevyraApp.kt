@@ -3344,14 +3344,33 @@ fun LevyraApp(
                     )
                 }
             }
+            LaunchedEffect(youtubeMusicState.active?.id) {
+                if (youtubeMusicState.active != null) {
+                    viewModel.onYoutubeMusicConnected()
+                }
+            }
             if (showYoutubeMusic) {
+                val playlistSyncs by viewModel.playlistSyncs.collectAsStateWithLifecycle()
+                val activePlaylistSyncIds by viewModel.activePlaylistSyncIds.collectAsStateWithLifecycle()
+                val activeRemotePlaylistSyncIds by viewModel.activeRemotePlaylistSyncIds.collectAsStateWithLifecycle()
                 com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
                     viewModel = youtubeMusicViewModel,
                     languageCode = state.languageCode,
                     onPlay = { tracks, track -> showYoutubeMusic = false; viewModel.playFrom(tracks, track) },
                     onArtist = viewModel::openArtistFromHit,
                     onImported = viewModel::refreshYoutubeMusicImports,
-                    onClose = { showYoutubeMusic = false }
+                    onClose = { showYoutubeMusic = false },
+                    playlistSyncs = playlistSyncs,
+                    activePlaylistSyncIds = activePlaylistSyncIds,
+                    activeRemotePlaylistSyncIds = activeRemotePlaylistSyncIds,
+                    onSyncPlaylist = { entry ->
+                        viewModel.syncYoutubeMusicPlaylistEntry(entry) { _, outcome ->
+                            viewModel.publishPlaylistSyncFeedback(outcome)
+                            if (outcome is com.luc4n3x.levyra.data.youtubemusic.PlaylistSyncOutcome.Synced) {
+                                youtubeMusicViewModel.refresh()
+                            }
+                        }
+                    }
                 )
             }
 
@@ -3705,7 +3724,11 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = detailEnter, exit = pageExit) {
-                LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
+                LevyraPlaylistDetailScreen(
+                    viewModel = viewModel,
+                    state = state,
+                    onOpenYoutubeMusic = { showYoutubeMusic = true }
+                )
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,6 +73,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -174,6 +176,8 @@ import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.media.immersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
+import com.luc4n3x.levyra.ui.i18n.playlistSyncCopy
+import androidx.compose.material.icons.rounded.Sync
 import java.util.Locale
 
 private val playlistSelectionSaver = listSaver<Set<String>, String>(
@@ -386,6 +390,8 @@ internal fun LevyraLibraryScreen(
     val collectionImportState by viewModel.personalCollections.importState.collectAsStateWithLifecycle()
     val storyPostList by viewModel.storyPosts.posts.collectAsStateWithLifecycle()
     val storyPostImportState by viewModel.storyPosts.importState.collectAsStateWithLifecycle()
+    val playlistSyncs by viewModel.playlistSyncs.collectAsStateWithLifecycle()
+    val activePlaylistSyncIds by viewModel.activePlaylistSyncIds.collectAsStateWithLifecycle()
     val storyPostStrings = remember(strings.code) { LevyraStoryPostCatalog.forCode(strings.code) }
     val storyPostFolderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) viewModel.storyPosts.importFolder(uri)
@@ -1299,7 +1305,9 @@ internal fun LevyraLibraryScreen(
                                     else viewModel.openPlaylist(playlist.id)
                                 },
                                 onLongClick = { selectedKeys = selectedKeys.toggle(key) },
-                                onPlay = { viewModel.playPlaylist(playlist.id) }
+                                onPlay = { viewModel.playPlaylist(playlist.id) },
+                                syncLinked = playlist.id in playlistSyncs,
+                                syncing = playlist.id in activePlaylistSyncIds
                             )
                         }
                     } else {
@@ -1317,7 +1325,9 @@ internal fun LevyraLibraryScreen(
                                     if (selectionActive) selectedKeys = selectedKeys.toggle(key)
                                     else viewModel.openPlaylist(playlist.id)
                                 },
-                                onSelect = { playlist -> selectedKeys = selectedKeys.toggle("playlist:${playlist.id}") }
+                                onSelect = { playlist -> selectedKeys = selectedKeys.toggle("playlist:${playlist.id}") },
+                                linkedPlaylistIds = playlistSyncs.keys,
+                                syncingPlaylistIds = activePlaylistSyncIds
                             )
                         }
                     }
@@ -1944,9 +1954,12 @@ internal fun LevyraLibraryScreen(
 @Composable
 internal fun LevyraPlaylistDetailScreen(
     viewModel: LevyraViewModel,
-    state: LevyraUiState
+    state: LevyraUiState,
+    onOpenYoutubeMusic: () -> Unit = {}
 ) {
     val playlist = state.openPlaylist ?: return
+    val playlistSyncs by viewModel.playlistSyncs.collectAsStateWithLifecycle()
+    val activePlaylistSyncIds by viewModel.activePlaylistSyncIds.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val playlistProCopy = strings.playlistProCopy()
     var query by rememberSaveable(playlist.id) { mutableStateOf("") }
@@ -2165,6 +2178,38 @@ internal fun LevyraPlaylistDetailScreen(
                         }
                     )
                 }
+                val linkedSync = playlistSyncs[playlist.id]
+                val isSyncingPlaylist = playlist.id in activePlaylistSyncIds
+                if (linkedSync != null || isSyncingPlaylist) {
+                    item(key = "playlist-detail-sync-badge") {
+                        val syncCopy = remember(strings.code) { playlistSyncCopy(strings.code) }
+                        Surface(
+                            onClick = { viewModel.openPlaylistSync(playlist) },
+                            color = colors.content.copy(alpha = 0.10f),
+                            shape = RoundedCornerShape(999.dp),
+                            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Sync,
+                                    contentDescription = null,
+                                    tint = LevyraCyan,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    if (isSyncingPlaylist) syncCopy.syncing else syncCopy.syncedBadge,
+                                    color = colors.content,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
                 if (playlist.tags.isNotEmpty()) {
                     item(key = "playlist-detail-organization") {
                         PlaylistTagsLine(
@@ -2376,7 +2421,10 @@ internal fun LevyraPlaylistDetailScreen(
                         selectionMode = true
                         selectedKeys = selectAllPlaylistItemKeys(orderedItems)
                     },
-                    onExport = { viewModel.playlistExport.open(playlist) }
+                    onExport = { viewModel.playlistExport.open(playlist) },
+                    syncLinked = playlist.id in playlistSyncs,
+                    syncing = playlist.id in activePlaylistSyncIds,
+                    onSync = { viewModel.openPlaylistSync(playlist) }
                 )
             }
         )
@@ -2443,6 +2491,15 @@ internal fun LevyraPlaylistDetailScreen(
     val exportState by viewModel.playlistExport.state.collectAsStateWithLifecycle()
     if (exportState.visible && exportState.playlistId == playlist.id) {
         PlaylistExportSheet(viewModel.playlistExport, exportState)
+    }
+
+    val syncSheetState by viewModel.playlistSync.sheet.collectAsStateWithLifecycle()
+    if (syncSheetState.visible && syncSheetState.playlistId == playlist.id) {
+        PlaylistSyncSheet(
+            controller = viewModel.playlistSync,
+            state = syncSheetState,
+            onSignIn = onOpenYoutubeMusic
+        )
     }
 
     changeMatchTrack?.let { target ->

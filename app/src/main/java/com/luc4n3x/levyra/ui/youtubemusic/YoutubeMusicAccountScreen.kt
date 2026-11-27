@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.local.PlaylistSyncEntity
 import com.luc4n3x.levyra.data.youtubemusic.*
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.Track
@@ -61,15 +62,30 @@ internal fun YoutubeMusicAccountScreen(
     onPlay: (List<Track>, Track) -> Unit,
     onArtist: (ArtistHit) -> Unit,
     onImported: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    playlistSyncs: Map<String, PlaylistSyncEntity> = emptyMap(),
+    activePlaylistSyncIds: Set<String> = emptySet(),
+    activeRemotePlaylistSyncIds: Set<String> = emptySet(),
+    onSyncPlaylist: (YoutubeMusicLibraryEntry) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val copy = youtubeMusicCopy(languageCode)
+    val syncCopy = remember(languageCode) { playlistSyncCopy(languageCode) }
     var showAccounts by rememberSaveable { mutableStateOf(false) }
     var disconnectId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(languageCode, state.restoring, state.active?.id) { viewModel.open(languageCode) }
     val error = state.error?.message(copy)
-    val actions = YoutubeMusicScreenActions(onPlay, onArtist, onImported, onClose) { showAccounts = true }
+    val actions = YoutubeMusicScreenActions(
+        onPlay,
+        onArtist,
+        onImported,
+        onClose,
+        { showAccounts = true },
+        playlistSyncs,
+        activePlaylistSyncIds,
+        activeRemotePlaylistSyncIds,
+        onSyncPlaylist
+    )
     val back: () -> Unit = { if (state.detail != null) viewModel.closeDetail() else onClose() }
     if (state.showLogin) {
         YoutubeMusicLoginScreen(copy, state.checkingLogin, error, viewModel::acceptCookie, viewModel::cancelLogin)
@@ -92,7 +108,7 @@ internal fun YoutubeMusicAccountScreen(
             if (state.active == null) {
                 YoutubeMusicDisconnected(state, copy, viewModel, Modifier.weight(1f))
             } else {
-                YoutubeMusicConnected(state, copy, viewModel, actions)
+                YoutubeMusicConnected(state, copy, syncCopy, viewModel, actions)
             }
         }
     }
@@ -109,7 +125,11 @@ private class YoutubeMusicScreenActions(
     val artist: (ArtistHit) -> Unit,
     val imported: () -> Unit,
     val close: () -> Unit,
-    val accounts: () -> Unit
+    val accounts: () -> Unit,
+    val playlistSyncs: Map<String, PlaylistSyncEntity>,
+    val activePlaylistSyncIds: Set<String>,
+    val activeRemotePlaylistSyncIds: Set<String>,
+    val syncPlaylist: (YoutubeMusicLibraryEntry) -> Unit
 )
 
 private fun YoutubeMusicAccountNotice.message(copy: YoutubeMusicCopy): String = when (this) {
@@ -165,7 +185,7 @@ private fun YoutubeMusicDisconnected(state: YoutubeMusicAccountUiState, copy: Yo
 }
 
 @Composable
-private fun ColumnScope.YoutubeMusicConnected(state: YoutubeMusicAccountUiState, copy: YoutubeMusicCopy, viewModel: YoutubeMusicAccountViewModel, actions: YoutubeMusicScreenActions) {
+private fun ColumnScope.YoutubeMusicConnected(state: YoutubeMusicAccountUiState, copy: YoutubeMusicCopy, syncCopy: PlaylistSyncCopy, viewModel: YoutubeMusicAccountViewModel, actions: YoutubeMusicScreenActions) {
     if (state.detail == null) {
         AccountHeader(state.active!!, copy, actions.accounts)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -175,17 +195,66 @@ private fun ColumnScope.YoutubeMusicConnected(state: YoutubeMusicAccountUiState,
         }
     }
     if (state.detail != null || state.collection == YoutubeMusicCollection.Likes) {
-        YoutubeMusicTracks(state, copy, viewModel, actions)
+        YoutubeMusicTracks(state, copy, syncCopy, viewModel, actions)
     } else {
         YoutubeMusicGrid(state, copy, viewModel, actions)
     }
 }
 
 @Composable
-private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, copy: YoutubeMusicCopy, viewModel: YoutubeMusicAccountViewModel, actions: YoutubeMusicScreenActions) {
+private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, copy: YoutubeMusicCopy, syncCopy: PlaylistSyncCopy, viewModel: YoutubeMusicAccountViewModel, actions: YoutubeMusicScreenActions) {
     val page = state.currentPage
     val error = state.error
+    val detail = state.detail
+    val ownedPlaylist = detail?.takeIf { it.owned && it.collection == YoutubeMusicCollection.Playlists }
+    val canonicalRemote = ownedPlaylist?.let { canonicalYoutubePlaylistId(it.browseId) }
+    val linkedSync = canonicalRemote?.let { remoteId ->
+        actions.playlistSyncs.values.firstOrNull { canonicalYoutubePlaylistId(it.remotePlaylistId) == remoteId }
+    }
+    val isSyncingPlaylist = ownedPlaylist != null && (
+        canonicalRemote in actions.activeRemotePlaylistSyncIds ||
+            (linkedSync != null && linkedSync.playlistId in actions.activePlaylistSyncIds)
+        )
+    val syncError = linkedSync?.lastSyncError?.let(PlaylistSyncErrorKind::fromStorage)
     LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (ownedPlaylist != null) item(key = "sync-owned-playlist") {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FilledTonalButton(
+                    onClick = { actions.syncPlaylist(ownedPlaylist) },
+                    enabled = !state.busy && !isSyncingPlaylist,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isSyncingPlaylist) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Rounded.Sync, null, Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when {
+                            isSyncingPlaylist -> syncCopy.syncing
+                            linkedSync != null -> "${syncCopy.syncedBadge} · ${syncCopy.syncNow}"
+                            else -> syncCopy.syncWithLevyra
+                        }
+                    )
+                }
+                if (!isSyncingPlaylist && syncError != null) {
+                    Text(
+                        syncCopy.errorMessage(syncError),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                } else if (linkedSync != null && linkedSync.lastSyncedAt > 0L) {
+                    Text(
+                        syncCopy.lastSyncedLabel(linkedSync.lastSyncedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+        }
         if (!page?.tracks.isNullOrEmpty()) item(key = "import") {
             Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

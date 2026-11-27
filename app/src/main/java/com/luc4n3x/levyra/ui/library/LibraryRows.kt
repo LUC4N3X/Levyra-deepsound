@@ -39,6 +39,8 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -47,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -317,7 +320,9 @@ internal fun LibraryPlaylistRow(
     selectionActive: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onPlay: () -> Unit
+    onPlay: () -> Unit,
+    syncLinked: Boolean = false,
+    syncing: Boolean = false
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
@@ -340,11 +345,30 @@ internal fun LibraryPlaylistRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    "${strings.formatTrackCount(playlist.playableTrackCount)} · ${strings.formatLibraryDuration(playlist.totalDurationMs)}",
-                    color = LevyraMuted,
-                    style = LevyraType.caption
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        "${strings.formatTrackCount(playlist.playableTrackCount)} · ${strings.formatLibraryDuration(playlist.totalDurationMs)}",
+                        color = LevyraMuted,
+                        style = LevyraType.caption
+                    )
+                    if (syncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(12.dp),
+                            strokeWidth = 1.5.dp,
+                            color = LevyraCyan
+                        )
+                    } else if (syncLinked) {
+                        Icon(
+                            Icons.Rounded.Sync,
+                            contentDescription = null,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
             }
             if (selectionActive) {
                 Icon(
@@ -521,7 +545,9 @@ internal fun LibraryPlaylistGridRow(
     selectedKeys: Set<String>,
     selectionActive: Boolean,
     onOpen: (Playlist) -> Unit,
-    onSelect: (Playlist) -> Unit
+    onSelect: (Playlist) -> Unit,
+    linkedPlaylistIds: Set<String> = emptySet(),
+    syncingPlaylistIds: Set<String> = emptySet()
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         playlists.forEach { playlist ->
@@ -529,6 +555,8 @@ internal fun LibraryPlaylistGridRow(
                 playlist = playlist,
                 selected = "playlist:${playlist.id}" in selectedKeys,
                 selectionActive = selectionActive,
+                syncLinked = playlist.id in linkedPlaylistIds,
+                syncing = playlist.id in syncingPlaylistIds,
                 onClick = { onOpen(playlist) },
                 onLongClick = { onSelect(playlist) },
                 modifier = Modifier.weight(1f)
@@ -544,6 +572,8 @@ private fun LibraryPlaylistGridCard(
     playlist: Playlist,
     selected: Boolean,
     selectionActive: Boolean,
+    syncLinked: Boolean,
+    syncing: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier
@@ -558,6 +588,32 @@ private fun LibraryPlaylistGridCard(
                 LibraryCardShape,
                 selected
             )
+            if (syncing || syncLinked) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.62f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (syncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 1.8.dp,
+                            color = LevyraCyan
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.Sync,
+                            contentDescription = null,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                }
+            }
             if (selectionActive) {
                 Icon(
                     if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,

@@ -53,6 +53,11 @@ internal data class YoutubeMusicHome(
     val albums: List<AlbumHit>
 )
 
+internal data class YoutubeMusicRemotePlaylistSnapshot(
+    val title: String,
+    val items: List<YoutubeMusicRepository.RemotePlaylistItem>
+)
+
 internal class YoutubeMusicAccountRepository(context: Context) {
     val sessions = YoutubeMusicSessionStore(context)
     val client = YoutubeMusicAccountClient()
@@ -156,6 +161,43 @@ internal class YoutubeMusicAccountRepository(context: Context) {
             val page = page(session, collection, language, browseId, continuation, album)
             YoutubeMusicPage(page.tracks, page.continuation)
         }
+    }
+
+    suspend fun ownedPlaylists(session: YoutubeMusicSession, language: String): List<YoutubeMusicLibraryEntry> {
+        return collectYoutubeMusicPages(key = YoutubeMusicLibraryEntry::browseId) { continuation ->
+            val page = page(session, YoutubeMusicCollection.Playlists, language, continuation = continuation)
+            YoutubeMusicPage(
+                items = page.entries.filter { it.owned && it.browseId !in YOUTUBE_MUSIC_SYSTEM_PLAYLISTS },
+                continuation = page.continuation
+            )
+        }
+    }
+
+    suspend fun fullPlaylistSnapshot(
+        session: YoutubeMusicSession,
+        remotePlaylistId: String,
+        language: String
+    ): YoutubeMusicRemotePlaylistSnapshot = withContext(Dispatchers.IO) {
+        val canonicalId = remotePlaylistId.trim().removePrefix("VL")
+        val browseId = "VL$canonicalId"
+        var remoteTitle = ""
+        val items = collectYoutubeMusicPages(key = { item -> item.setVideoId.ifBlank { item.videoId } }) { continuation ->
+            val root = client.browse(session, browseId, language, continuation)
+            if (!root.has("contents") && !root.has("continuationContents") &&
+                !root.has("onResponseReceivedActions") && !root.has("onResponseReceivedEndpoints")
+            ) {
+                throw YoutubeMusicPlaylistNotFoundException()
+            }
+            val parsed = parser.parsePlaylistPageForSync(root, browseId)
+            if (continuation.isBlank()) {
+                if (parsed.title.isBlank() && parsed.items.isEmpty()) {
+                    throw YoutubeMusicPlaylistNotFoundException()
+                }
+                if (remoteTitle.isBlank()) remoteTitle = parsed.title
+            }
+            YoutubeMusicPage(parsed.items, parsed.continuation)
+        }
+        YoutubeMusicRemotePlaylistSnapshot(title = remoteTitle, items = items)
     }
 
     suspend fun importTracks(session: YoutubeMusicSession, browseId: String, title: String, tracks: List<Track>): Int = withContext(Dispatchers.IO) {

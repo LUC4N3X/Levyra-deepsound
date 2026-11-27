@@ -295,6 +295,27 @@ class PlaylistStore(context: Context) {
         Playlist(id, cleanName, cover, cleanTracks, now, now)
     }
 
+    suspend fun createWithTracksOrEmpty(
+        playlistId: String,
+        name: String,
+        tracks: List<Track> = emptyList()
+    ): Playlist = withContext(Dispatchers.IO) {
+        val cleanTracks = validPlaylistTracks(tracks)
+        if (cleanTracks.isNotEmpty()) {
+            return@withContext createWithTracks(name, cleanTracks, playlistId = playlistId)
+        }
+        val now = System.currentTimeMillis()
+        val cleanName = name.trim().ifBlank { "Playlist" }
+        val existing = dao.playlist(playlistId)
+        if (existing != null) {
+            dao.rename(playlistId, cleanName, now)
+            return@withContext load(playlistId) ?: existing.toPlaylist(emptyList())
+        }
+        val entity = PlaylistEntity(playlistId, cleanName, "", now, now)
+        dao.createPlaylistWithTracks(entity, emptyList())
+        Playlist(playlistId, cleanName, "", emptyList(), now, now)
+    }
+
     suspend fun rename(playlistId: String, name: String) = withContext(Dispatchers.IO) {
         dao.rename(playlistId, name.trim().ifBlank { "Playlist" }, System.currentTimeMillis())
     }
