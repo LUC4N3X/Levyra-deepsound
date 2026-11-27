@@ -2313,7 +2313,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         }.distinctBy { it.id }
     }
 
-    private fun parsePlaylistHeader(root: JSONObject, playlistId: String): YoutubeMusicPlaylistDetail {
+    internal fun parsePlaylistHeader(root: JSONObject, playlistId: String): YoutubeMusicPlaylistDetail {
         val headers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
         collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)

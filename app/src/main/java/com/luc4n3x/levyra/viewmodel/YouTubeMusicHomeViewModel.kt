@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicMoodPlaylist
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccountRepository
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicMixes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.luc4n3x.levyra.domain.Track
@@ -63,12 +64,12 @@ internal fun featuredPlaylistKey(playlistId: String, language: String): String =
 
 internal object CuratedFeaturedPlaylist {
     const val YOUTUBE_ID = "RDTMAK5uy_lr0LWzGrq6FU9GIxWvFHTRPQD2LHMqlFA"
-    const val SPOTIFY_ID = "37i9dQZF1DX4JAvHpjipBk"
 }
 
 class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application)
     private val account = YoutubeMusicAccountRepository(application)
+    private val generatedMixes = YoutubeMusicMixes(application, repository)
     private val _state = MutableStateFlow(YouTubeMusicHomeUiState())
     val state: StateFlow<YouTubeMusicHomeUiState> = _state.asStateFlow()
     private val _previews = MutableStateFlow<Map<String, List<Track>>>(emptyMap())
@@ -92,7 +93,7 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
         if (playlistId.isBlank() || _featuredPlaylists.value.containsKey(cacheKey) || !featuredRequests.add(cacheKey)) return
         viewModelScope.launch {
             val detail = try {
-                repository.playlist(playlistId, language, 1)
+                playlistDetail(playlistId, language, 1)
             } catch (error: CancellationException) {
                 featuredRequests.remove(cacheKey)
                 throw error
@@ -120,7 +121,7 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
         val language = _state.value.language
         viewModelScope.launch {
             val tracks = try {
-                repository.playlist(playlistId, language, PREVIEW_TRACK_LIMIT)?.tracks.orEmpty()
+                playlistDetail(playlistId, language, PREVIEW_TRACK_LIMIT)?.tracks.orEmpty()
             } catch (error: CancellationException) {
                 previewRequests.remove(playlistId)
                 throw error
@@ -136,6 +137,9 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
             previewRequests.remove(playlistId)
         }
     }
+
+    private suspend fun playlistDetail(playlistId: String, language: String, limit: Int) =
+        generatedMixes.playlist(playlistId, language, limit) ?: repository.playlist(playlistId, language, limit)
 
     fun selectChip(params: String) {
         val current = _state.value
