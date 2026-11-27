@@ -107,38 +107,45 @@ const brandIcons = {
       <path fill="currentColor" d="M9.662 3.809c-1.875 1.19-2.81 3.515-2.83 5.795-.014 2.628.666 5.258 1.988 7.305.936 1.46 2.238 2.715 3.836 3.412a6.942 6.942 0 005.647-.07c1.997-.927 3.523-2.73 4.463-4.785 1.606-3.518 1.643-7.724.12-11.295-1.146.458-2.166-.271-2.166-.271s.003 1.122-1.083 1.685c1.115 2.612 1.088 5.717-.03 8.263-.538 1.225-1.358 2.365-2.498 3.01-.917.52-2.04.625-3.052.184-1.342-.585-2.293-1.864-2.89-3.254-.466-1.067-.782-2.447-.802-3.878-.037-1.724.728-3.193 1.635-3.218.622-.024 1.427.918 1.598 2.435.158 1.543-.177 3.72-1.174 5.49.677 1.085 1.77 1.98 2.951 1.974 1.386-2.338 1.827-4.911 1.793-6.987-.02-2.28-.955-4.603-2.83-5.795-1.437-.907-3.173-.948-4.676 0zM3.278 3.9s-1.018.73-2.163.27c-1.524 3.573-1.488 7.778.12 11.296.94 2.056 2.465 3.858 4.462 4.785a6.95 6.95 0 005.523.124 9.12 9.12 0 01-1.75-1.455 11.18 11.18 0 01-1.267-1.628c-.768-.08-1.498-.482-2.003-.913-1.447-1.213-2.453-3.478-2.632-5.9-.12-1.635.14-3.354.795-4.894C3.276 5.022 3.278 3.9 3.278 3.9z"/>
     </g>
   `,
+  website: `
+    <g transform="translate(-11 -11) scale(0.9167)">
+      <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95a15.65 15.65 0 00-1.38-3.56A8.03 8.03 0 0118.92 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.987 7.987 0 015.08 16zm2.95-8H5.08a7.987 7.987 0 014.33-3.56A15.65 15.65 0 008.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 01-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/>
+    </g>
+  `,
 };
 
-// Delicate, airy Material 3 Expressive pastel palettes (GitHub in warm soft Peach)
+// Header store buttons keep existing colors; Weblate + Author buttons match Pearl-Sky showcase
 const storePalettes = {
   github: { dark: ['#FAD6C4', '#562614'], light: ['#FCE3D6', '#562614'] },
   fdroid: { dark: ['#C5ECF8', '#103B4B'], light: ['#D8F3FC', '#103B4B'] },
   openapk: { dark: ['#C9F0DC', '#133F2B'], light: ['#DCF7E9', '#133F2B'] },
   obtainium: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
-  weblate: { dark: ['#CFE2FF', '#14345C'], light: ['#DEE9FF', '#14345C'] },
+  weblate: { dark: ['#D2E3FF', '#132C54'], light: ['#E0ECFF', '#132C54'] },
+  authorGithub: { dark: ['#D2E3FF', '#132C54'], light: ['#E0ECFF', '#132C54'] },
+  website: { dark: ['#E3D6FC', '#311D5A'], light: ['#ECE3FE', '#311D5A'] },
 };
 
-const WEBLATE_ROSETTE = scallopPath(28, 23, 14.5, 17.8, 10);
+const WEBLATE_ROSETTE = scallopPath(28, 24, 15, 18.4, 10);
 
 function makeWeblateButton({ mobile = false, light = false }) {
   const [bg, fg] = storePalettes.weblate[light ? 'light' : 'dark'];
-  const vw = 238;
-  const w = mobile ? 214 : vw;
-  const h = mobile ? 41 : 46;
-  const body = roundedCornersPath(0, 0, vw, 46, [23, 10, 23, 10]);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 46" role="img" aria-label="Help translate Levyra on Weblate">
+  const vw = 242;
+  const w = mobile ? 218 : vw;
+  const h = mobile ? 43 : 48;
+  const body = roundedCornersPath(0, 0, vw, 48, [24, 24, 24, 24]);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 48" role="img" aria-label="Help translate Levyra on Weblate">
   <title>Help translate Levyra on Weblate</title>
   <path d="${body}" fill="${bg}"/>
   <path d="${WEBLATE_ROSETTE}" fill="${fg}" fill-opacity="0.11"/>
-  <g transform="translate(28 23)" style="color:${fg}">
+  <g transform="translate(28 24)" style="color:${fg}">
     ${brandIcons.weblate.trim()}
   </g>
-  <text x="53" y="28.2" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14.5" font-weight="600" letter-spacing="0.05">Translate on Weblate</text>
+  <text x="54" y="29.2" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14.5" font-weight="600" letter-spacing="0.05">Translate on Weblate</text>
 </svg>
 `;
 }
 
-function makeExpressiveStoreButton({ key, title, label, vw, mw, padLeft, padRight, corners, mobile = false, light = false }) {
+function makeExpressiveStoreButton({ key, iconKey = key, title, label, vw, mw, padLeft, padRight, corners, mobile = false, light = false }) {
   const [bg, fg] = storePalettes[key][light ? 'light' : 'dark'];
   const w = mobile ? mw : vw;
   const h = mobile ? 43 : 48;
@@ -150,7 +157,7 @@ function makeExpressiveStoreButton({ key, title, label, vw, mw, padLeft, padRigh
   <title>${escapeXml(title)}</title>
   <path d="${body}" fill="${bg}"/>
   <g transform="translate(${iconCx} 24)" style="color:${fg}">
-    ${brandIcons[key].trim()}
+    ${brandIcons[iconKey].trim()}
   </g>
   <text x="${textX}" y="29.3" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="15" font-weight="600" letter-spacing="0.05">${escapeXml(label)}</text>
 </svg>
@@ -213,6 +220,16 @@ for (const light of [false, true]) {
       writeFile(
         resolve(assetsDir, `levyra-weblate${suffix}`),
         makeWeblateButton({ mobile, light }),
+        'utf8',
+      ),
+      writeFile(
+        resolve(assetsDir, `levyra-author-github${suffix}`),
+        makeExpressiveStoreButton({ key: 'authorGithub', iconKey: 'github', title: 'LUC4N3X on GitHub', label: 'GitHub', vw: 120, mw: 109, padLeft: 0, padRight: 1.5, corners: [24, 9, 9, 24], mobile, light }),
+        'utf8',
+      ),
+      writeFile(
+        resolve(assetsDir, `levyra-author-website${suffix}`),
+        makeExpressiveStoreButton({ key: 'website', title: 'LUC4N3X Website', label: 'Website', vw: 128, mw: 116, padLeft: 1.5, padRight: 0, corners: [9, 24, 24, 9], mobile, light }),
         'utf8',
       ),
     );
