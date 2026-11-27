@@ -137,6 +137,19 @@ class LosslessSitesMatchingTest {
     }
 
     @Test
+    fun musicVideoWithAnExactLengthAudioIgnoresShorterPaddedCuts() {
+        val video = query(title = "XO / The Host", album = "", durationMs = 444_000L, explicit = null).copy(musicVideo = true)
+        val trilogy = candidate(id = "selPwzZr", title = "XO / The Host", album = "Trilogy", duration = 443, explicit = true)
+        val original = candidate(id = "PCJjaalx", title = "XO / The Host", album = "Echoes Of Silence (Original)", duration = 444, explicit = true)
+        val shortCut = candidate(id = "RJzK-yd5", title = "XO / The Host", album = "Echoes Of Silence", duration = 298, explicit = true)
+        val trilogyReissue = candidate(id = "oeIyecIB", title = "XO / The Host", album = "Trilogy", duration = 444, explicit = true)
+        val chosen = selectedId(video, listOf(trilogy, original, shortCut, trilogyReissue))
+        assertTrue("$chosen", chosen in setOf("selPwzZr", "PCJjaalx", "oeIyecIB"))
+        assertEquals("RJzK-yd5", selectedId(video, listOf(shortCut)))
+        assertNull(selectedId(video.copy(musicVideo = false), listOf(shortCut)))
+    }
+
+    @Test
     fun oneLetterArtistMisspellingMatchesOnlyTheExactSongAndDuration() {
         val misspelled = query(title = "The Hills", artist = "The Weekend", album = "", durationMs = 243_000L, explicit = null)
         val hills = candidate(id = "kfeKlqFe", title = "The Hills", primary = listOf("The Weeknd"), album = "Beauty Behind The Madness", duration = 242, explicit = null)

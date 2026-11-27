@@ -548,8 +548,11 @@ class AlternativeTrackMatcher {
         val evaluations = candidates
             .distinctBy { it.providerId to it.providerTrackId }
             .map { evaluateReadings(query, it) }
-        val accepted = evaluations
-            .filter { it.accepted }
+        val acceptedAll = evaluations.filter { it.accepted }
+        val sameLength = acceptedAll.filter {
+            durationDeltaSeconds(query.durationMs, it.candidate.durationSeconds) <= MAXIMUM_DURATION_DELTA_SECONDS
+        }
+        val accepted = (if (query.musicVideo && sameLength.isNotEmpty()) sameLength else acceptedAll)
             .sortedWith(
                 compareBy<AlternativeMatchEvaluation> { it.verdict.ordinal }
                     .thenByDescending { it.confidence }

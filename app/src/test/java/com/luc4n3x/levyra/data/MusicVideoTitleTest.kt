@@ -48,6 +48,30 @@ class MusicVideoTitleTest {
     }
 
     @Test
+    fun `slash inside a song title is kept when nothing after it is decoration`() {
+        assertEquals(
+            MusicVideoRecording("XO / The Host", "The Weeknd"),
+            MusicVideoTitle.recording("XO / The Host", "The Weeknd")
+        )
+        assertEquals(
+            MusicVideoRecording("XO / The Host", "The Weeknd"),
+            MusicVideoTitle.recording("XO / The Host | Official Audio", "The Weeknd")
+        )
+    }
+
+    @Test
+    fun `slash before the artist name or a video note still ends the title`() {
+        assertEquals(
+            MusicVideoRecording("夜に駆ける", "YOASOBI"),
+            MusicVideoTitle.recording("夜に駆ける / YOASOBI", "YOASOBI")
+        )
+        assertEquals(
+            MusicVideoRecording("Paper Planes", "M.I.A."),
+            MusicVideoTitle.recording("Paper Planes / Official Video", "M.I.A.")
+        )
+    }
+
+    @Test
     fun `label channel upload takes the artists from the video title`() {
         assertEquals(
             MusicVideoRecording(
