@@ -777,13 +777,15 @@ private fun NowPlayingHost(
         model.playbackController.state.map(PlaybackUiState::withoutTransientUiTicks).distinctUntilChanged()
     }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
     val lyrics by model.lyricsController.lyrics.collectAsState()
+    val settings by model.settings.collectAsState()
     NowPlayingScreen(
         state = playback,
         playbackStateFlow = model.playbackController.state,
         lyricsState = lyrics,
         actions = actions,
         onBack = model::back,
-        onJumpTo = model.playbackController::jumpTo
+        onJumpTo = model.playbackController::jumpTo,
+        outputLatencyOffsetMs = settings.outputLatencyOffsetMs
     )
 }
 

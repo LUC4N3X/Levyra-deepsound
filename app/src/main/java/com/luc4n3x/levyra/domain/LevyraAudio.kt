@@ -23,6 +23,24 @@ enum class AudioOffloadPreference(val storageValue: String) {
     }
 }
 
+enum class SpectrumVisualizerStyle(val storageValue: String) {
+    OFF("off"),
+    BARS("bars"),
+    MIRROR("mirror"),
+    LED("led"),
+    CURVE("curve"),
+    ANALYZER("analyzer"),
+    SPECTROGRAM("spectrogram"),
+    OSCILLOSCOPE("oscilloscope");
+
+    val enabled: Boolean get() = this != OFF
+
+    companion object {
+        fun fromStorage(value: String?): SpectrumVisualizerStyle =
+            entries.firstOrNull { it.storageValue == value?.trim()?.lowercase() } ?: OFF
+    }
+}
+
 enum class PlaybackBufferMode(val storageValue: String) {
     AUTOMATIC("automatic"),
     CUSTOM("custom");
@@ -156,6 +174,7 @@ data class LevyraAudioSettings(
     val orbitLayout: OrbitLayout? = null,
     val enhancedAudioEnabled: Boolean = true,
     val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC,
+    val spectrumVisualizerStyle: SpectrumVisualizerStyle = SpectrumVisualizerStyle.OFF,
     val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings(),
     val nightListeningEnabled: Boolean = false,
     val nightListeningPreset: NightListeningPreset = NightListeningPreset.BALANCED,

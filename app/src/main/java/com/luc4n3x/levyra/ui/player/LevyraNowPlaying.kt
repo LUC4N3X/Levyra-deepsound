@@ -18,6 +18,8 @@ import android.content.Intent
 import android.media.AudioManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,6 +36,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutout
@@ -71,6 +75,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -203,17 +208,35 @@ fun LevyraNowPlaying(
     playlistDialogContent: (@Composable () -> Unit)? = null,
     onOpenPlaylistDialog: ((Track) -> Unit)? = null
 ) {
-    if (state.interfaceSettings.playerFocusEnabled) {
-        PlayerFocus(viewModel, state, modifier, videoSurfaceContent, errorContent)
-        return
-    }
-    val velvet = !LevyraSkinManagesLayout && state.interfaceSettings.playerVisualMode == PlayerVisualMode.CanvasImmersive
-    AppleMusicPlayerStyleScope(velvet) {
-        LevyraNowPlayingContent(
-            viewModel, state, morphAnchors, morphActive, collapseActions, modifier, motionSuspended,
-            modeSwitchContent, videoSurfaceContent, gestureLayerContent, commentsEnabled,
-            similarSongsContent, errorContent, playlistDialogContent, onOpenPlaylistDialog
-        )
+    var playerSheetOpen by remember { mutableStateOf(false) }
+    val spectrumShown = playerSpectrumVisible(state) && !playerSheetOpen
+    Column(modifier) {
+        Box(
+            Modifier
+                .weight(1f)
+                .then(if (spectrumShown) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier)
+        ) {
+            if (state.interfaceSettings.playerFocusEnabled) {
+                PlayerFocus(viewModel, state, Modifier, videoSurfaceContent, errorContent)
+            } else {
+                val velvet = !LevyraSkinManagesLayout && state.interfaceSettings.playerVisualMode == PlayerVisualMode.CanvasImmersive
+                AppleMusicPlayerStyleScope(velvet) {
+                    LevyraNowPlayingContent(
+                        viewModel, state, morphAnchors, morphActive, collapseActions, Modifier, motionSuspended,
+                        modeSwitchContent, videoSurfaceContent, gestureLayerContent, commentsEnabled,
+                        similarSongsContent, errorContent, playlistDialogContent, onOpenPlaylistDialog,
+                        onSheetOpenChange = { open -> playerSheetOpen = open }
+                    )
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = spectrumShown,
+            enter = expandVertically(expandFrom = Alignment.Top),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top)
+        ) {
+            PlayerSpectrumStrip(state)
+        }
     }
 }
 
@@ -233,7 +256,8 @@ private fun LevyraNowPlayingContent(
     similarSongsContent: (@Composable (Track) -> Unit)?,
     errorContent: (@Composable () -> Unit)?,
     playlistDialogContent: (@Composable () -> Unit)?,
-    onOpenPlaylistDialog: ((Track) -> Unit)?
+    onOpenPlaylistDialog: ((Track) -> Unit)?,
+    onSheetOpenChange: (Boolean) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
@@ -1832,6 +1856,11 @@ private fun LevyraNowPlayingContent(
             )
         }
 
+        val sheetOpen = showActions || showArtistPicker || storySharePositionMs != null || showTechnicalAudioInfo ||
+            showTrackCredits || showAudioRouteCenter || showDeck || showArtworkPreview || downloadRemovalTrackId != null
+        val currentSheetOpenChange by rememberUpdatedState(onSheetOpenChange)
+        LaunchedEffect(sheetOpen) { currentSheetOpenChange(sheetOpen) }
+        DisposableEffect(Unit) { onDispose { currentSheetOpenChange(false) } }
         if (showActions && track != null) {
             val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
