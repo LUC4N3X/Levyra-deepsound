@@ -17,31 +17,60 @@ internal fun isYoutubeMusicGeneratedMix(playlistId: String): Boolean =
     playlistId.trim().removePrefix("VL").startsWith(GENERATED_MIX_PREFIX)
 
 internal class YoutubeMusicMixSnapshots(private val maxEntries: Int = MAX_MIX_SNAPSHOTS) {
-    private val entries = LinkedHashMap<String, YoutubeMusicPlaylistDetail>()
-    private val locks = HashMap<String, Mutex>()
+    private class KeyLock {
+        val mutex = Mutex()
+        var users = 0
+    }
 
-    suspend fun getOrLoad(key: String, load: suspend () -> YoutubeMusicPlaylistDetail?): YoutubeMusicPlaylistDetail? =
-        lock(key).withLock {
-            get(key) ?: load()?.also { put(key, it) }
+    private val entries = LinkedHashMap<String, YoutubeMusicPlaylistDetail>()
+    private val locks = HashMap<String, KeyLock>()
+    private var generation = 0L
+
+    suspend fun getOrLoad(key: String, load: suspend () -> YoutubeMusicPlaylistDetail?): YoutubeMusicPlaylistDetail? {
+        val lock = acquire(key)
+        try {
+            return lock.mutex.withLock {
+                get(key) ?: run {
+                    val started = currentGeneration()
+                    load()?.also { putIfCurrent(key, it, started) }
+                }
+            }
+        } finally {
+            release(key, lock)
         }
+    }
 
     @Synchronized
     fun get(key: String): YoutubeMusicPlaylistDetail? = entries[key]
 
     @Synchronized
     fun clear() {
+        generation++
         entries.clear()
     }
 
     @Synchronized
-    private fun put(key: String, detail: YoutubeMusicPlaylistDetail) {
+    internal fun lockCount(): Int = locks.size
+
+    @Synchronized
+    private fun currentGeneration(): Long = generation
+
+    @Synchronized
+    private fun putIfCurrent(key: String, detail: YoutubeMusicPlaylistDetail, started: Long) {
+        if (started != generation) return
         entries.remove(key)
         entries[key] = detail
         while (entries.size > maxEntries) entries.remove(entries.keys.first())
     }
 
     @Synchronized
-    private fun lock(key: String): Mutex = locks.getOrPut(key) { Mutex() }
+    private fun acquire(key: String): KeyLock = locks.getOrPut(key) { KeyLock() }.also { it.users++ }
+
+    @Synchronized
+    private fun release(key: String, lock: KeyLock) {
+        lock.users--
+        if (lock.users == 0 && locks[key] === lock) locks.remove(key)
+    }
 }
 
 internal class YoutubeMusicMixes(

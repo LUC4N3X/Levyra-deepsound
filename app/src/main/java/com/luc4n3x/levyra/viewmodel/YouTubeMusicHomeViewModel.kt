@@ -76,6 +76,7 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     private val _previews = MutableStateFlow<Map<String, List<Track>>>(emptyMap())
     val previews: StateFlow<Map<String, List<Track>>> = _previews.asStateFlow()
     private val previewRequests = HashSet<String>()
+    private var previewGeneration = 0L
     private val _featuredPlaylists = MutableStateFlow<Map<String, YoutubeMusicHomeItem>>(emptyMap())
     val featuredPlaylists: StateFlow<Map<String, YoutubeMusicHomeItem>> = _featuredPlaylists.asStateFlow()
     private val featuredRequests = HashSet<String>()
@@ -119,21 +120,29 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun requestPreview(playlistId: String) {
-        if (playlistId.isBlank() || _previews.value.containsKey(playlistId) || !previewRequests.add(playlistId)) return
+        if (playlistId.isBlank() || _previews.value.containsKey(playlistId)) return
+        loadPreview(playlistId)
+    }
+
+    private fun loadPreview(playlistId: String) {
+        if (playlistId.isBlank() || !previewRequests.add(playlistId)) return
         val language = _state.value.language
+        val generation = previewGeneration.takeIf { isYoutubeMusicGeneratedMix(playlistId) }
+        fun current() = generation == null || generation == previewGeneration
         viewModelScope.launch {
             val tracks = try {
                 playlistDetail(playlistId, language, PREVIEW_TRACK_LIMIT)?.tracks.orEmpty()
             } catch (error: CancellationException) {
-                previewRequests.remove(playlistId)
+                if (current()) previewRequests.remove(playlistId)
                 throw error
             } catch (error: Exception) {
                 Timber.w(error, "YouTube Music style playlist preview failed")
-                previewRequests.remove(playlistId)
+                if (current()) previewRequests.remove(playlistId)
                 return@launch
             }
-            _previews.update { current ->
-                val next = current + (playlistId to tracks)
+            if (!current()) return@launch
+            _previews.update { previews ->
+                val next = previews + (playlistId to tracks)
                 if (next.size <= MAX_CACHED_PREVIEWS) next else next.entries.drop(next.size - MAX_CACHED_PREVIEWS).associate { it.key to it.value }
             }
             previewRequests.remove(playlistId)
@@ -141,8 +150,10 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     }
 
     private fun refreshGeneratedMixes() {
+        previewGeneration++
         generatedMixes.refresh()
-        _previews.update { previews -> previews.filterKeys { !isYoutubeMusicGeneratedMix(it) } }
+        previewRequests.removeAll(::isYoutubeMusicGeneratedMix)
+        _previews.value.keys.filter(::isYoutubeMusicGeneratedMix).forEach(::loadPreview)
     }
 
     private suspend fun playlistDetail(playlistId: String, language: String, limit: Int) =

@@ -67,4 +67,30 @@ class YoutubeMusicMixesTest {
         assertEquals("b", snapshots.get("b")?.playlistId)
         assertEquals("c", snapshots.get("c")?.playlistId)
     }
+
+    @Test
+    fun loadStartedBeforeRefreshIsNotKept() = runBlocking {
+        val snapshots = YoutubeMusicMixSnapshots(maxEntries = 4)
+        val gate = CompletableDeferred<Unit>()
+        val started = CompletableDeferred<Unit>()
+        val old = async(Dispatchers.Default) {
+            snapshots.getOrLoad("a") { started.complete(Unit); gate.await(); detail("old") }
+        }
+        started.await()
+        snapshots.clear()
+        val fresh = async(Dispatchers.Default) { snapshots.getOrLoad("a") { detail("fresh") } }
+        gate.complete(Unit)
+        assertEquals("old", old.await()?.playlistId)
+        assertEquals("fresh", fresh.await()?.playlistId)
+        assertEquals("fresh", snapshots.get("a")?.playlistId)
+    }
+
+    @Test
+    fun locksAreReleasedAfterUse() = runBlocking {
+        val snapshots = YoutubeMusicMixSnapshots(maxEntries = 4)
+        snapshots.getOrLoad("a") { detail("a") }
+        snapshots.getOrLoad("b") { null }
+        runCatching { snapshots.getOrLoad("c") { error("network") } }
+        assertEquals(0, snapshots.lockCount())
+    }
 }
