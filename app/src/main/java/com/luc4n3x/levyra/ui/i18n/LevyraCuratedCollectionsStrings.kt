@@ -51,7 +51,12 @@ private val curatedCollectionsCopies = mapOf(
     "sr" to CuratedCollectionsCopy("Деценије", "Музика кроз деценије", "За сваки тренутак", "Плејлисте за твој дан", "Још плејлиста", "По расположењу, жанру и деценији"),
     "sk" to CuratedCollectionsCopy("Dekády", "Hudba naprieč dekádami", "Na každú chvíľu", "Playlisty na celý deň", "Ďalšie playlisty", "Podľa nálady, žánru a dekády"),
     "et" to CuratedCollectionsCopy("Kümnendid", "Muusika läbi kümnendite", "Igaks hetkeks", "Esitusloendid päevaks", "Veel esitusloendeid", "Meeleolu, žanri, kümnendi järgi"),
-    "sq" to CuratedCollectionsCopy("Dekadat", "Muzika ndër dekada", "Për çdo moment", "Playlist për ditën tënde", "Më shumë playlista", "Sipas humorit, zhanrit, dekadës")
+    "sq" to CuratedCollectionsCopy("Dekadat", "Muzika ndër dekada", "Për çdo moment", "Playlist për ditën tënde", "Më shumë playlista", "Sipas humorit, zhanrit, dekadës"),
+    "ur" to CuratedCollectionsCopy("دہائیاں", "دہائیوں تک موسیقی", "ہر لمحے کے لیے", "آپ کے دن کے لیے پلے لسٹس", "مزید پلے لسٹس", "مزاج، صنف اور دہائی کے لحاظ سے"),
+    "ta" to CuratedCollectionsCopy("பத்தாண்டுகள்", "பல தசாப்தங்களின் இசை", "ஒவ்வொரு கணத்திற்கும்", "உங்கள் நாளுக்கான பிளேலிஸ்ட்கள்", "மேலும் பிளேலிஸ்ட்கள்", "மனநிலை, வகை, தசாப்தம்"),
+    "te" to CuratedCollectionsCopy("దశాబ్దాలు", "దశాబ్దాల సంగీతం", "ప్రతి క్షణం కోసం", "మీ రోజు కోసం ప్లేజాబితాలు", "మరిన్ని ప్లేజాబితాలు", "మూడ్, జానర్, దశాబ్దం"),
+    "mr" to CuratedCollectionsCopy("दशके", "दशकांमध्ये संगीत", "प्रत्येक क्षणासाठी", "तुमच्या दिवसासाठी प्लेलिस्ट", "अधिक प्लेलिस्ट", "मूड, शैली आणि दशकानुसार"),
+    "gu" to CuratedCollectionsCopy("દાયકાઓ", "દાયકાઓ સુધી સંગીત", "દરેક ક્ષણ માટે", "તમારા દિવસ માટે પ્લેલિસ્ટ્સ", "વધુ પ્લેલિસ્ટ્સ", "મૂડ, શૈલી અને દાયકા દ્વારા")
 )
 
 internal fun curatedCollectionsCopy(code: String): CuratedCollectionsCopy = localizedValueOrEnglish(curatedCollectionsCopies, code)

@@ -11,7 +11,7 @@ internal data class PersonalizedSearchCopy(
 )
 
 internal fun personalizedSearchCopy(code: String): PersonalizedSearchCopy =
-    PERSONALIZED_SEARCH_COPY.getValue(translationKey(code)).forBrazil(code) { brazilian() }
+    localizedValueOrEnglish(PERSONALIZED_SEARCH_COPY, code).forBrazil(code) { brazilian() }
 
 internal fun personalizedSearchPromptText(code: String, prompt: PersonalizedSearchPrompt?): String? {
     prompt ?: return null
@@ -87,7 +87,13 @@ private val PERSONALIZED_SEARCH_COPY = mapOf(
     "vi" to searchCopy("Nghệ sĩ bạn thường nghe", "Tìm nghệ sĩ %s", "Tìm thêm bài giống %s", "Quay lại album %s"),
     "th" to searchCopy("ศิลปินที่คุณฟัง", "ค้นหาศิลปิน %s", "ค้นหาเพลงเพิ่มเติมที่คล้าย %s", "กลับไปที่อัลบั้ม %s"),
     "fil" to searchCopy("Mga artist na pinapakinggan mo", "Hanapin ang artist na %s", "Maghanap pa ng tulad ng %s", "Bumalik sa album na %s"),
-    "he" to searchCopy("אמנים שבחרת להאזין להם", "חיפוש האמן %s", "מציאת שירים נוספים כמו %s", "חזרה לאלבום %s")
+    "he" to searchCopy("אמנים שבחרת להאזין להם", "חיפוש האמן %s", "מציאת שירים נוספים כמו %s", "חזרה לאלבום %s"),
+    "ur" to searchCopy("وہ فنکار جنہیں آپ سنتے ہیں۔", "آرٹسٹ %s تلاش کریں۔", "%s کی طرح مزید تلاش کریں۔", "البم %s پر واپس جائیں۔"),
+    "ta" to searchCopy("நீங்கள் கேட்கும் கலைஞர்கள்", "தேடல் கலைஞர் %s", "%s போன்ற பலவற்றைக் கண்டறியவும்", "%s ஆல்பத்திற்குத் திரும்பு"),
+    "te" to searchCopy("మీరు వినే కళాకారులు", "శోధన కళాకారుడు %s", "%s వంటి మరిన్ని కనుగొనండి", "ఆల్బమ్ %sకి తిరిగి వెళ్ళు"),
+    "mr" to searchCopy("तुम्ही ऐकता ते कलाकार", "कलाकार %s शोधा", "%s सारखे आणखी शोधा", "%s अल्बमवर परत"),
+    "gu" to searchCopy("તમે સાંભળો છો તે કલાકારો", "કલાકાર %s શોધો", "%s જેવા વધુ શોધો", "%s આલ્બમ પર પાછા"),
+    "pt-BR" to searchCopy("Artistas que você ouve", "Pesquisar artista %s", "Encontre mais como %s", "Voltar ao álbum %s")
 )
 
 internal fun personalizedSearchLocalizationCodes(): Set<String> = PERSONALIZED_SEARCH_COPY.keys

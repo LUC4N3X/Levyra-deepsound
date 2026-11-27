@@ -55,7 +55,13 @@ private val offlineStorageBundles: Map<String, Map<String, String>> = mapOf(
     "hr" to offlineStorage("Spremljeno za slušanje izvan mreže", "Nema dovoljno prostora za pohranu. Oslobodite prostor i pokušajte ponovno.", "Vrati pristup mapi", "Odaberite istu mapu u koju je ovo preuzimanje spremljeno."),
     "sk" to offlineStorage("Uložené na počúvanie offline", "Nedostatok miesta v úložisku. Uvoľnite miesto a skúste to znova.", "Obnoviť prístup k priečinku", "Vyberte rovnaký priečinok, do ktorého bolo toto stiahnutie uložené."),
     "ms" to offlineStorage("Disimpan untuk didengar di luar talian", "Ruang storan tidak mencukupi. Kosongkan sedikit ruang dan cuba lagi.", "Pulihkan akses folder", "Pilih folder yang sama tempat muat turun ini disimpan."),
-    "fa" to offlineStorage("برای شنیدن آفلاین ذخیره شد", "فضای ذخیره‌سازی کافی نیست. مقداری فضا آزاد کنید و دوباره تلاش کنید.", "بازیابی دسترسی به پوشه", "همان پوشه‌ای را انتخاب کنید که این دانلود در آن ذخیره شده است.")
+    "fa" to offlineStorage("برای شنیدن آفلاین ذخیره شد", "فضای ذخیره‌سازی کافی نیست. مقداری فضا آزاد کنید و دوباره تلاش کنید.", "بازیابی دسترسی به پوشه", "همان پوشه‌ای را انتخاب کنید که این دانلود در آن ذخیره شده است."),
+    "ur" to offlineStorage("آف لائن سننے کے لیے محفوظ کیا گیا۔", "ذخیرہ کرنے کی کافی جگہ نہیں ہے۔ کچھ جگہ خالی کریں اور دوبارہ کوشش کریں۔", "فولڈر تک رسائی بحال کریں۔", "وہی فولڈر منتخب کریں جس میں یہ ڈاؤن لوڈ محفوظ کیا گیا تھا۔"),
+    "ta" to offlineStorage("ஆஃப்லைனில் கேட்பதற்காக சேமிக்கப்பட்டது", "போதுமான சேமிப்பு இடம் இல்லை. சிறிது இடத்தைக் காலி செய்து மீண்டும் முயலவும்.", "கோப்புறை அணுகலை மீட்டமை", "இந்தப் பதிவிறக்கம் சேமிக்கப்பட்ட அதே கோப்புறையைத் தேர்ந்தெடுக்கவும்."),
+    "te" to offlineStorage("ఆఫ్‌లైన్ వినడం కోసం సేవ్ చేయబడింది", "తగినంత నిల్వ స్థలం లేదు. కొంత స్థలాన్ని ఖాళీ చేసి, మళ్లీ ప్రయత్నించండి.", "ఫోల్డర్ యాక్సెస్‌ని పునరుద్ధరించండి", "ఈ డౌన్‌లోడ్ సేవ్ చేయబడిన అదే ఫోల్డర్‌ను ఎంచుకోండి."),
+    "mr" to offlineStorage("ऑफलाइन ऐकण्यासाठी जतन केले", "पुरेशी साठवण जागा नाही. काही जागा मोकळी करा आणि पुन्हा प्रयत्न करा.", "फोल्डर प्रवेश पुनर्संचयित करा", "हे डाउनलोड जतन केले होते तेच फोल्डर निवडा."),
+    "gu" to offlineStorage("ઑફલાઇન સાંભળવા માટે સાચવેલ", "પર્યાપ્ત સંગ્રહ સ્થાન નથી. થોડી જગ્યા ખાલી કરો અને ફરી પ્રયાસ કરો.", "ફોલ્ડર ઍક્સેસ પુનઃસ્થાપિત કરો", "આ ડાઉનલોડ સાચવવામાં આવ્યું હતું તે જ ફોલ્ડર પસંદ કરો."),
+    "pt-BR" to offlineStorage("Salvo para ouvir off-line", "Espaço de armazenamento insuficiente. Libere espaço e tente novamente.", "Restaurar o acesso à pasta", "Escolha a mesma pasta em que este download foi salvo.")
 )
 
 internal fun offlineStorageLocalizationEntries(code: String): Map<String, String> =

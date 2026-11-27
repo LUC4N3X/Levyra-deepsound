@@ -52,7 +52,13 @@ private val offlineQueueCopies = mapOf(
     "vi" to OfflineQueueCopy("Số bài tùy chỉnh", "Chọn từ 1 đến {max} bài tiếp theo.", "Tải trước", "Bản phối ngoại tuyến", "Tải xuống gần đây", "Nghe nhiều nhất"),
     "th" to OfflineQueueCopy("กำหนดจำนวนเพลงเอง", "เลือกเพลงถัดไประหว่าง 1 ถึง {max} เพลง", "กำลังโหลดล่วงหน้า", "มิกซ์ออฟไลน์", "ดาวน์โหลดล่าสุด", "ฟังบ่อยที่สุด"),
     "fil" to OfflineQueueCopy("Custom na bilang ng track", "Pumili mula 1 hanggang {max} susunod na track.", "Nagpi-preload", "Mga offline mix", "Kamakailang na-download", "Pinakamadalas pakinggan"),
-    "he" to OfflineQueueCopy("מספר רצועות מותאם", "בחרו בין 1 ל-{max} הרצועות הבאות.", "טעינה מראש", "מיקסים לא מקוונים", "הורדו לאחרונה", "הכי מושמעים")
+    "he" to OfflineQueueCopy("מספר רצועות מותאם", "בחרו בין 1 ל-{max} הרצועות הבאות.", "טעינה מראש", "מיקסים לא מקוונים", "הורדו לאחרונה", "הכי מושמעים"),
+    "ur" to OfflineQueueCopy("پٹریوں کی اپنی مرضی کی تعداد", "1 اور {max} آنے والے ٹریکس کے درمیان انتخاب کریں۔", "پری لوڈنگ", "آف لائن مکسز", "حال ہی میں ڈاؤن لوڈ کیا گیا۔", "سب سے زیادہ کھیلا گیا۔"),
+    "ta" to OfflineQueueCopy("தனிப்பயன் தடங்களின் எண்ணிக்கை", "1 மற்றும் {max} வரவிருக்கும் டிராக்குகளுக்கு இடையே தேர்வு செய்யவும்.", "முன் ஏற்றுகிறது", "ஆஃப்லைன் கலவைகள்", "சமீபத்தில் பதிவிறக்கம் செய்யப்பட்டது", "அதிகம் விளையாடியது"),
+    "te" to OfflineQueueCopy("ట్రాక్‌ల అనుకూల సంఖ్య", "1 మరియు {max} రాబోయే ట్రాక్‌ల మధ్య ఎంచుకోండి.", "ప్రీలోడింగ్", "ఆఫ్‌లైన్ మిక్స్‌లు", "ఇటీవల డౌన్‌లోడ్ చేయబడింది", "ఎక్కువగా ఆడారు"),
+    "mr" to OfflineQueueCopy("ट्रॅकची सानुकूल संख्या", "1 आणि {max} आगामी ट्रॅक दरम्यान निवडा.", "प्रीलोडिंग", "ऑफलाइन मिक्स", "अलीकडे डाउनलोड केले", "सर्वाधिक खेळले"),
+    "gu" to OfflineQueueCopy("ટ્રેકની કસ્ટમ સંખ્યા", "1 અને {max} આગામી ટ્રેક વચ્ચે પસંદ કરો.", "પ્રીલોડિંગ", "ઑફલાઇન મિક્સ", "તાજેતરમાં ડાઉનલોડ કરેલ", "સૌથી વધુ રમ્યા"),
+    "pt-BR" to OfflineQueueCopy("Número personalizado de faixas", "Escolha entre as próximas faixas 1 e {max}.", "Pré-carregamento", "Mixagens off-line", "Baixado recentemente", "Mais jogado")
 )
 
 internal fun offlineQueueCopy(code: String): OfflineQueueCopy = localizedValueOrEnglish(offlineQueueCopies, code)

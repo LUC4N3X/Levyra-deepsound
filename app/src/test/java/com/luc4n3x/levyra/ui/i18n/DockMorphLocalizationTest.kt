@@ -9,8 +9,8 @@ import org.junit.Test
 class DockMorphLocalizationTest {
     @Test
     fun everySupportedLanguageHasItsOwnDockMorphCopy() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
-        assertEquals(41, codes.size)
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
+        assertEquals(47, codes.size)
         assertEquals(codes, dockMorphCopies.keys)
         val english = dockMorphCopies.getValue("en")
         dockMorphCopies.forEach { (code, copy) ->

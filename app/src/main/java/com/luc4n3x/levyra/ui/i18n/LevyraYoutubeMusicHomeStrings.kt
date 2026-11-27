@@ -68,7 +68,13 @@ private val YOUTUBE_MUSIC_HOME_COPY = mapOf(
     "vi" to homeCopy("Nhạc của bạn", "Từ tài khoản YouTube Music của bạn", "Do bạn tạo", "Làm mới", "Không thể tải nhạc của bạn.", "Thử lại", "Phiên YouTube Music của bạn đã hết hạn.", "Đăng nhập lại"),
     "th" to homeCopy("เพลงของคุณ", "จากบัญชี YouTube Music ของคุณ", "สร้างโดยคุณ", "รีเฟรช", "โหลดเพลงของคุณไม่ได้", "ลองอีกครั้ง", "เซสชัน YouTube Music ของคุณหมดอายุแล้ว", "ลงชื่อเข้าใช้อีกครั้ง"),
     "fil" to homeCopy("Ang musika mo", "Mula sa YouTube Music account mo", "Ginawa mo", "I-refresh", "Hindi ma-load ang musika mo.", "Subukang muli", "Nag-expire na ang session mo sa YouTube Music.", "Mag-sign in muli"),
-    "he" to homeCopy("המוזיקה שלך", "מחשבון YouTube Music שלך", "נוצר על ידך", "רענון", "לא ניתן לטעון את המוזיקה שלך.", "ניסיון חוזר", "פג תוקף ההתחברות שלך ל-YouTube Music.", "התחברות מחדש")
+    "he" to homeCopy("המוזיקה שלך", "מחשבון YouTube Music שלך", "נוצר על ידך", "רענון", "לא ניתן לטעון את המוזיקה שלך.", "ניסיון חוזר", "פג תוקף ההתחברות שלך ל-YouTube Music.", "התחברות מחדש"),
+    "ur" to homeCopy("آپ کی موسیقی", "آپ کے YouTube Music اکاؤنٹ سے", "آپ کے ذریعہ تخلیق کردہ", "ریفریش کریں۔", "آپ کی موسیقی لوڈ نہیں ہو سکی۔", "دوبارہ کوشش کریں۔", "آپ کے YouTube Music سیشن کی میعاد ختم ہو گئی ہے۔", "دوبارہ سائن ان کریں۔"),
+    "ta" to homeCopy("உங்கள் இசை", "உங்கள் YouTube Music கணக்கிலிருந்து", "உங்களால் உருவாக்கப்பட்டது", "புதுப்பிக்கவும்", "உங்கள் இசையை ஏற்ற முடியவில்லை.", "மீண்டும் முயற்சிக்கவும்", "உங்கள் YouTube Music அமர்வு காலாவதியானது.", "மீண்டும் உள்நுழையவும்"),
+    "te" to homeCopy("మీ సంగీతం", "మీ YouTube Music ఖాతా నుండి", "మీరు సృష్టించినది", "రిఫ్రెష్ చేయండి", "మీ సంగీతాన్ని లోడ్ చేయడం సాధ్యపడలేదు.", "మళ్లీ ప్రయత్నించండి", "మీ YouTube Music సెషన్ గడువు ముగిసింది.", "మళ్లీ సైన్ ఇన్ చేయండి"),
+    "mr" to homeCopy("तुमचे संगीत", "तुमच्या YouTube Music खात्यातून", "आपण तयार केले", "रिफ्रेश करा", "तुमचे संगीत लोड करू शकलो नाही.", "पुन्हा प्रयत्न करा", "तुमचे YouTube Music सत्र कालबाह्य झाले आहे.", "पुन्हा साइन इन करा"),
+    "gu" to homeCopy("તમારું સંગીત", "તમારા YouTube Music એકાઉન્ટમાંથી", "તમારા દ્વારા બનાવવામાં આવેલ", "તાજું કરો", "તમારું સંગીત લોડ કરી શકાયું નથી.", "ફરી પ્રયાસ કરો", "તમારું YouTube Music સત્ર સમાપ્ત થઈ ગયું છે.", "ફરીથી સાઇન ઇન કરો"),
+    "pt-BR" to homeCopy("Sua música", "Da sua conta YouTube Music", "Criado por você", "Atualizar", "Não foi possível carregar sua música.", "Tentar novamente", "Sua sessão YouTube Music expirou.", "Faça login novamente")
 )
 
 private fun YoutubeMusicHomeCopy.brazilian(): YoutubeMusicHomeCopy = copy(

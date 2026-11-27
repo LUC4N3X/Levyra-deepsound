@@ -24,7 +24,10 @@ object LevyraLocalizedDiscovery {
     }
 
     private fun contextualQueries(query: String, languageCode: String): List<String> {
-        return when (languageCode) {
+        val music = southAsianMusic[languageCode]
+        val suggestions = if (music != null) {
+            listOf(music.hits, music.rap, music.workout, music.drive, music.pop)
+        } else when (languageCode) {
             "it" -> listOf("rap italiano nuovo 2026", "hit italiane estate 2026", "musica italiana palestra", "playlist viaggio notte italiana", "pop italiano nuovo")
             "es" -> listOf("reggaeton nuevo 2026", "hits España 2026", "música para gimnasio", "playlist conducir de noche", "pop español nuevo")
             "fr" -> listOf("rap français nouveau 2026", "hits France 2026", "musique sport", "playlist conduite nuit", "pop française nouvelle")
@@ -50,8 +53,9 @@ object LevyraLocalizedDiscovery {
             "fil" -> listOf("bagong OPM 2026", "bagong Pinoy rap", "musikang pang-workout", "playlist para sa night drive", "bagong P-pop")
             "he" -> listOf("שירים ישראליים חדשים 2026", "ראפ ישראלי חדש", "מוזיקה לאימון", "פלייליסט לנסיעה בלילה", "פופ ישראלי חדש")
             else -> listOf("new music 2026", "top hits 2026", "gym music", "night drive playlist", "fresh pop hits")
-        }.let { list ->
-            if (query.isBlank()) list else list.map { item -> if (item.lowercase().contains(query)) item else "$query $item" }
+        }
+        return if (query.isBlank()) suggestions else suggestions.map { item ->
+            if (item.lowercase().contains(query)) item else "$query $item"
         }
     }
 

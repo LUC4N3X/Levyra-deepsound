@@ -48,7 +48,13 @@ private val trackDislikeCopies = mapOf(
     "vi" to TrackDislikeCopy("Không thích", "Bỏ Không thích", "Bị bỏ qua khi tự động phát", "Hoàn tác"),
     "th" to TrackDislikeCopy("ไม่ชอบ", "เลิกไม่ชอบ", "ข้ามเมื่อเล่นอัตโนมัติ", "เลิกทำ"),
     "fil" to TrackDislikeCopy("Hindi gusto", "Alisin ang Hindi gusto", "Nilalaktawan sa autoplay", "I-undo"),
-    "he" to TrackDislikeCopy("לא אוהב", "הסרת לא אוהב", "מדולג בהפעלה אוטומטית", "ביטול")
+    "he" to TrackDislikeCopy("לא אוהב", "הסרת לא אוהב", "מדולג בהפעלה אוטומטית", "ביטול"),
+    "ur" to TrackDislikeCopy("پسند نہیں کرتے", "ناپسندیدگی کو دور کریں۔", "آٹو پلے میں چھوڑ دیا گیا۔", "کالعدم"),
+    "ta" to TrackDislikeCopy("பிடிக்கவில்லை", "வெறுப்பை நீக்கவும்", "ஆட்டோபிளேவில் தவிர்க்கப்பட்டது", "செயல்தவிர்"),
+    "te" to TrackDislikeCopy("ఇష్టం లేదు", "అయిష్టాన్ని తొలగించండి", "ఆటోప్లేలో దాటవేయబడింది", "అన్డు"),
+    "mr" to TrackDislikeCopy("आवडत नाही", "नापसंती काढून टाका", "ऑटोप्लेमध्ये वगळले", "पूर्ववत करा"),
+    "gu" to TrackDislikeCopy("ગમતું નથી", "અણગમો દૂર કરો", "ઑટોપ્લેમાં છોડ્યું", "પૂર્વવત્ કરો"),
+    "pt-BR" to TrackDislikeCopy("Não gosto", "Remover antipatia", "Ignorado na reprodução automática", "Desfazer")
 )
 
 internal fun trackDislikeCopy(code: String): TrackDislikeCopy =

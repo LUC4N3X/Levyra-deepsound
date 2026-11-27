@@ -184,12 +184,36 @@ private val orbitEqCopies = mapOf(
     "he" to orbit(
         "מסלול", "גררו את הנקודה: ככל שהיא קרובה יותר לקצה, הגוון חזק יותר", "חם", "בהיר", "קרוב", "פתוח",
         "מרווח", "מרכז", "לחצו לחיצה ארוכה להשוואה", "שמירה כפרופיל", "מסלול הגוון", "איפוס הקטבים"
+    ),
+    "ur" to orbit(
+        "مدار", "پوائنٹ کو گھسیٹیں: کنارے کے جتنا قریب، لہجہ اتنا ہی مضبوط", "گرم", "روشن", "آگے", "کھولیں۔",
+        "ہیڈ روم", "مرکز", "موازنہ کرنے کے لیے پکڑو", "بطور پروفائل محفوظ کریں۔", "ٹون مدار", "کھمبے کو دوبارہ ترتیب دیں۔"
+    ),
+    "ta" to orbit(
+        "சுற்றுப்பாதை", "புள்ளியை இழுக்கவும்: விளிம்பிற்கு நெருக்கமாக, வலுவான தொனி", "சூடான", "பிரகாசமான", "முன்னோக்கி", "திற",
+        "தலையறை", "மையம்", "ஒப்பிட்டுப் பார்க்கவும்", "சுயவிவரமாக சேமிக்கவும்", "தொனி சுற்றுப்பாதை", "துருவங்களை மீட்டமைக்கவும்"
+    ),
+    "te" to orbit(
+        "కక్ష్య", "పాయింట్‌ని లాగండి: అంచుకు దగ్గరగా, టోన్ బలంగా ఉంటుంది", "వెచ్చగా", "ప్రకాశవంతమైన", "ముందుకు", "తెరవండి",
+        "హెడ్‌రూమ్", "కేంద్రం", "పోల్చడానికి పట్టుకోండి", "ప్రొఫైల్‌గా సేవ్ చేయండి", "టోన్ కక్ష్య", "స్తంభాలను రీసెట్ చేయండి"
+    ),
+    "mr" to orbit(
+        "कक्षा", "बिंदू ड्रॅग करा: काठाच्या जवळ, टोन मजबूत", "उबदार", "तेजस्वी", "पुढे", "उघडा",
+        "हेडरूम", "केंद्र", "तुलना करण्यासाठी धरा", "प्रोफाइल म्हणून सेव्ह करा", "टोन कक्षा", "खांब रीसेट करा"
+    ),
+    "gu" to orbit(
+        "ભ્રમણકક્ષા", "બિંદુને ખેંચો: ધારની નજીક, સ્વર વધુ મજબૂત", "ગરમ", "તેજસ્વી", "આગળ", "ખોલો",
+        "હેડરૂમ", "કેન્દ્ર", "સરખામણી કરવા માટે પકડી રાખો", "પ્રોફાઇલ તરીકે સાચવો", "ટોન ભ્રમણકક્ષા", "ધ્રુવો રીસેટ કરો"
+    ),
+    "pt-BR" to orbit(
+        "Órbita", "Arraste o ponto: quanto mais próximo da borda, mais forte será o tom", "Quente", "Brilhante", "Avançar", "Abrir",
+        "Altura livre", "Centro", "Segure para comparar", "Salvar como perfil", "Órbita de tom", "Redefinir postes"
     )
 )
 
 internal fun orbitEqLocalizationCodes(): Set<String> = orbitEqCopies.keys
 
-fun LevyraStrings.orbitEqCopy(): OrbitEqCopy = orbitEqCopies.getValue(translationKey(code)).forBrazil(code) { brazilian() }
+fun LevyraStrings.orbitEqCopy(): OrbitEqCopy = localizedValueOrEnglish(orbitEqCopies, code).forBrazil(code) { brazilian() }
 
 private fun OrbitEqCopy.brazilian(): OrbitEqCopy = copy(
     compare = "Mantenha pressionado para comparar",

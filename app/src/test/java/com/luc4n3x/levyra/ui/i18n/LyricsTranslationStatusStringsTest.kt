@@ -10,7 +10,7 @@ class LyricsTranslationStatusStringsTest {
     @Test
     fun everyLanguageExplainsEveryTranslationOutcome() {
         val bundles = LevyraStrings.all()
-        assertEquals(41, bundles.size)
+        assertEquals(47, bundles.size)
         bundles.forEach { bundle ->
             listOf(
                 bundle.lyricsTranslationWorking,

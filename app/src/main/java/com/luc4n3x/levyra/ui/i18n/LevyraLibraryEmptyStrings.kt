@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.ui.i18n
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal class LibraryEmptyCopy(private val values: List<String>) {
-    fun brazilian(): LibraryEmptyCopy = LibraryEmptyCopy(values.map(LevyraBrazilianPortuguese::adapt))
 
     init { require(values.size == 4 && values.all(String::isNotBlank)) }
     val albumsTitle get() = values[0]
@@ -13,11 +12,7 @@ internal class LibraryEmptyCopy(private val values: List<String>) {
 }
 
 internal fun libraryEmptyCopy(code: String): LibraryEmptyCopy =
-    if (isBrazilianPortuguese(code)) brazilianLibraryEmptyCopy else libraryEmptyCopies.getValue(translationKey(code))
-
-private val brazilianLibraryEmptyCopy: LibraryEmptyCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
-    libraryEmptyCopies.getValue("pt").brazilian()
-}
+    localizedValueOrEnglish(libraryEmptyCopies, code)
 
 private val libraryEmptyCopies = mapOf(
     "en" to listOf("No albums yet", "Save an album and it lands here.", "No artists yet", "Follow an artist to keep them close."),
@@ -60,7 +55,13 @@ private val libraryEmptyCopies = mapOf(
     "vi" to listOf("Chưa có album nào", "Lưu một album và nó sẽ xuất hiện ở đây.", "Chưa có nghệ sĩ nào", "Theo dõi nghệ sĩ để luôn ở gần họ."),
     "th" to listOf("ยังไม่มีอัลบั้ม", "บันทึกอัลบั้มแล้วจะแสดงที่นี่", "ยังไม่มีศิลปิน", "ติดตามศิลปินเพื่อเก็บไว้ใกล้ตัว"),
     "fil" to listOf("Wala pang album", "Mag-save ng album at lalabas ito rito.", "Wala pang artist", "Sundan ang isang artist para laging malapit."),
-    "he" to listOf("עדיין אין אלבומים", "שמרו אלבום והוא יופיע כאן.", "עדיין אין אמנים", "עקבו אחרי אמן כדי שיהיה קרוב.")
+    "he" to listOf("עדיין אין אלבומים", "שמרו אלבום והוא יופיע כאן.", "עדיין אין אמנים", "עקבו אחרי אמן כדי שיהיה קרוב."),
+    "ur" to listOf("ابھی تک کوئی البمز نہیں ہیں۔", "ایک البم محفوظ کریں اور یہ یہاں اتر جائے گا۔", "ابھی تک کوئی فنکار نہیں۔", "کسی فنکار کو قریب رکھنے کے لیے ان کی پیروی کریں۔"),
+    "ta" to listOf("இதுவரை ஆல்பங்கள் இல்லை", "ஒரு ஆல்பத்தைச் சேமித்து, அது இங்கே இறங்கும்.", "இன்னும் கலைஞர்கள் இல்லை", "அவர்களை நெருக்கமாக வைத்திருக்க ஒரு கலைஞரைப் பின்தொடரவும்."),
+    "te" to listOf("ఇంకా ఆల్బమ్‌లు లేవు", "ఆల్బమ్‌ను సేవ్ చేయండి మరియు అది ఇక్కడ ల్యాండ్ అవుతుంది.", "ఇంకా కళాకారులు లేరు", "కళాకారుడిని దగ్గరగా ఉంచడానికి వారిని అనుసరించండి."),
+    "mr" to listOf("अद्याप कोणतेही अल्बम नाहीत", "अल्बम जतन करा आणि तो येथे येतो.", "अजून कलाकार नाहीत", "त्यांना जवळ ठेवण्यासाठी कलाकाराचे अनुसरण करा."),
+    "gu" to listOf("હજુ સુધી કોઈ આલ્બમ નથી", "એક આલ્બમ સાચવો અને તે અહીં આવે છે.", "હજુ સુધી કોઈ કલાકાર નથી", "તેમને નજીક રાખવા માટે કલાકારને અનુસરો."),
+    "pt-BR" to listOf("Ainda não há álbuns", "Salve um álbum e ele chegará aqui.", "Nenhum artista ainda", "Siga um artista para mantê-los por perto.")
 ).mapValues { LibraryEmptyCopy(it.value) }.also { copies ->
-    check(copies.keys == LevyraLanguageCatalog.languages.map { it.code }.toSet())
+    check(copies.keys == LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet())
 }

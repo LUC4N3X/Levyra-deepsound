@@ -47,7 +47,13 @@ private val audioTabsCopies = mapOf(
     "vi" to AudioTabsCopy("Âm thanh", "Phát nhạc", "Thông minh"),
     "th" to AudioTabsCopy("เสียง", "การเล่น", "อัจฉริยะ"),
     "fil" to AudioTabsCopy("Tunog", "Pag-play", "Smart"),
-    "he" to AudioTabsCopy("סאונד", "ניגון", "חכם")
+    "he" to AudioTabsCopy("סאונד", "ניגון", "חכם"),
+    "ur" to AudioTabsCopy("آواز", "پلے بیک", "ہوشیار"),
+    "ta" to AudioTabsCopy("ஒலி", "பாடல் இயக்கம்", "புத்திசாலி"),
+    "te" to AudioTabsCopy("ధ్వని", "ప్లేబ్యాక్", "తెలివైన"),
+    "mr" to AudioTabsCopy("आवाज", "प्लेबॅक", "स्मार्ट"),
+    "gu" to AudioTabsCopy("ધ્વનિ", "પ્લેબેક", "સ્માર્ટ"),
+    "pt-BR" to AudioTabsCopy("Som", "Reprodução", "Inteligente")
 )
 
 internal fun audioTabsCopy(code: String): AudioTabsCopy = localizedValueOrEnglish(audioTabsCopies, code)

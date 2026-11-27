@@ -43,7 +43,13 @@ internal val musicRegionCopies = mapOf(
     "vi" to MusicRegionCopy("Khu vực âm nhạc", "Tự động (theo ngôn ngữ)"),
     "th" to MusicRegionCopy("ภูมิภาคเพลง", "อัตโนมัติ (ตามภาษา)"),
     "fil" to MusicRegionCopy("Rehiyon ng musika", "Awtomatiko (sumusunod sa wika)"),
-    "he" to MusicRegionCopy("אזור מוזיקה", "אוטומטי (לפי השפה)")
+    "he" to MusicRegionCopy("אזור מוזיקה", "אוטומטי (לפי השפה)"),
+    "ur" to MusicRegionCopy("موسیقی کا علاقہ", "خودکار (زبان کی پیروی کرتا ہے)"),
+    "ta" to MusicRegionCopy("இசை மண்டலம்", "தானியங்கி (மொழியைப் பின்பற்றுகிறது)"),
+    "te" to MusicRegionCopy("సంగీత ప్రాంతం", "స్వయంచాలక (భాషను అనుసరిస్తుంది)"),
+    "mr" to MusicRegionCopy("संगीत क्षेत्र", "स्वयंचलित (भाषेचे अनुसरण करते)"),
+    "gu" to MusicRegionCopy("સંગીત ક્ષેત્ર", "સ્વચાલિત (ભાષાને અનુસરે છે)"),
+    "pt-BR" to MusicRegionCopy("Região musical", "Automático (segue o idioma)")
 )
 
 internal fun musicRegionCopy(code: String): MusicRegionCopy = localizedValueOrEnglish(musicRegionCopies, code)

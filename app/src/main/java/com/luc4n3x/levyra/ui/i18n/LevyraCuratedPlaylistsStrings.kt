@@ -42,7 +42,12 @@ private val curatedPlaylistsTitles = mapOf(
     "vi" to "Danh sách phát tuyển chọn",
     "th" to "เพลย์ลิสต์คัดสรร",
     "fil" to "Mga piling playlist",
-    "he" to "פלייליסטים נבחרים"
+    "he" to "פלייליסטים נבחרים",
+    "ur" to "تیار کردہ پلے لسٹس",
+    "ta" to "தேர்ந்தெடுக்கப்பட்ட பிளேலிஸ்ட்கள்",
+    "te" to "క్యూరేటెడ్ ప్లేజాబితాలు",
+    "mr" to "क्युरेट केलेल्या प्लेलिस्ट",
+    "gu" to "પસંદ કરેલ પ્લેલિસ્ટ્સ"
 )
 
 internal fun curatedPlaylistsTitle(code: String): String = localizedValueOrEnglish(curatedPlaylistsTitles, code)

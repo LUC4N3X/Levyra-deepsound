@@ -73,6 +73,90 @@ internal object LevyraAtelierStrings {
             queueHistoryEmpty = "Ancora nessun ascolto",
             retry = "Riprova",
             homeEmptyBody = "Ancora nulla sul giradischi."
+        ),
+        "ur" to AtelierCopy(
+            skinBody = "ایک تاریک سننے کا کمرہ۔ آستینیں حقیقی گہرائی میں ایک شیلف پر کھڑی ہیں اور ہر ریکارڈ ٹرن ٹیبل پر اترتا ہے۔",
+            shelf = "شیلف",
+            shelfEmptyTitle = "شیلف خالی ہے۔",
+            shelfEmptyBody = "گانے یا البمز محفوظ کریں اور ان کی آستینیں یہاں ظاہر ہوں گی۔",
+            playCollection = "چلائیں",
+            openDetails = "تفصیلات کھولیں۔",
+            previousSleeve = "پچھلی آستین",
+            nextSleeve = "اگلی آستین",
+            shelfPosition = "شیلف پر پوزیشن",
+            tracksCount = "%d ٹریکس",
+            sideA = "سائیڈ A · 33⅓",
+            goToShelf = "شیلف کھولیں۔"
+        ),
+        "ta" to AtelierCopy(
+            skinBody = "ஒரு இருண்ட கேட்கும் அறை. ஸ்லீவ்ஸ் உண்மையான ஆழத்தில் ஒரு அலமாரியில் நிற்கிறது மற்றும் ஒவ்வொரு பதிவும் ஒரு டர்ன்டேபிள் மீது இறங்குகிறது.",
+            shelf = "அலமாரி",
+            shelfEmptyTitle = "அலமாரி காலியாக உள்ளது",
+            shelfEmptyBody = "பாடல்கள் அல்லது ஆல்பங்களைச் சேமிக்கவும், அவற்றின் ஸ்லீவ்கள் இங்கே தோன்றும்.",
+            playCollection = "இயக்கவும்",
+            openDetails = "விவரங்களைத் திறக்கவும்",
+            previousSleeve = "முந்தைய ஸ்லீவ்",
+            nextSleeve = "அடுத்த ஸ்லீவ்",
+            shelfPosition = "அலமாரியில் நிலை",
+            tracksCount = "%d தடங்கள்",
+            sideA = "பக்க A · 33⅓",
+            goToShelf = "அலமாரியைத் திறக்கவும்"
+        ),
+        "te" to AtelierCopy(
+            skinBody = "ఒక చీకటి వినే గది. స్లీవ్‌లు రియల్ డెప్త్‌లో షెల్ఫ్‌పై నిలబడి ఉంటాయి మరియు ప్రతి రికార్డ్ టర్న్ టేబుల్‌పైకి వస్తుంది.",
+            shelf = "షెల్ఫ్",
+            shelfEmptyTitle = "షెల్ఫ్ ఖాళీగా ఉంది",
+            shelfEmptyBody = "పాటలు లేదా ఆల్బమ్‌లను సేవ్ చేయండి మరియు వాటి స్లీవ్‌లు ఇక్కడ కనిపిస్తాయి.",
+            playCollection = "ప్లే చేయండి",
+            openDetails = "వివరాలను తెరవండి",
+            previousSleeve = "మునుపటి స్లీవ్",
+            nextSleeve = "తదుపరి స్లీవ్",
+            shelfPosition = "షెల్ఫ్‌లో స్థానం",
+            tracksCount = "%d ట్రాక్‌లు",
+            sideA = "సైడ్ ఎ · 33⅓",
+            goToShelf = "షెల్ఫ్ తెరవండి"
+        ),
+        "mr" to AtelierCopy(
+            skinBody = "एक गडद ऐकण्याची खोली. स्लीव्हज खऱ्या खोलीत शेल्फवर उभे असतात आणि प्रत्येक रेकॉर्ड टर्नटेबलवर उतरतो.",
+            shelf = "शेल्फ",
+            shelfEmptyTitle = "शेल्फ रिकामे आहे",
+            shelfEmptyBody = "गाणी किंवा अल्बम जतन करा आणि त्यांचे स्लीव्ह येथे दिसतील.",
+            playCollection = "वाजवा",
+            openDetails = "तपशील उघडा",
+            previousSleeve = "मागील बाही",
+            nextSleeve = "पुढील बाही",
+            shelfPosition = "शेल्फ वर स्थान",
+            tracksCount = "%d ट्रॅक",
+            sideA = "बाजू A · 33⅓",
+            goToShelf = "शेल्फ उघडा"
+        ),
+        "gu" to AtelierCopy(
+            skinBody = "શ્યામ સાંભળવાનો ઓરડો. સ્લીવ્ઝ વાસ્તવિક ઊંડાણમાં શેલ્ફ પર ઊભા છે અને દરેક રેકોર્ડ ટર્નટેબલ પર ઉતરે છે.",
+            shelf = "શેલ્ફ",
+            shelfEmptyTitle = "શેલ્ફ ખાલી છે",
+            shelfEmptyBody = "ગીતો અથવા આલ્બમ્સ સાચવો અને તેમની સ્લીવ્સ અહીં દેખાશે.",
+            playCollection = "વગાડો",
+            openDetails = "વિગતો ખોલો",
+            previousSleeve = "પાછલી સ્લીવ",
+            nextSleeve = "આગામી સ્લીવમાં",
+            shelfPosition = "શેલ્ફ પર સ્થિતિ",
+            tracksCount = "%d ટ્રેક",
+            sideA = "સાઇડ A · 33⅓",
+            goToShelf = "શેલ્ફ ખોલો"
+        ),
+        "pt-BR" to AtelierCopy(
+            skinBody = "Uma sala de audição escura. As capas ficam em uma prateleira com profundidade real e cada disco cai em um toca-discos.",
+            shelf = "Prateleira",
+            shelfEmptyTitle = "A prateleira está vazia",
+            shelfEmptyBody = "Salve músicas ou álbuns e suas capas aparecerão aqui.",
+            playCollection = "Tocar",
+            openDetails = "Abrir detalhes",
+            previousSleeve = "Manga anterior",
+            nextSleeve = "Próxima manga",
+            shelfPosition = "Posicione na prateleira",
+            tracksCount = "Faixas %d",
+            sideA = "LADO A · 33⅓",
+            goToShelf = "Abra a prateleira"
         )
     )
 
@@ -120,7 +204,7 @@ internal object LevyraAtelierStrings {
 
     fun forCode(code: String): AtelierCopy {
         val copy = localizedValueOrEnglish(copies, code)
-        val body = skinBodies[translationKey(code)] ?: return copy
-        return copy.copy(skinBody = if (isBrazilianPortuguese(code)) LevyraBrazilianPortuguese.adaptValue(body) else body)
+        val body = skinBodies[translationKey(code, regional = true)] ?: return copy
+        return copy.copy(skinBody = body)
     }
 }

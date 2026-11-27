@@ -56,7 +56,13 @@ internal object LevyraSpotifyChartStrings {
         "vi" to SpotifyChartCopy("Tìm trong danh sách phát", "Sắp xếp", "%1\$,d Nội dung Mới", "%1\$,d Nội dung Mới", "%s: cập nhật hằng ngày những bài hát được nghe nhiều nhất hiện nay.", "Podcast", "Xong", "Tìm kiếm"),
         "th" to SpotifyChartCopy("ค้นหาในเพลย์ลิสต์", "จัดเรียง", "%1\$,d เพลงใหม่", "%1\$,d เพลงใหม่", "%s: อัปเดตเพลงที่ถูกเล่นมากที่สุดในตอนนี้ทุกวัน", "พอดแคสต์", "เสร็จสิ้น", "ค้นหา"),
         "fil" to SpotifyChartCopy("Hanapin sa playlist", "I-sort", "%1\$,d Bagong Entry", "%1\$,d Bagong Entry", "%s: ang araw-araw mong update ng pinakapinapakinggang mga kanta ngayon.", "Mga Podcast", "Tapos na", "Maghanap"),
-        "he" to SpotifyChartCopy("חיפוש בפלייליסט", "מיון", "%1\$,d כניסה חדשה", "%1\$,d כניסות חדשות", "%s: העדכון היומי שלך לשירים המושמעים ביותר כרגע.", "פודקאסטים", "סיום", "חיפוש")
+        "he" to SpotifyChartCopy("חיפוש בפלייליסט", "מיון", "%1\$,d כניסה חדשה", "%1\$,d כניסות חדשות", "%s: העדכון היומי שלך לשירים המושמעים ביותר כרגע.", "פודקאסטים", "סיום", "חיפוש"),
+        "ur" to SpotifyChartCopy("پلے لسٹ میں تلاش کریں۔", "چھانٹنا", "%1\$,d نئی اندراج", "%1\$,d نئی اندراجات", "اس وقت سب سے زیادہ چلائے جانے والے ٹریکس کی آپ کی روزانہ کی تازہ کاری - %s۔", "پوڈکاسٹ", "ہو گیا", "تلاش کریں"),
+        "ta" to SpotifyChartCopy("பிளேலிஸ்ட்டில் கண்டுபிடிக்கவும்", "வரிசைப்படுத்து", "%1\$,d புதிய நுழைவு", "%1\$,d புதிய உள்ளீடுகள்", "இப்போது அதிகம் இயக்கப்பட்ட டிராக்குகளின் தினசரி புதுப்பிப்பு - %s.", "பாட்காஸ்ட்கள்", "முடிந்தது", "தேடுங்கள்"),
+        "te" to SpotifyChartCopy("ప్లేజాబితాలో కనుగొనండి", "క్రమబద్ధీకరించు", "%1\$,d కొత్త ఎంట్రీ", "%1\$,d కొత్త ఎంట్రీలు", "ప్రస్తుతం ఎక్కువగా ప్లే చేయబడిన ట్రాక్‌ల యొక్క మీ రోజువారీ నవీకరణ - %s.", "పాడ్‌కాస్ట్‌లు", "పూర్తయింది", "వెతకండి"),
+        "mr" to SpotifyChartCopy("प्लेलिस्टमध्ये शोधा", "क्रमवारी लावा", "%1\$,d नवीन प्रवेश", "%1\$,d नवीन नोंदी", "सध्या सर्वाधिक प्ले झालेल्या ट्रॅकचे तुमचे दैनंदिन अपडेट - %s.", "पॉडकास्ट", "झाले", "शोधा"),
+        "gu" to SpotifyChartCopy("પ્લેલિસ્ટમાં શોધો", "સૉર્ટ કરો", "%1\$,d નવી એન્ટ્રી", "%1\$,d નવી એન્ટ્રીઓ", "અત્યારે સૌથી વધુ વગાડવામાં આવેલા ટ્રૅક્સનું તમારું દૈનિક અપડેટ - %s.", "પોડકાસ્ટ", "થઈ ગયું", "શોધો"),
+        "pt-BR" to SpotifyChartCopy("Encontrar na lista de reprodução", "Classificar", "%1\$,d Nova Entrada", "%1\$,d Novas entradas", "Sua atualização diária das faixas mais tocadas no momento - %s.", "Podcasts", "Concluído", "Pesquisar")
     )
 
     private val globalNames = mapOf(
@@ -100,7 +106,13 @@ internal object LevyraSpotifyChartStrings {
         "vi" to "Toàn cầu",
         "th" to "ทั่วโลก",
         "fil" to "Global",
-        "he" to "גלובלי"
+        "he" to "גלובלי",
+        "ur" to "عالمی",
+        "ta" to "உலகளாவிய",
+        "te" to "గ్లోబల్",
+        "mr" to "जागतिक",
+        "gu" to "વૈશ્વિક",
+        "pt-BR" to "Globais"
     )
 
     private val radioCopies = mapOf(
@@ -144,7 +156,13 @@ internal object LevyraSpotifyChartStrings {
         "vi" to ("Với %s và nhiều nghệ sĩ khác" to "Dành riêng cho bạn"),
         "th" to ("มี %s และอีกมากมาย" to "สร้างมาเพื่อคุณ"),
         "fil" to ("Kasama ang %s at marami pa" to "Ginawa para sa iyo"),
-        "he" to ("עם %s ועוד" to "נוצר בשבילך")
+        "he" to ("עם %s ועוד" to "נוצר בשבילך"),
+        "ur" to ("With %s and more" to "آپ کے لیے بنایا گیا ہے۔"),
+        "ta" to ("With %s and more" to "உங்களுக்காக உருவாக்கப்பட்டது"),
+        "te" to ("With %s and more" to "మీ కోసం తయారు చేయబడింది"),
+        "mr" to ("With %s and more" to "तुमच्यासाठी बनवलेले"),
+        "gu" to ("With %s and more" to "તમારા માટે બનાવેલ છે"),
+        "pt-BR" to ("With %s and more" to "Feito para você")
     )
 
     fun radioWithMany(code: String, artists: String): String =
@@ -194,7 +212,13 @@ internal object LevyraSpotifyChartStrings {
         "vi" to "Radio %s",
         "th" to "สถานีวิทยุ %s",
         "fil" to "%s Radio",
-        "he" to "הרדיו של %s"
+        "he" to "הרדיו של %s",
+        "ur" to "%s ریڈیو",
+        "ta" to "%s ரேடியோ",
+        "te" to "%s రేడియో",
+        "mr" to "%s रेडिओ",
+        "gu" to "%s રેડિયો",
+        "pt-BR" to "Rádio %s"
     )
 
     fun radioTitle(code: String, artist: String): String =
@@ -241,7 +265,13 @@ internal object LevyraSpotifyChartStrings {
         "vi" to ("Chọn thêm nghệ sĩ bạn thích." to "Những nghệ sĩ khác bạn có thể thích"),
         "th" to ("เลือกศิลปินที่คุณชอบเพิ่มเติม" to "ศิลปินอื่นๆ ที่คุณอาจชอบ"),
         "fil" to ("Pumili ng iba pang artist na gusto mo." to "Iba pang artist na baka magustuhan mo"),
-        "he" to ("בחרו עוד אמנים שאתם אוהבים." to "אמנים נוספים שאולי תאהבו")
+        "he" to ("בחרו עוד אמנים שאתם אוהבים." to "אמנים נוספים שאולי תאהבו"),
+        "ur" to ("Choose more artists you like." to "مزید فنکار آپ کو پسند آ سکتے ہیں۔"),
+        "ta" to ("Choose more artists you like." to "நீங்கள் விரும்பக்கூடிய மேலும் கலைஞர்கள்"),
+        "te" to ("Choose more artists you like." to "మీరు ఇష్టపడే మరిన్ని కళాకారులు"),
+        "mr" to ("Choose more artists you like." to "तुम्हाला आवडतील असे आणखी कलाकार"),
+        "gu" to ("Choose more artists you like." to "તમને ગમશે તેવા વધુ કલાકારો"),
+        "pt-BR" to ("Choose more artists you like." to "Mais artistas de que você pode gostar")
     )
 
     fun pickerTitle(code: String): String = localizedValueOrEnglish(pickerCopies, code).first

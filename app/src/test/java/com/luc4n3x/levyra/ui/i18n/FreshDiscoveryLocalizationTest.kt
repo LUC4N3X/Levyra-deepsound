@@ -10,7 +10,7 @@ import org.junit.Test
 class FreshDiscoveryLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, freshDiscoveryLocalizationCodes())
         val english = freshDiscoveryCopy("en")
         supported.forEach { code ->

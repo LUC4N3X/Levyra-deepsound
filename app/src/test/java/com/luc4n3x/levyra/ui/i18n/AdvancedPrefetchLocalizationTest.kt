@@ -9,7 +9,7 @@ import org.junit.Test
 class AdvancedPrefetchLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, advancedPrefetchLocalizationCodes())
         val english = advancedPrefetchCopy("en")
         supported.forEach { code ->
@@ -23,7 +23,7 @@ class AdvancedPrefetchLocalizationTest {
 
     @Test
     fun mobileDataOptionShipsInEverySupportedLanguage() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, advancedPrefetchMobileDataLocalizationCodes())
         val english = advancedPrefetchMobileDataCopy("en")
         supported.forEach { code ->

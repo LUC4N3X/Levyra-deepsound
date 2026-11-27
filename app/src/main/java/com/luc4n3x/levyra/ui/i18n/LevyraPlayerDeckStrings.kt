@@ -101,7 +101,12 @@ private val playerDeckShortLabelsByCode: Map<String, PlayerDeckShortLabels> = ma
     "fa" to PlayerDeckShortLabels("Apple", "Cinema", "Turntable", "Bloom", "Late Night"),
     "zh-Hant" to PlayerDeckShortLabels("Apple", "Cinema", "Turntable", "Bloom", "Late Night"),
     "bn" to PlayerDeckShortLabels("Apple", "Cinema", "Turntable", "Bloom", "Late Night"),
-    "ms" to PlayerDeckShortLabels("Apple", "Cinema", "Turntable", "Bloom", "Late Night")
+    "ms" to PlayerDeckShortLabels("Apple", "Cinema", "Turntable", "Bloom", "Late Night"),
+    "ur" to PlayerDeckShortLabels("ایپل", "سنیما", "ٹرنٹیبل", "کھلنا", "لیٹ نائٹ"),
+    "ta" to PlayerDeckShortLabels("ஆப்பிள்", "சினிமா", "திருப்பக்கூடியது", "ப்ளூம்", "லேட் நைட்"),
+    "te" to PlayerDeckShortLabels("ఆపిల్", "సినిమా", "తిరుగులేని", "బ్లూమ్", "లేట్ నైట్"),
+    "mr" to PlayerDeckShortLabels("सफरचंद", "सिनेमा", "टर्नटेबल", "तजेला", "लेट नाईट"),
+    "gu" to PlayerDeckShortLabels("એપલ", "સિનેમા", "ટર્નટેબલ", "મોર", "મોડી રાત")
 )
 
 internal fun playerDeckShortLabels(code: String): PlayerDeckShortLabels =
@@ -149,7 +154,12 @@ private val playerDeckBundles: Map<String, Map<String, String>> = mapOf(
     "fa" to playerDeck("Player Deck", "سبک پخش‌کننده را انتخاب کنید.", "Bloom", "Late Night", "جلد درخشان، کنترل‌های آرام.", "Canvas شناور.", "صفحه گرامافون چرخان، بازوی سوزن و حلقه جابه‌جایی.", "Material 3 Expressive.", "پالس زنده صدا.", "ویدیو، رادیو و حالت افقی از Levyra استفاده می‌کنند."),
     "zh-Hant" to playerDeck("Player Deck", "選擇播放器樣式。", "Bloom", "Late Night", "發光封面，簡潔控制項。", "懸浮 Canvas。", "旋轉黑膠、唱臂和環形進度條。", "Material 3 Expressive.", "即時音訊脈動。", "影片、電台和橫向模式使用 Levyra。"),
     "bn" to playerDeck("Player Deck", "প্লেয়ারের স্টাইল বেছে নিন।", "Bloom", "Late Night", "উজ্জ্বল কভার, শান্ত কন্ট্রোল।", "ভাসমান Canvas।", "ঘুরন্ত ভিনাইল, টোনআর্ম আর রিং দিয়ে এগোনো-পেছানো।", "Material 3 Expressive.", "লাইভ অডিও পালস।", "ভিডিও, রেডিও আর ল্যান্ডস্কেপ Levyra ব্যবহার করে।"),
-    "ms" to playerDeck("Player Deck", "Pilih gaya pemain.", "Bloom", "Late Night", "Kulit album bercahaya, kawalan ringkas.", "Canvas terapung.", "Piring hitam berputar, lengan jarum dan gelang anjak.", "Material 3 Expressive.", "Denyut audio langsung.", "Video, radio dan landskap menggunakan Levyra.")
+    "ms" to playerDeck("Player Deck", "Pilih gaya pemain.", "Bloom", "Late Night", "Kulit album bercahaya, kawalan ringkas.", "Canvas terapung.", "Piring hitam berputar, lengan jarum dan gelang anjak.", "Material 3 Expressive.", "Denyut audio langsung.", "Video, radio dan landskap menggunakan Levyra."),
+    "ur" to playerDeck("پلیئر ڈیک", "اپنے کھلاڑی کا انداز منتخب کریں۔", "کھلنا", "لیٹ نائٹ", "چمکتا ہوا آرٹ ورک، پرسکون کنٹرول۔", "تیرتا ہوا کینوس۔", "اسپننگ ونائل، ٹونآرم اور رنگ سیک۔", "مواد 3 اظہار خیال۔", "لائیو آڈیو پلس۔", "ویڈیو، ریڈیو اور لینڈ اسکیپ Levyra استعمال کرتے ہیں۔"),
+    "ta" to playerDeck("பிளேயர் டெக்", "உங்கள் பிளேயர் பாணியைத் தேர்வுசெய்க.", "ப்ளூம்", "லேட் நைட்", "ஒளிரும் கலைப்படைப்பு, அமைதியான கட்டுப்பாடுகள்.", "மிதக்கும் கேன்வாஸ்.", "ஸ்பின்னிங் வினைல், டோனியர்ம் மற்றும் ரிங் சீக்.", "பொருள் 3 வெளிப்பாடு.", "நேரடி ஆடியோ துடிப்பு.", "வீடியோ, ரேடியோ மற்றும் இயற்கை பயன்பாடு Levyra."),
+    "te" to playerDeck("ప్లేయర్ డెక్", "మీ ప్లేయర్ శైలిని ఎంచుకోండి.", "బ్లూమ్", "లేట్ నైట్", "మెరుస్తున్న కళాకృతి, నిశ్శబ్ద నియంత్రణలు.", "తేలియాడే కాన్వాస్.", "స్పిన్నింగ్ వినైల్, టోనియర్మ్ మరియు రింగ్ సీక్.", "మెటీరియల్ 3 వ్యక్తీకరణ.", "ప్రత్యక్ష ఆడియో పల్స్.", "వీడియో, రేడియో మరియు ల్యాండ్‌స్కేప్ ఉపయోగం Levyra."),
+    "mr" to playerDeck("प्लेअर डेक", "तुमची खेळाडू शैली निवडा.", "तजेला", "लेट नाईट", "चमकणारी कलाकृती, शांत नियंत्रणे.", "फ्लोटिंग कॅनव्हास.", "स्पिनिंग विनाइल, टोनआर्म आणि रिंग सीक.", "साहित्य 3 अभिव्यक्त.", "थेट ऑडिओ पल्स.", "व्हिडिओ, रेडिओ आणि लँडस्केप Levyra वापरतात."),
+    "gu" to playerDeck("પ્લેયર ડેક", "તમારી ખેલાડી શૈલી પસંદ કરો.", "મોર", "મોડી રાત", "ચમકતી આર્ટવર્ક, શાંત નિયંત્રણો.", "ફ્લોટિંગ કેનવાસ.", "સ્પિનિંગ વિનાઇલ, ટોનઆર્મ અને રિંગ સીક.", "સામગ્રી 3 અભિવ્યક્ત.", "જીવંત ઓડિયો પલ્સ.", "વિડિઓ, રેડિયો અને લેન્ડસ્કેપ Levyra નો ઉપયોગ કરે છે.")
 )
 
 private val playerDeckStackHints: Map<String, String> = mapOf(
@@ -194,7 +204,12 @@ private val playerDeckStackHints: Map<String, String> = mapOf(
     "fa" to "جلدهای روی هم به‌صورت سه‌بعدی. برای تغییر بکشید، برای صف بالا ببرید.",
     "zh-Hant" to "3D 疊放的封面。滑動切換，上推查看佇列。",
     "bn" to "3D-তে সাজানো কভার। বদলাতে সোয়াইপ করুন, কিউর জন্য ওপরে তুলুন।",
-    "ms" to "Kulit album bertindan 3D. Leret untuk tukar, angkat untuk baris gilir."
+    "ms" to "Kulit album bertindan 3D. Leret untuk tukar, angkat untuk baris gilir.",
+    "ur" to "3D میں اسٹیک شدہ کور۔ تبدیل کرنے کے لیے سوائپ کریں، قطار کے لیے اٹھائیں۔",
+    "ta" to "3டியில் அடுக்கப்பட்ட கவர்கள். மாற்ற ஸ்வைப் செய்யவும், வரிசையை உயர்த்தவும்.",
+    "te" to "3Dలో పేర్చబడిన కవర్లు. మార్చడానికి స్వైప్ చేయండి, క్యూ కోసం ఎత్తండి.",
+    "mr" to "कव्हर्स 3D मध्ये स्टॅक केलेले. बदलण्यासाठी स्वाइप करा, रांगेसाठी लिफ्ट करा.",
+    "gu" to "3D માં સ્ટેક કરેલા કવર. બદલવા માટે સ્વાઇપ કરો, કતાર માટે લિફ્ટ કરો."
 )
 
 private val playerDeckFolioHints: Map<String, String> = mapOf(
@@ -239,7 +254,12 @@ private val playerDeckFolioHints: Map<String, String> = mapOf(
     "ca" to "Portada amb forma i controls tonals marcats.",
     "fa" to "جلد شکل‌دار و کنترل‌های رنگی پررنگ.",
     "zh-Hant" to "異形封面與醒目的色調按鈕。",
-    "ms" to "Kulit album berbentuk dan kawalan bertona tegas."
+    "ms" to "Kulit album berbentuk dan kawalan bertona tegas.",
+    "ur" to "شکل والا آرٹ ورک اور بولڈ ٹونل کنٹرول۔",
+    "ta" to "வடிவ கலைப்படைப்பு மற்றும் தடித்த டோனல் கட்டுப்பாடுகள்.",
+    "te" to "ఆకారపు ఆర్ట్‌వర్క్ మరియు బోల్డ్ టోనల్ నియంత్రణలు.",
+    "mr" to "आकाराची कलाकृती आणि ठळक टोनल नियंत्रणे.",
+    "gu" to "આકારની આર્ટવર્ક અને બોલ્ડ ટોનલ નિયંત્રણો."
 )
 
 private val playerDeckFlowHints: Map<String, String> = mapOf(
@@ -284,7 +304,12 @@ private val playerDeckFlowHints: Map<String, String> = mapOf(
     "ca" to "Portada, llum i controls en una sola superfície fluida.",
     "fa" to "جلد، نور و کنترل‌ها روی یک سطح روان.",
     "zh-Hant" to "封面、光影與控制項融為一體的流動介面。",
-    "ms" to "Kulit, cahaya dan kawalan pada satu permukaan yang mengalir."
+    "ms" to "Kulit, cahaya dan kawalan pada satu permukaan yang mengalir.",
+    "ur" to "ایک بہتی ہوئی سطح پر کور، روشنی اور کنٹرول۔",
+    "ta" to "ஒரு பாயும் மேற்பரப்பில் கவர், ஒளி மற்றும் கட்டுப்பாடுகள்.",
+    "te" to "ఒక ప్రవహించే ఉపరితలంపై కవర్, కాంతి మరియు నియంత్రణలు.",
+    "mr" to "एका वाहत्या पृष्ठभागावर कव्हर, प्रकाश आणि नियंत्रणे.",
+    "gu" to "એક વહેતી સપાટી પર આવરણ, પ્રકાશ અને નિયંત્રણો."
 )
 
 private val playerDeckEmberHints: Map<String, String> = mapOf(
@@ -329,7 +354,12 @@ private val playerDeckEmberHints: Map<String, String> = mapOf(
     "nb" to "Omslagsglød, bølgeformsøk og en stor avspillingsknapp.",
     "ca" to "Brillantor de la portada, ona per avançar i un gran botó de reproduir.",
     "fa" to "درخشش جلد، نوار پیشرفت موجی و دکمه پخش بزرگ.",
-    "ms" to "Cahaya kulit album, gelangsar gelombang dan butang main yang besar."
+    "ms" to "Cahaya kulit album, gelangsar gelombang dan butang main yang besar.",
+    "ur" to "آرٹ ورک کی چمک، ویوفارم سیک اور ایک بولڈ پلے کلید۔",
+    "ta" to "கலைப்படைப்பு பளபளப்பு, அலைவடிவம் தேடுதல் மற்றும் தைரியமான விளையாட்டு விசை.",
+    "te" to "ఆర్ట్‌వర్క్ గ్లో, వేవ్‌ఫార్మ్ సీక్ మరియు బోల్డ్ ప్లే కీ.",
+    "mr" to "आर्टवर्क ग्लो, वेव्हफॉर्म शोध आणि एक ठळक प्ले की.",
+    "gu" to "આર્ટવર્ક ગ્લો, વેવફોર્મ સીક અને બોલ્ડ પ્લે કી."
 )
 
 private val playerDeckCinemaHints: Map<String, String> = mapOf(
@@ -374,7 +404,12 @@ private val playerDeckCinemaHints: Map<String, String> = mapOf(
     "fa" to "متن ترانه روی صحنه، روشن از جلد.",
     "zh-Hant" to "歌詞登上舞台，由封面點亮。",
     "bn" to "মঞ্চে গানের কথা, কভারের আলোয়।",
-    "ms" to "Lirik di pentas, disinari kulit album."
+    "ms" to "Lirik di pentas, disinari kulit album.",
+    "ur" to "اسٹیج پر دھن، آرٹ ورک سے روشن۔",
+    "ta" to "மேடையில் பாடல் வரிகள், கலைப்படைப்பு மூலம் ஒளிரும்.",
+    "te" to "వేదికపై సాహిత్యం, కళాఖండాల ద్వారా వెలిగిపోతుంది.",
+    "mr" to "रंगमंचावरील गीते, कलाकृतीने उजळलेली.",
+    "gu" to "સ્ટેજ પરના ગીતો, આર્ટવર્ક દ્વારા પ્રકાશિત."
 )
 
 private val playerDeckDefaultBadges: Map<String, String> = mapOf(
@@ -419,7 +454,12 @@ private val playerDeckDefaultBadges: Map<String, String> = mapOf(
     "fa" to "پیش‌فرض",
     "zh-Hant" to "預設",
     "bn" to "ডিফল্ট",
-    "ms" to "Lalai"
+    "ms" to "Lalai",
+    "ur" to "طے شدہ",
+    "ta" to "இயல்புநிலை",
+    "te" to "డిఫాల్ట్",
+    "mr" to "डीफॉल्ट",
+    "gu" to "ડિફૉલ્ટ"
 )
 
 internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =

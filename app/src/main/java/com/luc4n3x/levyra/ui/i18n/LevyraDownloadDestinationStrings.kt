@@ -63,7 +63,13 @@ private val downloadDestinationBundles: Map<String, Map<String, String>> = mapOf
     "vi" to downloadDestination("Lưu nội dung tải xuống vào", "Bộ nhớ riêng giữ chúng trong Levyra. Thư mục Nhạc lưu các tệp âm thanh thông thường mà ứng dụng khác có thể mở.", "Bộ nhớ riêng", "Thư mục Nhạc", "Đã lưu vào {destination}"),
     "th" to downloadDestination("บันทึกการดาวน์โหลดไปที่", "พื้นที่ส่วนตัวจะเก็บไว้ใน Levyra โฟลเดอร์เพลงจะบันทึกเป็นไฟล์เสียงทั่วไปที่แอปอื่นเปิดได้", "พื้นที่ส่วนตัว", "โฟลเดอร์เพลง", "บันทึกไว้ที่ {destination}"),
     "fil" to downloadDestination("I-save ang mga download sa", "Pinapanatili ng pribadong storage ang mga ito sa loob ng Levyra. Ang Music folder ay nagse-save ng mga karaniwang audio file na mabubuksan ng ibang app.", "Pribadong storage", "Music folder", "Na-save sa {destination}"),
-    "he" to downloadDestination("שמירת הורדות אל", "אחסון פרטי שומר אותן בתוך Levyra. תיקיית המוזיקה שומרת קובצי אודיו רגילים שאפליקציות אחרות יכולות לפתוח.", "אחסון פרטי", "תיקיית מוזיקה", "נשמר אל {destination}")
+    "he" to downloadDestination("שמירת הורדות אל", "אחסון פרטי שומר אותן בתוך Levyra. תיקיית המוזיקה שומרת קובצי אודיו רגילים שאפליקציות אחרות יכולות לפתוח.", "אחסון פרטי", "תיקיית מוזיקה", "נשמר אל {destination}"),
+    "ur" to downloadDestination("ڈاؤن لوڈز کو محفوظ کریں۔", "نجی اسٹوریج انہیں Levyra کے اندر رکھتا ہے۔ میوزک فولڈر باقاعدہ آڈیو فائلوں کو محفوظ کرتا ہے جو دوسری ایپس کھول سکتی ہیں۔", "نجی اسٹوریج", "میوزک فولڈر", "{destination} میں محفوظ کیا گیا۔"),
+    "ta" to downloadDestination("பதிவிறக்கங்களைச் சேமிக்கவும்", "தனிப்பட்ட சேமிப்பகம் அவற்றை Levyra க்குள் வைத்திருக்கும். மற்ற ஆப்ஸ் திறக்கக்கூடிய வழக்கமான ஆடியோ கோப்புகளை மியூசிக் கோப்புறை சேமிக்கிறது.", "தனிப்பட்ட சேமிப்பு", "இசை கோப்புறை", "{destination} இல் சேமிக்கப்பட்டது"),
+    "te" to downloadDestination("డౌన్‌లోడ్‌లను సేవ్ చేయండి", "ప్రైవేట్ నిల్వ వాటిని Levyra లోపల ఉంచుతుంది. సంగీతం ఫోల్డర్ ఇతర యాప్‌లు తెరవగల సాధారణ ఆడియో ఫైల్‌లను సేవ్ చేస్తుంది.", "ప్రైవేట్ నిల్వ", "సంగీత ఫోల్డర్", "{destination}లో సేవ్ చేయబడింది"),
+    "mr" to downloadDestination("वर डाउनलोड जतन करा", "खाजगी स्टोरेज त्यांना Levyra मध्ये ठेवते. संगीत फोल्डर इतर ॲप्स उघडू शकतील अशा नियमित ऑडिओ फाइल्स सेव्ह करते.", "खाजगी स्टोरेज", "संगीत फोल्डर", "{destination} मध्ये जतन केले"),
+    "gu" to downloadDestination("પર ડાઉનલોડ સાચવો", "ખાનગી સ્ટોરેજ તેમને Levyra ની અંદર રાખે છે. સંગીત ફોલ્ડર નિયમિત ઑડિયો ફાઇલોને સાચવે છે જે અન્ય ઍપ ખોલી શકે છે.", "ખાનગી સ્ટોરેજ", "સંગીત ફોલ્ડર", "{destination} માં સાચવેલ"),
+    "pt-BR" to downloadDestination("Salvar downloads em", "O armazenamento privado os mantém dentro do Levyra. A pasta Música salva arquivos de áudio regulares que outros aplicativos podem abrir.", "Armazenamento privado", "Pasta de música", "Salvo em {destination}")
 )
 
 internal fun downloadDestinationLocalizationEntries(code: String): Map<String, String> =

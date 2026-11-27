@@ -49,7 +49,12 @@ private val searchBrowseCopies = mapOf(
     "vi" to SearchBrowseCopy("Duyệt", "Album và đĩa đơn mới nhất", "Tâm trạng và thể loại", "Levyra chọn lọc"),
     "th" to SearchBrowseCopy("เรียกดู", "อัลบั้มและซิงเกิลล่าสุด", "อารมณ์และแนวเพลง", "Levyra คัดสรร"),
     "fil" to SearchBrowseCopy("Mag-browse", "Mga pinakabagong album at single", "Mga mood at genre", "Mga pili ng Levyra"),
-    "he" to SearchBrowseCopy("עיון", "האלבומים והסינגלים החדשים ביותר", "מצבי רוח וז'אנרים", "הבחירות של Levyra")
+    "he" to SearchBrowseCopy("עיון", "האלבומים והסינגלים החדשים ביותר", "מצבי רוח וז'אנרים", "הבחירות של Levyra"),
+    "ur" to SearchBrowseCopy("براؤز کریں۔", "تازہ ترین البمز اور سنگلز", "مزاج اور انواع", "Levyra چنتا ہے۔"),
+    "ta" to SearchBrowseCopy("உலாவவும்", "சமீபத்திய ஆல்பங்கள் மற்றும் சிங்கிள்கள்", "மனநிலை மற்றும் வகைகள்", "Levyra தேர்வுகள்"),
+    "te" to SearchBrowseCopy("బ్రౌజ్ చేయండి", "తాజా ఆల్బమ్‌లు మరియు సింగిల్స్", "మూడ్‌లు & శైలులు", "Levyra ఎంపికలు"),
+    "mr" to SearchBrowseCopy("ब्राउझ करा", "नवीनतम अल्बम आणि एकेरी", "मूड आणि शैली", "Levyra निवडी"),
+    "gu" to SearchBrowseCopy("બ્રાઉઝ કરો", "નવીનતમ આલ્બમ્સ અને સિંગલ્સ", "મૂડ અને શૈલીઓ", "Levyra પિક્સ")
 )
 
 internal fun searchBrowseCopy(code: String): SearchBrowseCopy = localizedValueOrEnglish(searchBrowseCopies, code)

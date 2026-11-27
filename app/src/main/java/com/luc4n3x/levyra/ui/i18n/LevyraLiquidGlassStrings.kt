@@ -51,7 +51,13 @@ private val liquidGlassBundles = mapOf(
     "ca" to liquidGlass("Liquid Glass", "Superfícies translúcides i difuminades als controls del reproductor"),
     "ms" to liquidGlass("Liquid Glass", "Permukaan lut sinar dan kabur pada kawalan pemain"),
     "fa" to liquidGlass("Liquid Glass", "سطوح نیمه‌شفاف و مات روی کنترل‌های پخش‌کننده"),
-    "zh-Hant" to liquidGlass("Liquid Glass", "播放器控制項使用半透明模糊表面")
+    "zh-Hant" to liquidGlass("Liquid Glass", "播放器控制項使用半透明模糊表面"),
+    "ur" to liquidGlass("مائع گلاس", "پلیئر کنٹرولز پر شفاف دھندلی سطحیں۔"),
+    "ta" to liquidGlass("திரவ கண்ணாடி", "பிளேயர் கட்டுப்பாடுகளில் ஒளிஊடுருவக்கூடிய மங்கலான மேற்பரப்புகள்"),
+    "te" to liquidGlass("లిక్విడ్ గ్లాస్", "ప్లేయర్ నియంత్రణలపై అపారదర్శక అస్పష్టమైన ఉపరితలాలు"),
+    "mr" to liquidGlass("लिक्विड ग्लास", "प्लेअर कंट्रोल्सवर अर्धपारदर्शक अस्पष्ट पृष्ठभाग"),
+    "gu" to liquidGlass("લિક્વિડ ગ્લાસ", "પ્લેયર કંટ્રોલ પર અર્ધપારદર્શક અસ્પષ્ટ સપાટીઓ"),
+    "pt-BR" to liquidGlass("Vidro Líquido", "Superfícies desfocadas translúcidas nos controles do player")
 )
 
 internal fun liquidGlassLocalizationCodes(): Set<String> = liquidGlassBundles.keys

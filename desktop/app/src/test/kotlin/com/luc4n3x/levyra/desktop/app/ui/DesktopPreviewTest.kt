@@ -168,7 +168,12 @@ class DesktopPreviewTest {
         for ((width, language, theme) in listOf(
             Triple(1440, AppLanguage.ENGLISH, ThemeMode.DARK),
             Triple(960, AppLanguage.GERMAN, ThemeMode.LIGHT),
-            Triple(960, AppLanguage.PERSIAN, ThemeMode.DARK)
+            Triple(960, AppLanguage.PERSIAN, ThemeMode.DARK),
+            Triple(960, AppLanguage.URDU, ThemeMode.DARK),
+            Triple(960, AppLanguage.TAMIL, ThemeMode.LIGHT),
+            Triple(960, AppLanguage.TELUGU, ThemeMode.DARK),
+            Triple(960, AppLanguage.MARATHI, ThemeMode.LIGHT),
+            Triple(960, AppLanguage.GUJARATI, ThemeMode.DARK)
         )) {
             val image = renderComposeScene(width, 800) {
                 LevyraTheme(theme) {

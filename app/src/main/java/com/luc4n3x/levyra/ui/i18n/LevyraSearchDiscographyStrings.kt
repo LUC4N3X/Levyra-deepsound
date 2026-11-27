@@ -57,5 +57,11 @@ private val SEARCH_DISCOGRAPHY_COPY = mapOf(
     "vi" to discographyCopy("Danh sách đĩa nhạc", "Album", "Đĩa đơn", "Có mặt trong", "Danh sách phát"),
     "th" to discographyCopy("ผลงานทั้งหมด", "อัลบั้ม", "ซิงเกิล", "อยู่ในเพลย์ลิสต์", "เพลย์ลิสต์"),
     "fil" to discographyCopy("Diskograpiya", "Album", "Single", "Kasama sa", "Playlist"),
-    "he" to discographyCopy("דיסקוגרפיה", "אלבום", "סינגל", "מופיע ב", "פלייליסט")
+    "he" to discographyCopy("דיסקוגרפיה", "אלבום", "סינגל", "מופיע ב", "פלייליסט"),
+    "ur" to discographyCopy("ڈسکوگرافی", "البم", "سنگل", "پر نمایاں", "پلے لسٹ"),
+    "ta" to discographyCopy("டிஸ்கோகிராபி", "ஆல்பம்", "ஒற்றை", "அன்று இடம்பெற்றது", "பிளேலிஸ்ட்"),
+    "te" to discographyCopy("డిస్కోగ్రఫీ", "ఆల్బమ్", "సింగిల్", "ఫీచర్ చేయబడింది", "ప్లేజాబితా"),
+    "mr" to discographyCopy("डिस्कोग्राफी", "अल्बम", "अविवाहित", "वर वैशिष्ट्यीकृत", "प्लेलिस्ट"),
+    "gu" to discographyCopy("ડિસ્કોગ્રાફી", "આલ્બમ", "સિંગલ", "પર ફીચર્ડ", "પ્લેલિસ્ટ"),
+    "pt-BR" to discographyCopy("Discografia", "Álbum", "Solteiro", "Em destaque em", "Playlist")
 )

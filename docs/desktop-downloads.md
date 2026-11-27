@@ -1,6 +1,6 @@
 # Download Levyra Desktop
 
-Windows and Linux run the same Desktop app: the same interface, 42 languages,
+Windows and Linux run the same Desktop app: the same interface, 47 languages,
 preferred 320 kbps audio, optional FLAC, library, downloads, lyrics and queue.
 
 | System | Download | Installation |

@@ -53,7 +53,13 @@ private val appleLyricsCopies: Map<String, AppleLyricsCopy> = mapOf(
     "vi" to copy("Kiểu lời bài hát", "Mặc định của giao diện", "Lời gốc", "Tự động cuộn"),
     "th" to copy("รูปแบบเนื้อเพลง", "ค่าเริ่มต้นของธีม", "เนื้อเพลงต้นฉบับ", "เลื่อนอัตโนมัติ"),
     "fil" to copy("Estilo ng lyrics", "Default ng tema", "Orihinal na lyrics", "Awtomatikong pag-scroll"),
-    "he" to copy("סגנון המילים", "ברירת המחדל של העיצוב", "המילים המקוריות", "גלילה אוטומטית")
+    "he" to copy("סגנון המילים", "ברירת המחדל של העיצוב", "המילים המקוריות", "גלילה אוטומטית"),
+    "ur" to copy("غزلوں کا انداز", "جلد کا ڈیفالٹ", "اصل دھن", "آٹو سکرول"),
+    "ta" to copy("பாடல் வரிகள் நடை", "தோல் இயல்புநிலை", "அசல் பாடல் வரிகள்", "தானாக உருட்டும்"),
+    "te" to copy("సాహిత్య శైలి", "స్కిన్ డిఫాల్ట్", "అసలు సాహిత్యం", "స్వయంచాలకంగా స్క్రోల్ చేయండి"),
+    "mr" to copy("गाण्याची शैली", "त्वचा डीफॉल्ट", "मूळ गीत", "स्वयं-स्क्रोल करा"),
+    "gu" to copy("ગીતની શૈલી", "ત્વચા ડિફોલ્ટ", "મૂળ ગીતો", "સ્વતઃ સ્ક્રોલ કરો"),
+    "pt-BR" to copy("Estilo da letra", "Padrão de skin", "Letras originais", "Rolagem automática")
 )
 
 internal fun appleLyricsCopy(code: String): AppleLyricsCopy =

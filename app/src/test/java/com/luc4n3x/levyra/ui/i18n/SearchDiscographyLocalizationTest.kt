@@ -9,7 +9,7 @@ import org.junit.Test
 class SearchDiscographyLocalizationTest {
     @Test
     fun everySupportedLanguageShipsDiscographyCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, searchDiscographyLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = searchDiscographyCopy(strings.code)

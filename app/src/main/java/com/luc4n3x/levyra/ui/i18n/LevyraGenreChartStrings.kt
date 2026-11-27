@@ -53,7 +53,12 @@ private val genreChartCopies = mapOf(
     "sr" to GenreChartCopy("Топ 50", "Најслушаније песме овог жанра", "Подаци листе: Last.fm", "Слажемо листу…", "Прикажи све", "Прикажи мање", "Хитови по жанровима", "Листе по жанровима"),
     "sk" to GenreChartCopy("Top 50", "Najpočúvanejšie skladby žánru", "Údaje rebríčka: Last.fm", "Zostavujeme rebríček…", "Zobraziť všetko", "Zobraziť menej", "Hity žánrov", "Rebríčky podľa žánru"),
     "et" to GenreChartCopy("Top 50", "Žanri enim kuulatud lood", "Edetabeli andmed: Last.fm", "Koostame edetabelit…", "Näita kõiki", "Näita vähem", "Žanrite hitid", "Edetabelid žanrite kaupa"),
-    "sq" to GenreChartCopy("Top 50", "Këngët më të dëgjuara të zhanrit", "Të dhënat e listës: Last.fm", "Po përgatisim listën…", "Shfaq të gjitha", "Shfaq më pak", "Hitet sipas zhanrit", "Listat sipas zhanrit")
+    "sq" to GenreChartCopy("Top 50", "Këngët më të dëgjuara të zhanrit", "Të dhënat e listës: Last.fm", "Po përgatisim listën…", "Shfaq të gjitha", "Shfaq më pak", "Hitet sipas zhanrit", "Listat sipas zhanrit"),
+    "ur" to GenreChartCopy("ٹاپ 50", "اس صنف میں سب سے زیادہ چلائے جانے والے گانے", "چارٹ ڈیٹا: Last.fm", "چارٹ بنا رہا ہے…", "سب دکھائیں۔", "کم دکھائیں۔", "سٹائل ہٹ", "نوع کے لحاظ سے چارٹس"),
+    "ta" to GenreChartCopy("முதல் 50", "இந்த வகையில் அதிகம் இயக்கப்பட்ட பாடல்கள்", "விளக்கப்பட தரவு: Last.fm", "விளக்கப்படத்தை உருவாக்குகிறது…", "அனைத்தையும் காட்டு", "குறைவாகக் காட்டு", "வகை வெற்றிகள்", "வகையின் அடிப்படையில் விளக்கப்படங்கள்"),
+    "te" to GenreChartCopy("టాప్ 50", "ఈ జానర్‌లో ఎక్కువగా ప్లే చేయబడిన పాటలు", "చార్ట్ డేటా: Last.fm", "చార్ట్‌ను రూపొందిస్తోంది…", "అన్నీ చూపించు", "తక్కువ చూపించు", "జానర్ హిట్స్", "జానర్ వారీగా చార్ట్‌లు"),
+    "mr" to GenreChartCopy("शीर्ष 50", "या शैलीतील सर्वाधिक प्ले केलेली गाणी", "चार्ट डेटा: Last.fm", "चार्ट तयार करत आहे...", "सर्व दाखवा", "कमी दाखवा", "शैलीतील हिट", "शैलीनुसार चार्ट"),
+    "gu" to GenreChartCopy("ટોચના 50", "આ શૈલીમાં સૌથી વધુ વગાડવામાં આવેલા ગીતો", "ચાર્ટ ડેટા: Last.fm", "ચાર્ટ બનાવી રહ્યું છે...", "બધા બતાવો", "ઓછું બતાવો", "શૈલી હિટ", "શૈલી દ્વારા ચાર્ટ")
 )
 
 internal fun genreChartCopy(code: String): GenreChartCopy = localizedValueOrEnglish(genreChartCopies, code)
@@ -109,7 +114,12 @@ private val genreChartGenreNames = mapOf(
     "sr" to GenreChartGenreNames("K-pop", "Метал", "Инди", "Џез"),
     "sk" to GenreChartGenreNames("K-pop", "Metal", "Indie", "Jazz"),
     "et" to GenreChartGenreNames("K-pop", "Metal", "Indie", "Džäss"),
-    "sq" to GenreChartGenreNames("K-pop", "Metal", "Indie", "Xhaz")
+    "sq" to GenreChartGenreNames("K-pop", "Metal", "Indie", "Xhaz"),
+    "ur" to GenreChartGenreNames("K-pop", "دھات", "انڈی", "جاز"),
+    "ta" to GenreChartGenreNames("கே-பாப்", "உலோகம்", "இண்டி", "ஜாஸ்"),
+    "te" to GenreChartGenreNames("K-పాప్", "మెటల్", "ఇండీ", "జాజ్"),
+    "mr" to GenreChartGenreNames("के-पॉप", "धातू", "इंडी", "जाझ"),
+    "gu" to GenreChartGenreNames("કે-પોપ", "ધાતુ", "ઈન્ડી", "જાઝ")
 )
 
 internal fun genreChartGenreNames(code: String): GenreChartGenreNames = localizedValueOrEnglish(genreChartGenreNames, code)

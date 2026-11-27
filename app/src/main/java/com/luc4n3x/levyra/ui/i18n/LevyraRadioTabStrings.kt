@@ -49,7 +49,12 @@ private val radioTabCopies = mapOf(
     "vi" to RadioTabCopy("Radio", "Radio dành cho bạn", "Các đài phát bất tận từ nghệ sĩ bạn nghe", "Chương trình của bạn, tập mới và khám phá"),
     "th" to RadioTabCopy("วิทยุ", "วิทยุสำหรับคุณ", "สถานีไม่รู้จบจากศิลปินที่คุณฟัง", "รายการของคุณ ตอนใหม่ และการค้นพบ"),
     "fil" to RadioTabCopy("Radyo", "Radyo para sa iyo", "Walang katapusang istasyon mula sa mga artistang pinakikinggan mo", "Ang mga palabas mo, bagong episode at tuklas"),
-    "he" to RadioTabCopy("רדיו", "רדיו בשבילך", "תחנות אינסופיות מהאמנים שאתה מאזין להם", "התוכניות שלך, פרקים חדשים וגילויים")
+    "he" to RadioTabCopy("רדיו", "רדיו בשבילך", "תחנות אינסופיות מהאמנים שאתה מאזין להם", "התוכניות שלך, פרקים חדשים וגילויים"),
+    "ur" to RadioTabCopy("ریڈیو", "آپ کے لیے ریڈیو", "جن فنکاروں کو آپ سنتے ہیں، ان کی موسیقی کے لامتناہی اسٹیشن", "آپ کے شوز، نئی اقساط اور دریافتیں۔"),
+    "ta" to RadioTabCopy("வானொலி", "உங்களுக்காக வானொலி", "நீங்கள் கேட்கும் கலைஞர்களின் பாடல்கள் கொண்ட முடிவில்லா நிலையங்கள்", "உங்கள் நிகழ்ச்சிகள், புதிய அத்தியாயங்கள் மற்றும் கண்டுபிடிப்புகள்"),
+    "te" to RadioTabCopy("రేడియో", "మీ కోసం రేడియో", "మీరు వినే కళాకారుల పాటలతో నిరంతర స్టేషన్‌లు", "మీ ప్రదర్శనలు, కొత్త ఎపిసోడ్‌లు మరియు ఆవిష్కరణలు"),
+    "mr" to RadioTabCopy("रेडिओ", "तुमच्यासाठी रेडिओ", "तुम्ही ऐकता त्या कलाकारांच्या गाण्यांची अखंड स्टेशन", "तुमचे शो, नवीन भाग आणि शोध"),
+    "gu" to RadioTabCopy("રેડિયો", "તમારા માટે રેડિયો", "તમે સાંભળો છો એ કલાકારોનાં ગીતોનાં સતત સ્ટેશન", "તમારા શો, નવા એપિસોડ્સ અને શોધો")
 )
 
 internal fun radioTabCopy(code: String): RadioTabCopy = localizedValueOrEnglish(radioTabCopies, code)

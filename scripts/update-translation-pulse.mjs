@@ -78,6 +78,11 @@ const LOCALE_META = {
   'ko': { name: '한국어', code: 'KO' },
   'hi': { name: 'हिन्दी', code: 'HI' },
   'bn': { name: 'বাংলা', code: 'BN' },
+  'ur': { name: 'اردو', code: 'UR' },
+  'ta': { name: 'தமிழ்', code: 'TA' },
+  'te': { name: 'తెలుగు', code: 'TE' },
+  'mr': { name: 'मराठी', code: 'MR' },
+  'gu': { name: 'ગુજરાતી', code: 'GU' },
   'id': { name: 'Bahasa Indonesia', code: 'ID' },
   'ms': { name: 'Bahasa Melayu', code: 'MS' },
   'vi': { name: 'Tiếng Việt', code: 'VI' },
@@ -208,9 +213,9 @@ const SCRIPT_GROUPS = [
 const scriptGroupFor = code => {
   const tag = code.toLowerCase()
   if (['ru', 'uk', 'bg', 'sr', 'kk', 'el'].includes(tag)) return 'cyrillic'
-  if (['ar', 'fa', 'he'].includes(tag)) return 'rtl'
+  if (['ar', 'fa', 'he', 'ur'].includes(tag)) return 'rtl'
   if (['zh', 'zh-tw', 'ja', 'ko'].includes(tag)) return 'cjk'
-  if (['hi', 'bn', 'th'].includes(tag)) return 'brahmic'
+  if (['hi', 'bn', 'th', 'ta', 'te', 'mr', 'gu'].includes(tag)) return 'brahmic'
   return 'latin'
 }
 

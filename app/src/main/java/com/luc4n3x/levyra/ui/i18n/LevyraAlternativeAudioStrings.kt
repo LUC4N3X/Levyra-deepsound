@@ -240,6 +240,54 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
         "Automaatne",
         "JioSaavn · 320 kbps",
         "FLAC · Kadudeta"
+    ),
+    "ur" to alternativeAudioStrings(
+        "اعلی معیار کا متبادل آڈیو",
+        "جب Levyra اس بات کی تصدیق کر سکے کہ یہ بالکل وہی ٹریک ہے۔",
+        "YouTube · Opus 160 kbps",
+        "خودکار",
+        "JioSaavn · 320 kbps",
+        "FLAC · بے نقصان"
+    ),
+    "ta" to alternativeAudioStrings(
+        "உயர்தர மாற்று ஆடியோ",
+        "Levyra ஆனது அதே டிராக் என்பதைச் சரிபார்க்கும் போது, உயர்தர வெளிப்புற ஆடியோ ஸ்ட்ரீமைப் பயன்படுத்தவும்.",
+        "YouTube · Opus 160 kbps",
+        "தானியங்கி",
+        "JioSaavn · 320 kbps",
+        "FLAC · இழப்பற்றது"
+    ),
+    "te" to alternativeAudioStrings(
+        "అధిక-నాణ్యత ప్రత్యామ్నాయ ఆడియో",
+        "Levyra అదే ట్రాక్ అని ధృవీకరించగలిగినప్పుడు అధిక-నాణ్యత బాహ్య ఆడియో స్ట్రీమ్‌ని ఉపయోగించండి.",
+        "YouTube · Opus 160 kbps",
+        "ఆటోమేటిక్",
+        "JioSaavn · 320 kbps",
+        "FLAC · లాస్లెస్"
+    ),
+    "mr" to alternativeAudioStrings(
+        "उच्च-गुणवत्तेचा पर्यायी ऑडिओ",
+        "उच्च-गुणवत्तेचा बाह्य ऑडिओ प्रवाह वापरा जेव्हा Levyra हे तंतोतंत समान ट्रॅक असल्याचे सत्यापित करू शकते.",
+        "YouTube · Opus 160 kbps",
+        "स्वयंचलित",
+        "JioSaavn · 320 kbps",
+        "FLAC · दोषरहित"
+    ),
+    "gu" to alternativeAudioStrings(
+        "ઉચ્ચ ગુણવત્તાની વૈકલ્પિક ઑડિઓ",
+        "ઉચ્ચ-ગુણવત્તાવાળા બાહ્ય ઑડિયો સ્ટ્રીમનો ઉપયોગ કરો જ્યારે Levyra ચકાસી શકે કે તે ચોક્કસ સમાન ટ્રેક છે.",
+        "YouTube · Opus 160 kbps",
+        "આપોઆપ",
+        "JioSaavn · 320 kbps",
+        "FLAC · લોસલેસ"
+    ),
+    "pt-BR" to alternativeAudioStrings(
+        "Áudio alternativo de alta qualidade",
+        "Use um fluxo de áudio externo de qualidade superior quando Levyra puder verificar se é exatamente a mesma faixa.",
+        "YouTube · Opus 160 kbps",
+        "Automático",
+        "JioSaavn · 320 kbps",
+        "FLAC · Sem perdas"
     )
 )
 
@@ -256,7 +304,13 @@ private val additionalLosslessLabels = mapOf(
     "fa" to "ترجیح FLAC بدون افت کیفیت",
     "zh-Hant" to "優先使用 FLAC 無損音訊",
     "bn" to "ক্ষতিহীন FLAC অগ্রাধিকার দিন",
-    "ms" to "Utamakan FLAC tanpa kehilangan kualiti"
+    "ms" to "Utamakan FLAC tanpa kehilangan kualiti",
+    "ur" to "بے نقصان FLAC کو ترجیح دیں۔",
+    "ta" to "இழப்பற்ற FLAC ஐ விரும்பு",
+    "te" to "లాస్‌లెస్ FLACకి ప్రాధాన్యత ఇవ్వండి",
+    "mr" to "लॉसलेस FLAC ला प्राधान्य द्या",
+    "gu" to "લોસલેસ FLAC પસંદ કરો",
+    "pt-BR" to "Prefira FLAC sem perdas"
 )
 
 private val qobuzSubtitles = mapOf(
@@ -300,7 +354,13 @@ private val qobuzSubtitles = mapOf(
     "fa" to "منبع اختیاری FLAC. دسترسی و کیفیت برای هر قطعه بررسی می‌شود.",
     "zh-Hant" to "可選 FLAC 音源。逐曲驗證可用性與音質。",
     "bn" to "ঐচ্ছিক FLAC উৎস। প্রতিটি ট্র্যাকের উপলব্ধতা ও মান যাচাই করা হয়।",
-    "ms" to "Sumber FLAC pilihan. Ketersediaan dan kualiti disahkan untuk setiap lagu."
+    "ms" to "Sumber FLAC pilihan. Ketersediaan dan kualiti disahkan untuk setiap lagu.",
+    "ur" to "اختیاری FLAC ذریعہ۔ ہر ٹریک کے لیے دستیابی اور معیار کی تصدیق کی جاتی ہے۔",
+    "ta" to "விருப்ப FLAC ஆதாரம். ஒவ்வொரு தடத்திற்கும் கிடைக்கும் தன்மை மற்றும் தரம் சரிபார்க்கப்படுகிறது.",
+    "te" to "ఐచ్ఛిక FLAC మూలం. ప్రతి ట్రాక్ కోసం లభ్యత మరియు నాణ్యత ధృవీకరించబడతాయి.",
+    "mr" to "पर्यायी FLAC स्रोत. प्रत्येक ट्रॅकसाठी उपलब्धता आणि गुणवत्ता तपासली जाते.",
+    "gu" to "વૈકલ્પિક FLAC સ્ત્રોત. દરેક ટ્રેક માટે ઉપલબ્ધતા અને ગુણવત્તા ચકાસવામાં આવે છે.",
+    "pt-BR" to "Fonte FLAC opcional. Disponibilidade e qualidade são verificadas para cada faixa."
 )
 
 internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> {

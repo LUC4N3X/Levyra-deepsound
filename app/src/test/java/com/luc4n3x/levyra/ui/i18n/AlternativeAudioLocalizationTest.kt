@@ -9,7 +9,7 @@ import org.junit.Test
 class AlternativeAudioLocalizationTest {
     @Test
     fun everySupportedLanguageShipsTheAlternativeAudioCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, alternativeAudioLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.code, strings.alternativeAudioTitle.isNotBlank())

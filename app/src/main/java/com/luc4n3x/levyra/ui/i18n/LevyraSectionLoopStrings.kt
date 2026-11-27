@@ -5,7 +5,7 @@ internal data class SectionLoopCopy(
     val setEnd: String
 )
 
-internal fun LevyraStrings.sectionLoopCopy(): SectionLoopCopy = when (translationKey(code)) {
+internal fun LevyraStrings.sectionLoopCopy(): SectionLoopCopy = when (translationKey(code, regional = true)) {
     "it" -> SectionLoopCopy("Ripeti sezione", "tocca per la fine")
     "es" -> SectionLoopCopy("Repetir sección", "toca para el final")
     "fr" -> SectionLoopCopy("Boucler une section", "touchez pour la fin")
@@ -46,5 +46,11 @@ internal fun LevyraStrings.sectionLoopCopy(): SectionLoopCopy = when (translatio
     "th" -> SectionLoopCopy("เล่นซ้ำช่วงนี้", "แตะเพื่อกำหนดจุดสิ้นสุด")
     "fil" -> SectionLoopCopy("Ulitin ang bahagi", "i-tap para sa dulo")
     "he" -> SectionLoopCopy("חזרה על קטע", "הקישו לסיום")
+    "ur" -> SectionLoopCopy("لوپ سیکشن", "اختتام سیٹ کرنے کے لیے تھپتھپائیں۔")
+    "ta" -> SectionLoopCopy("லூப் பிரிவு", "முடிவை அமைக்க தட்டவும்")
+    "te" -> SectionLoopCopy("లూప్ విభాగం", "ముగింపు సెట్ చేయడానికి నొక్కండి")
+    "mr" -> SectionLoopCopy("लूप विभाग", "शेवट सेट करण्यासाठी टॅप करा")
+    "gu" -> SectionLoopCopy("લૂપ વિભાગ", "અંત સેટ કરવા માટે ટેપ કરો")
+    "pt-BR" -> SectionLoopCopy("Seção de loop", "toque para definir o fim")
     else -> SectionLoopCopy("Loop section", "tap to set end")
 }.let { copy -> if (isBrazilianPortuguese(code)) LevyraBrazilianPortuguese.adaptValue(copy) else copy }

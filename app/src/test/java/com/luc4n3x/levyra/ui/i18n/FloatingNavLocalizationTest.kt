@@ -10,7 +10,7 @@ class FloatingNavLocalizationTest {
     @Test
     fun everySelectableLanguageHasItsOwnFloatingNavCopy() {
         val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
-        assertEquals(42, codes.size)
+        assertEquals(47, codes.size)
         assertEquals(codes, floatingNavCopies.keys)
         val english = floatingNavCopies.getValue("en")
         floatingNavCopies.forEach { (code, copy) ->

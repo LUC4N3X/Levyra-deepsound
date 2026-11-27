@@ -38,6 +38,7 @@ object LocaleCatalog {
         CountryOption("JP", "🇯🇵", "日本", "Japan"),
         CountryOption("KR", "🇰🇷", "대한민국", "South Korea"),
         CountryOption("IN", "🇮🇳", "भारत", "India"),
+        CountryOption("PK", "🇵🇰", "پاکستان", "Pakistan"),
         CountryOption("ID", "🇮🇩", "Indonesia", "Indonesia"),
         CountryOption("VN", "🇻🇳", "Việt Nam", "Vietnam"),
         CountryOption("TH", "🇹🇭", "ประเทศไทย", "Thailand"),

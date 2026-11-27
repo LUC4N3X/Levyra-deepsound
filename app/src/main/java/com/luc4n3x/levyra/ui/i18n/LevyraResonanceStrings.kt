@@ -369,6 +369,60 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "commentsDisabled" to "Komen dimatikan",
         "monthlyListeners" to "pendengar",
         "commentsOverline" to "Hangat dibincang"
+    ),
+    "ur" to mapOf(
+        "commentsLabel" to "تبصرے",
+        "mostCommentedTracks" to "سب سے زیادہ زیر بحث ٹریکس",
+        "tapToOpenComments" to "تبصرے دیکھنے کے لیے تھپتھپائیں۔",
+        "noCommentsAvailable" to "ابھی تک کوئی تبصرہ نہیں",
+        "commentsDisabled" to "تبصرے غیر فعال ہیں۔",
+        "monthlyListeners" to "سننے والے",
+        "commentsOverline" to "گونج رہا ہے۔"
+    ),
+    "ta" to mapOf(
+        "commentsLabel" to "கருத்துகள்",
+        "mostCommentedTracks" to "அதிகம் விவாதிக்கப்பட்ட தடங்கள்",
+        "tapToOpenComments" to "கருத்துகளைப் பார்க்க தட்டவும்",
+        "noCommentsAvailable" to "இதுவரை கருத்துகள் இல்லை",
+        "commentsDisabled" to "கருத்துகள் முடக்கப்பட்டுள்ளன",
+        "monthlyListeners" to "கேட்பவர்கள்",
+        "commentsOverline" to "சலசலப்பு"
+    ),
+    "te" to mapOf(
+        "commentsLabel" to "వ్యాఖ్యలు",
+        "mostCommentedTracks" to "ఎక్కువగా చర్చించబడిన ట్రాక్‌లు",
+        "tapToOpenComments" to "వ్యాఖ్యలను వీక్షించడానికి నొక్కండి",
+        "noCommentsAvailable" to "ఇంకా వ్యాఖ్యలు లేవు",
+        "commentsDisabled" to "వ్యాఖ్యలు నిలిపివేయబడ్డాయి",
+        "monthlyListeners" to "శ్రోతలు",
+        "commentsOverline" to "సందడి చేస్తోంది"
+    ),
+    "mr" to mapOf(
+        "commentsLabel" to "टिप्पण्या",
+        "mostCommentedTracks" to "सर्वाधिक चर्चा झालेले ट्रॅक",
+        "tapToOpenComments" to "टिप्पण्या पाहण्यासाठी टॅप करा",
+        "noCommentsAvailable" to "अद्याप कोणत्याही टिप्पण्या नाहीत",
+        "commentsDisabled" to "टिप्पण्या अक्षम केल्या",
+        "monthlyListeners" to "श्रोते",
+        "commentsOverline" to "गुंजन"
+    ),
+    "gu" to mapOf(
+        "commentsLabel" to "ટિપ્પણીઓ",
+        "mostCommentedTracks" to "સૌથી વધુ ચર્ચિત ટ્રેક",
+        "tapToOpenComments" to "ટિપ્પણીઓ જોવા માટે ટેપ કરો",
+        "noCommentsAvailable" to "હજુ સુધી કોઈ ટિપ્પણીઓ નથી",
+        "commentsDisabled" to "ટિપ્પણીઓ અક્ષમ છે",
+        "monthlyListeners" to "શ્રોતાઓ",
+        "commentsOverline" to "ગુંજી ઉઠે છે"
+    ),
+    "pt-BR" to mapOf(
+        "commentsLabel" to "Comentários",
+        "mostCommentedTracks" to "Faixas mais discutidas",
+        "tapToOpenComments" to "Toque para ver os comentários",
+        "noCommentsAvailable" to "Ainda não há comentários",
+        "commentsDisabled" to "Comentários desativados",
+        "monthlyListeners" to "ouvintes",
+        "commentsOverline" to "Zumbido"
     )
 )
 

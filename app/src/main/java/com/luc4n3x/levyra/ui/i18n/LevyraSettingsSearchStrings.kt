@@ -49,7 +49,13 @@ private val settingsSearchBundles: Map<String, Map<String, String>> = mapOf(
     "ca" to settingsSearchStrings("Cerca a la configuració", "No s'ha trobat cap configuració"),
     "ms" to settingsSearchStrings("Cari tetapan", "Tiada tetapan ditemui"),
     "fa" to settingsSearchStrings("جستجوی تنظیمات", "تنظیمی پیدا نشد"),
-    "zh-Hant" to settingsSearchStrings("搜尋設定", "找不到設定")
+    "zh-Hant" to settingsSearchStrings("搜尋設定", "找不到設定"),
+    "ur" to settingsSearchStrings("تلاش کی ترتیبات", "کوئی ترتیبات نہیں ملیں۔"),
+    "ta" to settingsSearchStrings("தேடல் அமைப்புகள்", "அமைப்புகள் எதுவும் இல்லை"),
+    "te" to settingsSearchStrings("శోధన సెట్టింగ్‌లు", "సెట్టింగ్‌లు ఏవీ కనుగొనబడలేదు"),
+    "mr" to settingsSearchStrings("शोध सेटिंग्ज", "कोणत्याही सेटिंग्ज आढळल्या नाहीत"),
+    "gu" to settingsSearchStrings("શોધ સેટિંગ્સ", "કોઈ સેટિંગ્સ મળી નથી"),
+    "pt-BR" to settingsSearchStrings("Configurações de pesquisa", "Nenhuma configuração encontrada")
 )
 
 internal fun settingsSearchLocalizationEntries(code: String): Map<String, String> =

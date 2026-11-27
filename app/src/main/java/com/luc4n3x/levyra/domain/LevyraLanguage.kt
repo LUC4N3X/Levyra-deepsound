@@ -46,6 +46,11 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("ko", "🇰🇷", "Korean", "한국어"),
         LevyraLanguageOption("hi", "🇮🇳", "Hindi", "हिन्दी"),
         LevyraLanguageOption("bn", "🇧🇩", "Bengali", "বাংলা"),
+        LevyraLanguageOption("ur", "🇵🇰", "Urdu", "اردو"),
+        LevyraLanguageOption("ta", "🇮🇳", "Tamil", "தமிழ்"),
+        LevyraLanguageOption("te", "🇮🇳", "Telugu", "తెలుగు"),
+        LevyraLanguageOption("mr", "🇮🇳", "Marathi", "मराठी"),
+        LevyraLanguageOption("gu", "🇮🇳", "Gujarati", "ગુજરાતી"),
         LevyraLanguageOption("id", "🇮🇩", "Indonesian", "Bahasa Indonesia"),
         LevyraLanguageOption("ms", "🇲🇾", "Malay", "Bahasa Melayu"),
         LevyraLanguageOption("vi", "🇻🇳", "Vietnamese", "Tiếng Việt"),
@@ -66,7 +71,7 @@ object LevyraLanguageCatalog {
 
     private val supportedCodes = selectableLanguages.map { it.code }.toSet()
     private val androidRegionQualifier = Regex("^([A-Za-z]{2,3})-r([A-Za-z]{2})$")
-    private val rtlCodes = setOf("ar", "fa", "he")
+    private val rtlCodes = setOf("ar", "fa", "he", "ur")
     private val traditionalChineseRegions = setOf("TW", "HK", "MO")
 
     fun normalize(code: String): String {

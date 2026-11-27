@@ -42,7 +42,12 @@ private val volumeNormalizationTitles = mapOf(
     "vi" to "Chuẩn hóa âm lượng",
     "th" to "ปรับระดับเสียงให้เท่ากัน",
     "fil" to "Pag-normalize ng volume",
-    "he" to "נרמול עוצמת השמע"
+    "he" to "נרמול עוצמת השמע",
+    "ur" to "والیوم نارملائزیشن",
+    "ta" to "தொகுதி இயல்பாக்கம்",
+    "te" to "వాల్యూమ్ సాధారణీకరణ",
+    "mr" to "व्हॉल्यूम सामान्यीकरण",
+    "gu" to "વોલ્યુમ નોર્મલાઇઝેશન"
 )
 
 private val volumeNormalizationSubtitles = mapOf(
@@ -87,7 +92,12 @@ private val volumeNormalizationSubtitles = mapOf(
     "vi" to "Cân bằng âm lượng giữa các bài với một mức cố định cho mỗi bài, để đoạn nhỏ và đoạn lớn vẫn giữ nguyên như bản thu.",
     "th" to "ปรับความดังระหว่างเพลงด้วยระดับคงที่ระดับเดียวต่อเพลง ช่วงเบาและช่วงดังจึงยังคงเหมือนตอนบันทึก",
     "fil" to "Pinapantay ang lakas ng tunog sa pagitan ng mga track gamit ang iisang nakapirming antas bawat kanta, kaya nananatili ang mahihina at malalakas na bahagi gaya ng pagkaka-record.",
-    "he" to "משווה את עוצמת השמע בין רצועות עם רמה קבועה אחת לכל שיר, כך שקטעים שקטים ורועשים נשארים כפי שהוקלטו."
+    "he" to "משווה את עוצמת השמע בין רצועות עם רמה קבועה אחת לכל שיר, כך שקטעים שקטים ורועשים נשארים כפי שהוקלטו.",
+    "ur" to "فی گانا ایک مقررہ لیول کے ساتھ ٹریکس کے درمیان اونچی آواز کو برابر کرتا ہے، اس لیے خاموش اور اونچی آوازیں ریکارڈ کے مطابق رہیں۔",
+    "ta" to "ஒரு பாடலுக்கு ஒரு நிலையான நிலை கொண்ட டிராக்குகளுக்கு இடையே சத்தத்தை சமன் செய்கிறது, எனவே அமைதியான மற்றும் உரத்த பத்திகள் பதிவு செய்யப்பட்டபடியே இருக்கும்.",
+    "te" to "ఒక్కో పాటకు ఒక స్థిర స్థాయితో ట్రాక్‌ల మధ్య శబ్దాన్ని సమం చేస్తుంది, కాబట్టి నిశ్శబ్దంగా మరియు బిగ్గరగా ఉండే పాసేజ్‌లు రికార్డ్ చేయబడినట్లుగానే ఉంటాయి.",
+    "mr" to "प्रति गाणे एका निश्चित पातळीसह ट्रॅक दरम्यान मोठ्याने आवाज काढतो, त्यामुळे शांत आणि मोठ्या आवाजातील पॅसेज रेकॉर्ड केल्याप्रमाणे राहतात.",
+    "gu" to "ગીત દીઠ એક નિશ્ચિત સ્તર સાથે ટ્રેક્સ વચ્ચેના અવાજને એકીકૃત કરે છે, તેથી શાંત અને મોટેથી પેસેજ રેકોર્ડ કર્યા મુજબ જ રહે છે."
 )
 
 internal fun volumeNormalizationTitle(code: String): String = localizedValueOrEnglish(volumeNormalizationTitles, code)

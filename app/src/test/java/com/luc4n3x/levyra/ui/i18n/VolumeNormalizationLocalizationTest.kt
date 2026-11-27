@@ -10,7 +10,7 @@ class VolumeNormalizationLocalizationTest {
 
     @Test
     fun copyCoversEveryCatalogLanguage() {
-        val catalog = LevyraLanguageCatalog.languages.map { it.code }.toSet() + LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE
+        val catalog = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet() + LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE
         assertEquals(catalog, volumeNormalizationLocalizationCodes())
         val englishTitle = volumeNormalizationTitle("en")
         val englishSubtitle = volumeNormalizationSubtitle("en")

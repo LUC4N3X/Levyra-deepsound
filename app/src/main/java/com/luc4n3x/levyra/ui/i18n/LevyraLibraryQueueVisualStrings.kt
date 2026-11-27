@@ -5,7 +5,7 @@ internal data class QueueSectionCopy(
     val upNext: String
 )
 
-internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (translationKey(code)) {
+internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (translationKey(code, regional = true)) {
     "it" -> QueueSectionCopy("Riprodotti", "Prossimi")
     "es" -> QueueSectionCopy("Reproducidos", "A continuación")
     "fr" -> QueueSectionCopy("Déjà lus", "À suivre")
@@ -46,10 +46,16 @@ internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (translat
     "th" -> QueueSectionCopy("เล่นแล้ว", "ถัดไป")
     "fil" -> QueueSectionCopy("Napatugtog", "Susunod")
     "he" -> QueueSectionCopy("נוגנו", "הבאים")
+    "ur" -> QueueSectionCopy("کھیلا", "اگلا")
+    "ta" -> QueueSectionCopy("விளையாடியது", "அடுத்தது")
+    "te" -> QueueSectionCopy("ఆడింది", "తదుపరి")
+    "mr" -> QueueSectionCopy("खेळला", "पुढील वर")
+    "gu" -> QueueSectionCopy("રમ્યો", "આગળ")
+    "pt-BR" -> QueueSectionCopy("Jogado", "A seguir")
     else -> QueueSectionCopy("Played", "Up next")
 }.forBrazil(code) { brazilian() }
 
-internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (translationKey(code)) {
+internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (translationKey(code, regional = true)) {
     "it" -> "RECENTI"
     "es" -> "RECIENTES"
     "fr" -> "RÉCENTS"
@@ -89,6 +95,12 @@ internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (trans
     "th" -> "ล่าสุด"
     "fil" -> "BAGO"
     "he" -> "אחרונים"
+    "ur" -> "حالیہ"
+    "ta" -> "சமீபத்திய"
+    "te" -> "ఇటీవలి"
+    "mr" -> "अलीकडील"
+    "gu" -> "તાજેતરના"
+    "pt-BR" -> "RECENTE"
     else -> "RECENT"
 }
 

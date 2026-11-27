@@ -48,6 +48,7 @@ kotlin {
             include("com/luc4n3x/levyra/update/AppUpdateProgress.kt")
             include("com/luc4n3x/levyra/update/ReleaseHighlights.kt")
             include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
+            include("com/luc4n3x/levyra/domain/SouthAsianMusic.kt")
             include("com/luc4n3x/levyra/ui/HomeSoundtrackPortraits.kt")
             include("com/luc4n3x/levyra/domain/ParametricEqualizer.kt")
             include("com/luc4n3x/levyra/domain/OrbitEqualizer.kt")

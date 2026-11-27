@@ -360,7 +360,7 @@ ${barsMarkup}
   <text x="${legX}" y="124" class="leg-head">UI layers</text>
 ${legendMarkup}
   <text x="${legX}" y="394" class="script-note">Latin 26 · Cyrillic &amp; Greek 6</text>
-  <text x="${legX}" y="414" class="script-note">CJK 4 · RTL 3 · Indic &amp; Thai 3</text>
+  <text x="${legX}" y="414" class="script-note">CJK 4 · RTL 4 · Indic &amp; Thai 7</text>
 </svg>
 `;
 }

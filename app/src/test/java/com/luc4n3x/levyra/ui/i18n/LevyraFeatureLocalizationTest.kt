@@ -191,7 +191,7 @@ class LevyraFeatureLocalizationTest {
     @Test
     fun playerGesturesDoNotFallBackToEnglishForAnyCatalogLanguage() {
         val english = playerGestureLocalizationEntries("en")
-        LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
+        LevyraLanguageCatalog.selectableLanguages.map { it.code }.forEach { code ->
             val entries = playerGestureLocalizationEntries(code)
             assertEquals("Missing player gesture keys for $code", playerGestureKeys, entries.keys)
             if (code != "en") {

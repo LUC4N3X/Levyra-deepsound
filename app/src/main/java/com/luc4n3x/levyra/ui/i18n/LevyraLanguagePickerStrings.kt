@@ -51,7 +51,12 @@ internal object LevyraLanguagePickerStrings {
         "vi" to LanguagePickerCopy("Tìm ngôn ngữ", "Xóa tìm kiếm", "Đề xuất", "Tất cả ngôn ngữ", "Không tìm thấy ngôn ngữ"),
         "th" to LanguagePickerCopy("ค้นหาภาษา", "ล้างการค้นหา", "แนะนำ", "ทุกภาษา", "ไม่พบภาษา"),
         "fil" to LanguagePickerCopy("Maghanap ng wika", "I-clear ang paghahanap", "Iminumungkahi", "Lahat ng wika", "Walang nahanap na wika"),
-        "he" to LanguagePickerCopy("חיפוש שפה", "ניקוי החיפוש", "מוצעות", "כל השפות", "לא נמצאה שפה")
+        "he" to LanguagePickerCopy("חיפוש שפה", "ניקוי החיפוש", "מוצעות", "כל השפות", "לא נמצאה שפה"),
+        "ur" to LanguagePickerCopy("زبانیں تلاش کریں۔", "تلاش صاف کریں۔", "تجویز کردہ", "تمام زبانیں۔", "کوئی زبان نہیں ملی"),
+        "ta" to LanguagePickerCopy("மொழிகளைத் தேடுங்கள்", "தெளிவான தேடல்", "பரிந்துரைக்கப்பட்டது", "அனைத்து மொழிகளும்", "மொழி இல்லை"),
+        "te" to LanguagePickerCopy("భాషలను శోధించండి", "శోధనను క్లియర్ చేయండి", "సూచించారు", "అన్ని భాషలు", "భాష కనుగొనబడలేదు"),
+        "mr" to LanguagePickerCopy("भाषा शोधा", "शोध साफ करा", "सुचवले", "सर्व भाषा", "कोणतीही भाषा आढळली नाही"),
+        "gu" to LanguagePickerCopy("ભાષાઓ શોધો", "શોધ સાફ કરો", "સૂચવ્યું", "બધી ભાષાઓ", "કોઈ ભાષા મળી નથી")
     )
 
     private val greetings = mapOf(
@@ -61,7 +66,12 @@ internal object LevyraLanguagePickerStrings {
         "fi" to "Moi", "et" to "Tere", "nb" to "Hei", "ca" to "Hola", "uk" to "Привіт", "ru" to "Привет", "kk" to "Сәлем",
         "tr" to "Merhaba", "ar" to "مرحبا", "fa" to "سلام", "zh" to "你好", "zh-Hant" to "你好", "ja" to "こんにちは",
         "ko" to "안녕하세요", "hi" to "नमस्ते", "bn" to "নমস্কার", "id" to "Halo", "ms" to "Helo", "vi" to "Xin chào",
-        "th" to "สวัสดี", "fil" to "Kumusta", "he" to "שלום"
+        "th" to "สวัสดี", "fil" to "Kumusta", "he" to "שלום",
+        "ur" to "ہیلو",
+        "ta" to "வணக்கம்",
+        "te" to "నమస్కారం",
+        "mr" to "नमस्कार",
+        "gu" to "હેલો"
     )
 
     fun greeting(code: String): String = localizedValueOrEnglish(greetings, code)

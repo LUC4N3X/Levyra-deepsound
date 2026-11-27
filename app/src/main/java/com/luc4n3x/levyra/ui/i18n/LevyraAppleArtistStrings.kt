@@ -56,5 +56,11 @@ private val APPLE_ARTIST_INFO_COPY = mapOf(
     "vi" to AppleArtistInfoCopy("Giới thiệu", "Quê quán", "Ngày sinh", "Thành lập", "Thể loại", "Video hàng đầu"),
     "th" to AppleArtistInfoCopy("เกี่ยวกับ", "บ้านเกิด", "เกิด", "ก่อตั้ง", "แนวเพลง", "วิดีโอยอดนิยม"),
     "fil" to AppleArtistInfoCopy("Tungkol", "Bayang pinagmulan", "Kapanganakan", "Nabuo", "Genre", "Mga nangungunang video"),
-    "he" to AppleArtistInfoCopy("אודות", "עיר הולדת", "לידה", "הקמה", "ז'אנר", "סרטונים מובילים")
+    "he" to AppleArtistInfoCopy("אודות", "עיר הולדת", "לידה", "הקמה", "ז'אנר", "סרטונים מובילים"),
+    "ur" to AppleArtistInfoCopy("کے بارے میں", "آبائی شہر", "پیدا ہوا", "تشکیل", "نوع", "سرفہرست ویڈیوز"),
+    "ta" to AppleArtistInfoCopy("பற்றி", "சொந்த ஊர்", "பிறந்தது", "உருவானது", "வகை", "சிறந்த வீடியோக்கள்"),
+    "te" to AppleArtistInfoCopy("గురించి", "స్వస్థలం", "పుట్టింది", "ఏర్పడింది", "శైలి", "అగ్ర వీడియోలు"),
+    "mr" to AppleArtistInfoCopy("बद्दल", "मूळ गाव", "जन्मले", "तयार झाले", "शैली", "शीर्ष व्हिडिओ"),
+    "gu" to AppleArtistInfoCopy("વિશે", "વતન", "જન્મ", "રચના", "શૈલી", "ટોચની વિડિઓઝ"),
+    "pt-BR" to AppleArtistInfoCopy("Sobre", "Cidade natal", "Nascido", "Formado", "Gênero", "Principais vídeos")
 )

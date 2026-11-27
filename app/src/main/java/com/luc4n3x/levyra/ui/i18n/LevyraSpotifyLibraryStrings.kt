@@ -53,7 +53,12 @@ private val spotifyLibraryCopies = mapOf(
     "vi" to SpotifyLibraryCopy("Sắp xếp theo", "Gần đây", "Mới thêm gần đây", "Theo bảng chữ cái", "Người tạo", "Danh sách phát", "Dạng lưới", "Dạng danh sách"),
     "th" to SpotifyLibraryCopy("จัดเรียงตาม", "ล่าสุด", "เพิ่มล่าสุด", "ตามตัวอักษร", "ผู้สร้าง", "เพลย์ลิสต์", "มุมมองตาราง", "มุมมองรายการ"),
     "fil" to SpotifyLibraryCopy("Ayusin ayon sa", "Kamakailan", "Kamakailang idinagdag", "Alpabetiko", "Gumawa", "Playlist", "Grid view", "List view"),
-    "he" to SpotifyLibraryCopy("מיון לפי", "אחרונים", "נוספו לאחרונה", "לפי א״ב", "יוצר", "פלייליסט", "תצוגת רשת", "תצוגת רשימה")
+    "he" to SpotifyLibraryCopy("מיון לפי", "אחרונים", "נוספו לאחרונה", "לפי א״ב", "יוצר", "פלייליסט", "תצוגת רשת", "תצוגת רשימה"),
+    "ur" to SpotifyLibraryCopy("ترتیب دیں", "حالیہ", "حال ہی میں شامل کیا گیا۔", "حروف تہجی کے مطابق", "خالق", "پلے لسٹ", "گرڈ کا منظر", "فہرست کا نظارہ"),
+    "ta" to SpotifyLibraryCopy("வரிசைப்படுத்து", "சமீபத்தியவை", "சமீபத்தில் சேர்க்கப்பட்டது", "அகரவரிசைப்படி", "படைப்பாளி", "பிளேலிஸ்ட்", "கட்டக் காட்சி", "பட்டியல் காட்சி"),
+    "te" to SpotifyLibraryCopy("క్రమబద్ధీకరించు", "ఇటీవలివి", "ఇటీవల జోడించబడింది", "అక్షరక్రమం", "సృష్టికర్త", "ప్లేజాబితా", "గ్రిడ్ వీక్షణ", "జాబితా వీక్షణ"),
+    "mr" to SpotifyLibraryCopy("यानुसार क्रमवारी लावा", "अलीकडील", "अलीकडे जोडले", "वर्णक्रमानुसार", "निर्माता", "प्लेलिस्ट", "ग्रिड दृश्य", "सूची दृश्य"),
+    "gu" to SpotifyLibraryCopy("દ્વારા સૉર્ટ કરો", "તાજેતરના", "તાજેતરમાં ઉમેર્યું", "આલ્ફાબેટીકલ", "સર્જક", "પ્લેલિસ્ટ", "ગ્રીડ દૃશ્ય", "સૂચિ દૃશ્ય")
 )
 
 internal fun spotifyLibraryCopy(code: String): SpotifyLibraryCopy = localizedValueOrEnglish(spotifyLibraryCopies, code)

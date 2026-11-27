@@ -44,7 +44,13 @@ private val lyricsActionBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to lyricsActions("Palitan ang liriko", "Awtomatiko", "Pumili ng mga linya", "Kopyahin", "Ibahagi", "Mga bersyon ng liriko"),
     "he" to lyricsActions("שינוי מילות השיר", "אוטומטי", "בחירת שורות", "העתקה", "שיתוף", "גרסאות של מילות השיר"),
     "fi" to lyricsActions("Vaihda sanoitukset", "Automaattinen", "Valitse säkeet", "Kopioi", "Jaa", "Sanoitusversiot"),
-    "et" to lyricsActions("Muuda sõnu", "Automaatne", "Vali salmid", "Kopeeri", "Jaga", "Sõnade versioonid")
+    "et" to lyricsActions("Muuda sõnu", "Automaatne", "Vali salmid", "Kopeeri", "Jaga", "Sõnade versioonid"),
+    "ur" to lyricsActions("غزلیں تبدیل کریں۔", "خودکار", "آیات منتخب کریں۔", "کاپی", "شیئر کریں۔", "دھن کے ورژن"),
+    "ta" to lyricsActions("பாடல் வரிகளை மாற்றவும்", "தானியங்கி", "வசனங்களைத் தேர்ந்தெடுக்கவும்", "நகலெடுக்கவும்", "பகிரவும்", "பாடல்களின் பதிப்புகள்"),
+    "te" to lyricsActions("సాహిత్యాన్ని మార్చండి", "ఆటోమేటిక్", "పద్యాలను ఎంచుకోండి", "కాపీ చేయండి", "షేర్ చేయండి", "లిరిక్స్ వెర్షన్లు"),
+    "mr" to lyricsActions("गाण्याचे बोल बदला", "स्वयंचलित", "श्लोक निवडा", "कॉपी करा", "शेअर करा", "गीत आवृत्त्या"),
+    "gu" to lyricsActions("ગીતો બદલો", "આપોઆપ", "છંદો પસંદ કરો", "નકલ કરો", "શેર કરો", "ગીતોની આવૃત્તિઓ"),
+    "pt-BR" to lyricsActions("Alterar letras", "Automático", "Selecione versos", "Copiar", "Compartilhar", "Versões das letras")
 )
 
 private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
@@ -252,6 +258,36 @@ private val lyricsOffsetBundles: Map<String, Map<String, String>> = mapOf(
         "lyricsOffsetEarlier" to "歌詞提前 0.5 秒",
         "lyricsOffsetLater" to "歌詞延後 0.5 秒",
         "lyricsOffsetReset" to "重設歌詞時間"
+    ),
+    "ur" to mapOf(
+        "lyricsOffsetEarlier" to "0.5 سیکنڈ پہلے کے بول",
+        "lyricsOffsetLater" to "دھن 0.5 سیکنڈ بعد",
+        "lyricsOffsetReset" to "دھن کا وقت دوبارہ ترتیب دیں۔"
+    ),
+    "ta" to mapOf(
+        "lyricsOffsetEarlier" to "பாடல் வரிகள் 0.5 வினாடிகள் முன்பு",
+        "lyricsOffsetLater" to "பாடல் வரிகள் 0.5 வினாடிகள் கழித்து",
+        "lyricsOffsetReset" to "பாடல் வரிகளின் நேரத்தை மீட்டமைக்கவும்"
+    ),
+    "te" to mapOf(
+        "lyricsOffsetEarlier" to "లిరిక్స్ 0.5 సెకన్ల ముందు",
+        "lyricsOffsetLater" to "0.5 సెకన్ల తర్వాత సాహిత్యం",
+        "lyricsOffsetReset" to "లిరిక్స్ టైమింగ్ రీసెట్ చేయండి"
+    ),
+    "mr" to mapOf(
+        "lyricsOffsetEarlier" to "0.5 सेकंद पूर्वीचे गीत",
+        "lyricsOffsetLater" to "गीत 0.5 सेकंद नंतर",
+        "lyricsOffsetReset" to "लिरिक्स टाइमिंग रीसेट करा"
+    ),
+    "gu" to mapOf(
+        "lyricsOffsetEarlier" to "ગીતો 0.5 સેકન્ડ પહેલા",
+        "lyricsOffsetLater" to "ગીતો 0.5 સેકન્ડ પછી",
+        "lyricsOffsetReset" to "ગીતોનો સમય રીસેટ કરો"
+    ),
+    "pt-BR" to mapOf(
+        "lyricsOffsetEarlier" to "Letras 0,5 segundos antes",
+        "lyricsOffsetLater" to "Letra 0,5 segundos depois",
+        "lyricsOffsetReset" to "Redefinir o tempo das letras"
     )
 )
 
@@ -310,7 +346,13 @@ private val lyricsTranslationStatusBundles: Map<String, Map<String, String>> = m
     "vi" to lyricsTranslationStatus("Đang dịch lời bài hát…", "Chưa tải ngôn ngữ dịch · Nhấn để tải", "Đang tải ngôn ngữ dịch…", "Không thể dịch ngôn ngữ này trên thiết bị này", "Dịch không thành công · Nhấn để thử lại"),
     "th" to lyricsTranslationStatus("กำลังแปลเนื้อเพลง…", "ยังไม่ได้ดาวน์โหลดภาษาสำหรับแปล · แตะเพื่อดาวน์โหลด", "กำลังดาวน์โหลดภาษาสำหรับแปล…", "อุปกรณ์นี้ไม่รองรับการแปลภาษานี้", "แปลไม่สำเร็จ · แตะเพื่อลองอีกครั้ง"),
     "fil" to lyricsTranslationStatus("Isinasalin ang lyrics…", "Hindi pa na-download ang wika ng pagsasalin · I-tap para makuha", "Dina-download ang wika ng pagsasalin…", "Hindi available ang pagsasalin para sa wikang ito sa device na ito", "Nabigo ang pagsasalin · I-tap para subukan ulit"),
-    "he" to lyricsTranslationStatus("מתרגם את המילים…", "שפת התרגום לא הורדה · יש להקיש כדי להוריד", "מוריד את שפת התרגום…", "התרגום לא זמין לשפה זו במכשיר הזה", "התרגום נכשל · יש להקיש כדי לנסות שוב")
+    "he" to lyricsTranslationStatus("מתרגם את המילים…", "שפת התרגום לא הורדה · יש להקיש כדי להוריד", "מוריד את שפת התרגום…", "התרגום לא זמין לשפה זו במכשיר הזה", "התרגום נכשל · יש להקיש כדי לנסות שוב"),
+    "ur" to lyricsTranslationStatus("دھن کا ترجمہ کیا جا رہا ہے…", "ترجمہ کی زبان ڈاؤن لوڈ نہیں ہوئی · اسے حاصل کرنے کے لیے تھپتھپائیں۔", "ترجمہ کی زبان ڈاؤن لوڈ ہو رہی ہے…", "اس آلہ پر اس زبان کے لیے ترجمہ دستیاب نہیں ہے۔", "ترجمہ ناکام ہو گیا۔ دوبارہ کوشش کرنے کے لیے تھپتھپائیں۔"),
+    "ta" to lyricsTranslationStatus("பாடல் வரிகளை மொழிபெயர்க்கிறது…", "மொழிபெயர்ப்பு மொழி பதிவிறக்கப்படவில்லை · அதைப் பெற தட்டவும்", "மொழிபெயர்ப்பு மொழியைப் பதிவிறக்குகிறது…", "இந்தச் சாதனத்தில் இந்த மொழிக்கான மொழிபெயர்ப்பு கிடைக்கவில்லை", "மொழிபெயர்ப்பு தோல்வி · மீண்டும் முயற்சிக்க தட்டவும்"),
+    "te" to lyricsTranslationStatus("సాహిత్యాన్ని అనువదిస్తోంది...", "అనువాద భాష డౌన్‌లోడ్ కాలేదు · దాన్ని పొందడానికి నొక్కండి", "అనువాద భాషను డౌన్‌లోడ్ చేస్తోంది...", "ఈ పరికరంలో ఈ భాషకు అనువాదం అందుబాటులో లేదు", "అనువాదం విఫలమైంది · మళ్లీ ప్రయత్నించడానికి నొక్కండి"),
+    "mr" to lyricsTranslationStatus("गीतांचे भाषांतर करत आहे...", "भाषांतर भाषा डाउनलोड केलेली नाही · ती मिळविण्यासाठी टॅप करा", "भाषांतर भाषा डाउनलोड करत आहे...", "या डिव्हाइसवर या भाषेसाठी भाषांतर उपलब्ध नाही", "भाषांतर अयशस्वी · पुन्हा प्रयत्न करण्यासाठी टॅप करा"),
+    "gu" to lyricsTranslationStatus("ગીતોનો અનુવાદ કરી રહ્યાં છીએ...", "અનુવાદની ભાષા ડાઉનલોડ થઈ નથી · તેને મેળવવા માટે ટૅપ કરો", "અનુવાદની ભાષા ડાઉનલોડ કરી રહ્યાં છીએ…", "આ ઉપકરણ પર આ ભાષા માટે અનુવાદ ઉપલબ્ધ નથી", "અનુવાદ નિષ્ફળ · ફરી પ્રયાસ કરવા માટે ટૅપ કરો"),
+    "pt-BR" to lyricsTranslationStatus("Traduzindo letras…", "Idioma de tradução não baixado · Toque para obtê-lo", "Fazendo download do idioma de tradução…", "A tradução não está disponível para este idioma neste dispositivo", "Falha na tradução · Toque para tentar novamente")
 )
 
 internal fun lyricsActionLocalizationEntries(code: String): Map<String, String> =

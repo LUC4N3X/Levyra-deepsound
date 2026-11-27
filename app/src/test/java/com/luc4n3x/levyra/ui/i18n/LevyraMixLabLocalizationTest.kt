@@ -8,7 +8,7 @@ import org.junit.Test
 
 class LevyraMixLabLocalizationTest {
 
-    private val codes = LevyraLanguageCatalog.languages.map { it.code }
+    private val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
 
     @Test
     fun everySupportedLanguageHasAMixLabBundleWithAllKeys() {

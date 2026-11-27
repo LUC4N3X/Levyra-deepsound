@@ -42,7 +42,12 @@ private val spotifyNewForYou = mapOf(
     "vi" to "Bản phát hành mới cho bạn",
     "th" to "เพลงใหม่สำหรับคุณ",
     "fil" to "Mga bagong release para sa iyo",
-    "he" to "מהדורות חדשות בשבילך"
+    "he" to "מהדורות חדשות בשבילך",
+    "ur" to "آپ کے لیے نئی ریلیز",
+    "ta" to "உங்களுக்கான புதிய வெளியீடுகள்",
+    "te" to "మీ కోసం కొత్త విడుదలలు",
+    "mr" to "तुमच्यासाठी नवीन रिलीझ",
+    "gu" to "તમારા માટે નવી રિલીઝ"
 )
 
 internal fun spotifyNewReleasesForYou(code: String): String = localizedValueOrEnglish(spotifyNewForYou, code)

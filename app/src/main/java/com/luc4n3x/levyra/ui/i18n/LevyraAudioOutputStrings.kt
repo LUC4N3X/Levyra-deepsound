@@ -46,7 +46,13 @@ private val audioOutputBundles: Map<String, Map<String, String>> = mapOf(
     "ca" to audioOutputStrings("Sortida AAudio (Oboe)", "Sortida d'àudio nativa mitjançant AAudio i Oboe"),
     "fa" to audioOutputStrings("خروجی AAudio (Oboe)", "خروجی صدای بومی از طریق AAudio و Oboe"),
     "zh-Hant" to audioOutputStrings("AAudio 輸出（Oboe）", "透過 AAudio 與 Oboe 進行原生音訊輸出"),
-    "ms" to audioOutputStrings("Output AAudio (Oboe)", "Output audio asli melalui AAudio dan Oboe")
+    "ms" to audioOutputStrings("Output AAudio (Oboe)", "Output audio asli melalui AAudio dan Oboe"),
+    "ur" to audioOutputStrings("AAudio آؤٹ پٹ (Oboe)", "AAudio اور Oboe کے ذریعے مقامی آڈیو آؤٹ پٹ"),
+    "ta" to audioOutputStrings("AAudio வெளியீடு (Oboe)", "AAudio மற்றும் Oboe மூலம் நேரடி ஒலி வெளியீடு"),
+    "te" to audioOutputStrings("AAudio అవుట్‌పుట్ (Oboe)", "AAudio మరియు Oboe ద్వారా నేటివ్ ఆడియో అవుట్‌పుట్"),
+    "mr" to audioOutputStrings("AAudio आउटपुट (Oboe)", "AAudio आणि Oboe द्वारे नेटिव्ह ऑडिओ आउटपुट"),
+    "gu" to audioOutputStrings("AAudio આઉટપુટ (Oboe)", "AAudio અને Oboe દ્વારા મૂળ ઓડિયો આઉટપુટ"),
+    "pt-BR" to audioOutputStrings("Saída AAudio (Oboe)", "Saída de áudio nativa pelo AAudio e Oboe")
 )
 
 internal fun audioOutputLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(audioOutputBundles, code)

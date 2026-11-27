@@ -10,7 +10,7 @@ class LevyraHomeVideoStringsTest {
     @Test
     fun `every supported language has its own video shelf title`() {
         val english = LevyraStrings.forCode("en").homeVideoShelfTitle
-        LevyraLanguageCatalog.languages.forEach { language ->
+        LevyraLanguageCatalog.selectableLanguages.forEach { language ->
             val title = LevyraStrings.forCode(language.code).homeVideoShelfTitle
             assertTrue(language.code, title.isNotBlank())
             if (language.code != "en") assertTrue(language.code, title != english || language.code in sharedWithEnglish)

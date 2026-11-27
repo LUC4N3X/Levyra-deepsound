@@ -48,7 +48,13 @@ private val audioBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to audioStrings("Kalidad ng streaming", "Equalizer", "Spatial na tunog", "Dynamics", "Pag-playback", "I-reset", "Custom", "Mga banda"),
     "he" to audioStrings("איכות סטרימינג", "אקולייזר", "צליל מרחבי", "דינמיקה", "השמעה", "איפוס", "מותאם אישית", "רצועות"),
     "fi" to audioStrings("Suoratoiston laatu", "Taajuuskorjain", "Tilaääni", "Dynamiikka", "Toisto", "Nollaa", "Mukautettu", "Kaistat"),
-    "et" to audioStrings("Voogesituse kvaliteet", "Ekvalaiser", "Ruumiline heli", "Dünaamika", "Taasesitus", "Lähtesta", "Kohandatud", "Sagedusribad")
+    "et" to audioStrings("Voogesituse kvaliteet", "Ekvalaiser", "Ruumiline heli", "Dünaamika", "Taasesitus", "Lähtesta", "Kohandatud", "Sagedusribad"),
+    "ur" to audioStrings("سلسلہ بندی کا معیار", "برابر کرنے والا", "مقامی آواز", "حرکیات", "پلے بیک", "دوبارہ ترتیب دیں۔", "حسب ضرورت", "بینڈز"),
+    "ta" to audioStrings("ஸ்ட்ரீமிங் தரம்", "சமநிலைப்படுத்தி", "இடஞ்சார்ந்த ஒலி", "இயக்கவியல்", "பாடல் இயக்கம்", "மீட்டமை", "தனிப்பயன்", "இசைக்குழுக்கள்"),
+    "te" to audioStrings("స్ట్రీమింగ్ నాణ్యత", "ఈక్వలైజర్", "ప్రాదేశిక ధ్వని", "డైనమిక్స్", "ప్లేబ్యాక్", "రీసెట్ చేయండి", "కస్టమ్", "బ్యాండ్లు"),
+    "mr" to audioStrings("प्रवाह गुणवत्ता", "तुल्यकारक", "अवकाशीय आवाज", "डायनॅमिक्स", "प्लेबॅक", "रीसेट करा", "सानुकूल", "बँड"),
+    "gu" to audioStrings("સ્ટ્રીમિંગ ગુણવત્તા", "બરાબરી", "અવકાશી અવાજ", "ડાયનેમિક્સ", "પ્લેબેક", "રીસેટ કરો", "કસ્ટમ", "બેન્ડ્સ"),
+    "pt-BR" to audioStrings("Qualidade de transmissão", "Equalizador", "Som espacial", "Dinâmica", "Reprodução", "Redefinir", "Personalizado", "Bandas")
 )
 
 internal fun audioLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(audioBundles, code)

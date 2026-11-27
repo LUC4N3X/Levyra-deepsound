@@ -9,7 +9,7 @@ import org.junit.Test
 class AppleArtistInfoLocalizationTest {
     @Test
     fun everySupportedLanguageShipsArtistInfoCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, appleArtistInfoLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = appleArtistInfoCopy(strings.code)

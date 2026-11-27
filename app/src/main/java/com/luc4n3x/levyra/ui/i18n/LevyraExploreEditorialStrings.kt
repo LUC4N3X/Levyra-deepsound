@@ -53,7 +53,12 @@ private val exploreEditorialCopies = mapOf(
     "vi" to ExploreEditorialCopy("Tin âm nhạc", "Thêm tin", "Phát hành trong tuần", "Vừa xong", "{count} phút trước", "{count} giờ trước", "{count} ngày trước", "Đọc bài viết"),
     "th" to ExploreEditorialCopy("ข่าวเพลง", "ข่าวเพิ่มเติม", "เพลงใหม่ประจำสัปดาห์", "เมื่อสักครู่", "{count} นาทีที่แล้ว", "{count} ชม. ที่แล้ว", "{count} วันที่แล้ว", "อ่านบทความ"),
     "fil" to ExploreEditorialCopy("Balitang musika", "Iba pang balita", "Mga labas ngayong linggo", "Ngayon lang", "{count} min ang nakalipas", "{count} oras ang nakalipas", "{count} araw ang nakalipas", "Basahin ang artikulo"),
-    "he" to ExploreEditorialCopy("חדשות מוזיקה", "עוד כתבות", "הוצאות השבוע", "הרגע", "לפני {count} דק׳", "לפני {count} שע׳", "לפני {count} ימים", "קריאת הכתבה")
+    "he" to ExploreEditorialCopy("חדשות מוזיקה", "עוד כתבות", "הוצאות השבוע", "הרגע", "לפני {count} דק׳", "לפני {count} שע׳", "לפני {count} ימים", "קריאת הכתבה"),
+    "ur" to ExploreEditorialCopy("موسیقی کی خبریں۔", "مزید کہانیاں", "اس ہفتے کی ریلیزز", "ابھی ابھی", "{count} منٹ پہلے", "{count} گھنٹے پہلے", "{count} دن پہلے", "کہانی پڑھیں"),
+    "ta" to ExploreEditorialCopy("இசை செய்தி", "மேலும் கதைகள்", "இந்த வார வெளியீடுகள்", "இப்போதுதான்", "{count} நிமிடத்திற்கு முன்பு", "{count} ம முன்பு", "{count} நாள் முன்பு", "கதையைப் படியுங்கள்"),
+    "te" to ExploreEditorialCopy("సంగీత వార్తలు", "మరిన్ని కథలు", "ఈ వారం విడుదలలు", "ఇప్పుడే", "{count} నిమి క్రితం", "{count} h క్రితం", "{count} d క్రితం", "కథ చదవండి"),
+    "mr" to ExploreEditorialCopy("संगीत बातम्या", "आणखी कथा", "या आठवड्यातील रिलीझ", "आत्ताच", "{count} मिनिटापूर्वी", "{count} तासापूर्वी", "{count} d पूर्वी", "कथा वाचा"),
+    "gu" to ExploreEditorialCopy("સંગીત સમાચાર", "વધુ વાર્તાઓ", "આ સપ્તાહની રિલીઝ", "હમણાં જ", "{count} મિનિટ પહેલા", "{count} કલાક પહેલાં", "{count} d પહેલા", "વાર્તા વાંચો")
 )
 
 internal fun exploreEditorialCopy(code: String): ExploreEditorialCopy = localizedValueOrEnglish(exploreEditorialCopies, code)

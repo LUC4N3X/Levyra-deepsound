@@ -274,12 +274,48 @@ private val parametricEqCopies = mapOf(
         "הוספת מסנן", "הסרת מסנן", "תדר", "הגבר", "מקדם Q", "שמירת פרופיל", "איפוס האקולייזר הפרמטרי",
         "שיא", "מדף נמוך", "מדף גבוה", "הדביקו פרופיל GraphicEQ או ParametricEQ, או פתחו קובץ טקסט",
         "בדקו את סוג המסנן, התדר, ההגבר וערכי Q"
+    ),
+    "ur" to eq(
+        "گرافک EQ", "پیرامیٹرک EQ", "AutoEQ اور کسٹم ٹیوننگ کے لیے عین مطابق فلٹرز", "فعال پروفائل", "فلٹرز",
+        "فلٹر شامل کریں۔", "فلٹر کو ہٹا دیں۔", "تعدد", "حاصل کرنا", "Q عنصر", "پروفائل محفوظ کریں۔", "پیرامیٹرک EQ کو دوبارہ ترتیب دیں۔",
+        "چوٹی", "کم شیلف", "اونچی شیلف", "GraphicEQ یا ParametricEQ پروفائل چسپاں کریں، یا ٹیکسٹ فائل کھولیں۔",
+        "فلٹر کی قسم، فریکوئنسی، گین، اور Q ویلیوز چیک کریں۔"
+    ),
+    "ta" to eq(
+        "கிராஃபிக் ஈக்யூ", "அளவுரு ஈக்யூ", "AutoEQ மற்றும் தனிப்பயன் டியூனிங்கிற்கான துல்லியமான வடிப்பான்கள்", "செயலில் உள்ள சுயவிவரம்", "வடிப்பான்கள்",
+        "வடிகட்டி சேர்க்கவும்", "வடிகட்டியை அகற்று", "அதிர்வெண்", "ஆதாயம்", "கே காரணி", "சுயவிவரத்தை சேமிக்கவும்", "பாராமெட்ரிக் ஈக்யூவை மீட்டமைக்கவும்",
+        "உச்சம்", "குறைந்த அலமாரி", "உயர் அலமாரி", "GraphicEQ அல்லது ParametricEQ சுயவிவரத்தை ஒட்டவும் அல்லது உரைக் கோப்பைத் திறக்கவும்",
+        "வடிகட்டி வகை, அதிர்வெண், ஆதாயம் மற்றும் Q மதிப்புகளைச் சரிபார்க்கவும்"
+    ),
+    "te" to eq(
+        "గ్రాఫిక్ EQ", "పారామెట్రిక్ EQ", "AutoEQ మరియు అనుకూల ట్యూనింగ్ కోసం ఖచ్చితమైన ఫిల్టర్‌లు", "క్రియాశీల ప్రొఫైల్", "ఫిల్టర్లు",
+        "ఫిల్టర్‌ని జోడించండి", "ఫిల్టర్‌ని తీసివేయండి", "ఫ్రీక్వెన్సీ", "లాభం", "Q కారకం", "ప్రొఫైల్‌ను సేవ్ చేయండి", "పారామెట్రిక్ EQని రీసెట్ చేయండి",
+        "శిఖరం", "తక్కువ షెల్ఫ్", "హై షెల్ఫ్", "GraphicEQ లేదా ParametricEQ ప్రొఫైల్‌ను అతికించండి లేదా టెక్స్ట్ ఫైల్‌ను తెరవండి",
+        "ఫిల్టర్ రకం, ఫ్రీక్వెన్సీ, లాభం మరియు Q విలువలను తనిఖీ చేయండి"
+    ),
+    "mr" to eq(
+        "ग्राफिक EQ", "पॅरामेट्रिक EQ", "AutoEQ आणि सानुकूल ट्यूनिंगसाठी अचूक फिल्टर", "सक्रिय प्रोफाइल", "फिल्टर",
+        "फिल्टर जोडा", "फिल्टर काढा", "वारंवारता", "मिळवणे", "Q घटक", "प्रोफाइल जतन करा", "पॅरामेट्रिक EQ रीसेट करा",
+        "शिखर", "कमी शेल्फ", "उच्च शेल्फ", "GraphicEQ किंवा ParametricEQ प्रोफाइल पेस्ट करा किंवा मजकूर फाइल उघडा",
+        "फिल्टर प्रकार, वारंवारता, लाभ आणि Q मूल्ये तपासा"
+    ),
+    "gu" to eq(
+        "ગ્રાફિક EQ", "પેરામેટ્રિક EQ", "AutoEQ અને કસ્ટમ ટ્યુનિંગ માટે ચોક્કસ ફિલ્ટર્સ", "સક્રિય પ્રોફાઇલ", "ફિલ્ટર્સ",
+        "ફિલ્ટર ઉમેરો", "ફિલ્ટર દૂર કરો", "આવર્તન", "ગેઇન", "Q પરિબળ", "પ્રોફાઇલ સાચવો", "પેરામેટ્રિક EQ રીસેટ કરો",
+        "પીક", "ઓછી શેલ્ફ", "ઉચ્ચ શેલ્ફ", "GraphicEQ અથવા ParametricEQ પ્રોફાઇલ પેસ્ટ કરો અથવા ટેક્સ્ટ ફાઇલ ખોલો",
+        "ફિલ્ટર પ્રકાર, આવર્તન, ગેઇન અને Q મૂલ્યો તપાસો"
+    ),
+    "pt-BR" to eq(
+        "EQ gráfico", "EQ paramétrico", "Filtros precisos para AutoEQ e ajuste personalizado", "Perfil ativo", "Filtros",
+        "Adicionar filtro", "Remover filtro", "Frequência", "Ganho", "Fator Q", "Salvar perfil", "Redefinir equalizador paramétrico",
+        "Pico", "Prateleira baixa", "Prateleira alta", "Cole um perfil GraphicEQ ou ParametricEQ ou abra um arquivo de texto",
+        "Verifique o tipo de filtro, frequência, ganho e valores Q"
     )
 )
 
 internal fun parametricEqLocalizationCodes(): Set<String> = parametricEqCopies.keys
 
-fun LevyraStrings.parametricEqCopy(): ParametricEqCopy = parametricEqCopies.getValue(translationKey(code)).forBrazil(code) { brazilian() }
+fun LevyraStrings.parametricEqCopy(): ParametricEqCopy = localizedValueOrEnglish(parametricEqCopies, code).forBrazil(code) { brazilian() }
 
 private fun ParametricEqCopy.brazilian(): ParametricEqCopy = copy(
     graphicEq = LevyraBrazilianPortuguese.adapt(graphicEq),

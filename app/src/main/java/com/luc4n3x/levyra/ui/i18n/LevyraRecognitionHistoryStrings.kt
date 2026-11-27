@@ -41,7 +41,13 @@ private val recognitionHistoryTitles: Map<String, String> = mapOf(
     "vi" to "Bài hát đã nhận diện",
     "th" to "เพลงที่จดจำได้",
     "fil" to "Mga nakilalang kanta",
-    "he" to "שירים שזוהו"
+    "he" to "שירים שזוהו",
+    "ur" to "پہچانے گئے ٹریک",
+    "ta" to "அங்கீகரிக்கப்பட்ட தடங்கள்",
+    "te" to "గుర్తించబడిన ట్రాక్‌లు",
+    "mr" to "ओळखले ट्रॅक",
+    "gu" to "માન્ય ટ્રેક",
+    "pt-BR" to "Faixas reconhecidas"
 )
 
 internal val recognitionHistoryKeys = setOf("recognitionHistoryTitle")

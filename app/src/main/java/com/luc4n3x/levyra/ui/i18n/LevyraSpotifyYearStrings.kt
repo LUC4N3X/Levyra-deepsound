@@ -44,7 +44,12 @@ private val spotifyYearCopies: Map<String, SpotifyYearCopy> = mapOf(
     "uk" to SpotifyYearCopy("Топ %d", "Топ треків"),
     "vi" to SpotifyYearCopy("Top %d", "Bài hát hàng đầu"),
     "zh" to SpotifyYearCopy("%d 年度热门", "热门歌曲"),
-    "zh-Hant" to SpotifyYearCopy("%d 年度熱門", "熱門歌曲")
+    "zh-Hant" to SpotifyYearCopy("%d 年度熱門", "熱門歌曲"),
+    "ur" to SpotifyYearCopy("ٹاپ %d", "ٹاپ ٹریکس"),
+    "ta" to SpotifyYearCopy("மேல் %d", "சிறந்த தடங்கள்"),
+    "te" to SpotifyYearCopy("టాప్ %d", "టాప్ ట్రాక్‌లు"),
+    "mr" to SpotifyYearCopy("शीर्ष %d", "शीर्ष ट्रॅक"),
+    "gu" to SpotifyYearCopy("ટોચના %d", "ટોચના ટ્રેક્સ")
 )
 
 internal fun spotifyYearCopy(code: String): SpotifyYearCopy =

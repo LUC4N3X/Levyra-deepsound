@@ -10,7 +10,7 @@ import org.junit.Test
 class OfflineQueueLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, offlineQueueLocalizationCodes())
         val english = offlineQueueCopy("en")
         supported.forEach { code ->

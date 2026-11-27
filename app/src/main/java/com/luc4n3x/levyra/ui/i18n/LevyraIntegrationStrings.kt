@@ -48,7 +48,13 @@ private val integrationBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to integrationStrings("Mga integrasyon", "API key", "Shared secret", "Token", "Pagkatapos mag-aprub sa browser, bumalik dito at tapusin ang koneksyon.", "Naka-off ang subtitle", "Mga subtitle", "Nakakonekta. Naisi-scrobble sa Last.fm ang mga pinapakinggan mo."),
     "he" to integrationStrings("שילובים", "מפתח API", "סוד משותף", "אסימון", "לאחר האישור בדפדפן, חזור לכאן והשלם את החיבור.", "כתוביות כבויות", "כתוביות", "מחובר. ההאזנות שלך נרשמות ב־Last.fm."),
     "fi" to integrationStrings("Integraatiot", "API-avain", "Jaettu salaisuus", "Tunniste", "Kun olet hyväksynyt selaimessa, palaa tänne ja viimeistele yhteys.", "Tekstitys pois", "Tekstitys", "Yhdistetty. Kuuntelusi scrobblataan Last.fm:ään."),
-    "et" to integrationStrings("Integratsioonid", "API-võti", "Jagatud saladus", "Pääsutõend", "Pärast brauseris kinnitamist naase siia ja vii ühendamine lõpule.", "Subtiitrid väljas", "Subtiitrid", "Ühendatud. Sinu kuulamised salvestatakse Last.fm-i.")
+    "et" to integrationStrings("Integratsioonid", "API-võti", "Jagatud saladus", "Pääsutõend", "Pärast brauseris kinnitamist naase siia ja vii ühendamine lõpule.", "Subtiitrid väljas", "Subtiitrid", "Ühendatud. Sinu kuulamised salvestatakse Last.fm-i."),
+    "ur" to integrationStrings("انضمام", "API کلید", "مشترکہ راز", "ٹوکن", "براؤزر میں منظوری دینے کے بعد، یہاں واپس جائیں اور کنکشن مکمل کریں۔", "سب ٹائٹلز بند", "سب ٹائٹلز", "جڑا ہوا آپ کے ڈراموں کو Last.fm پر سکروب کیا جاتا ہے۔"),
+    "ta" to integrationStrings("ஒருங்கிணைப்புகள்", "API விசை", "பகிரப்பட்ட ரகசியம்", "டோக்கன்", "உலாவியில் ஒப்புதல் அளித்த பிறகு, இங்கே திரும்பி இணைப்பை முடிக்கவும்.", "வசன வரிகள் முடக்கப்பட்டுள்ளன", "வசன வரிகள்", "இணைக்கப்பட்டது. உங்கள் நாடகங்கள் Last.fm க்கு ஸ்க்ரோப் செய்யப்பட்டன."),
+    "te" to integrationStrings("ఇంటిగ్రేషన్లు", "API కీ", "రహస్యంగా పంచుకున్నారు", "టోకెన్", "బ్రౌజర్‌లో ఆమోదించిన తర్వాత, ఇక్కడకు తిరిగి వచ్చి కనెక్షన్‌ని పూర్తి చేయండి.", "ఉపశీర్షికలు ఆఫ్", "ఉపశీర్షికలు", "కనెక్ట్ చేయబడింది. మీ నాటకాలు Last.fmకి స్క్రాబుల్ చేయబడ్డాయి."),
+    "mr" to integrationStrings("एकत्रीकरण", "API की", "गुपित शेअर केले", "टोकन", "ब्राउझरमध्ये मंजूरी दिल्यानंतर, येथे परत या आणि कनेक्शन पूर्ण करा.", "उपशीर्षके बंद", "उपशीर्षके", "जोडलेले. तुमची नाटके Last.fm वर स्क्रॉबल केलेली आहेत."),
+    "gu" to integrationStrings("એકીકરણ", "API કી", "વહેંચાયેલ રહસ્ય", "ટોકન", "બ્રાઉઝરમાં મંજૂરી આપ્યા પછી, અહીં પાછા આવો અને કનેક્શન પૂર્ણ કરો.", "સબટાઈટલ બંધ", "સબટાઈટલ", "કનેક્ટેડ. તમારા નાટકો Last.fm પર સ્ક્રૉબલ કરવામાં આવે છે."),
+    "pt-BR" to integrationStrings("Integrações", "Chave API", "Segredo compartilhado", "Símbolo", "Após aprovar no navegador, volte aqui e finalize a conexão.", "Legendas desativadas", "Legendas", "Conectado. Suas jogadas são codificadas para Last.fm.")
 )
 
 internal fun integrationLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(integrationBundles, code)

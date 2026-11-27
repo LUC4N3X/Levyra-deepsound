@@ -13,7 +13,7 @@ data class LevyraLanguageOption(
 object LevyraLanguageCatalog {
     const val BRAZILIAN_PORTUGUESE = "pt-BR"
 
-    val languages: List<LevyraLanguageOption> = AppLanguage.entries.filter { it.tag != BRAZILIAN_PORTUGUESE }.map { language ->
+    val selectableLanguages: List<LevyraLanguageOption> = AppLanguage.entries.map { language ->
         LevyraLanguageOption(
             code = language.tag,
             flag = language.flag,
@@ -21,6 +21,8 @@ object LevyraLanguageCatalog {
             nativeName = language.nativeName
         )
     }
+
+    val languages: List<LevyraLanguageOption> = selectableLanguages.filterNot { it.code == BRAZILIAN_PORTUGUESE }
 
     private val rtlCodes = AppLanguage.entries.filter { it.isRtl }.map { it.tag }.toSet()
 

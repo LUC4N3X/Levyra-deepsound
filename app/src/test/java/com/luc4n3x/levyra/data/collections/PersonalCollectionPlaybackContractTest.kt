@@ -111,7 +111,7 @@ class PersonalCollectionPlaybackContractTest {
                 )
             }
         }
-        assertEquals(41, LevyraPersonalCollectionCatalog.codes().size)
+        assertEquals(47, LevyraPersonalCollectionCatalog.codes().size)
         assertEquals(LevyraPersonalCollectionStrings.ERROR_COUNT, CollectionSyncError.entries.size)
     }
 

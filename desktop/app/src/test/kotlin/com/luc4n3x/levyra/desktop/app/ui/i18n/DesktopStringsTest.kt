@@ -98,6 +98,16 @@ class DesktopStringsTest {
     }
 
     @Test
+    fun portugueseVariantsUseTheirOwnVocabulary() {
+        val portugal = stringsFor(AppLanguage.PORTUGUESE)
+        val brazil = stringsFor(AppLanguage.BRAZILIAN_PORTUGUESE)
+        assertEquals("Definições", portugal.navSettings)
+        assertEquals("Configurações", brazil.navSettings)
+        assertEquals("Transferir", portugal.downloadAction)
+        assertEquals("Baixar", brazil.downloadAction)
+    }
+
+    @Test
     fun rtlLanguagesRemainMarkedForBidirectionalLayout() {
         assertTrue(AppLanguage.ARABIC.isRtl)
         assertTrue(AppLanguage.HEBREW.isRtl)

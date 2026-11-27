@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.i18n
 
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.MoodEngine
 import org.junit.Assert.assertEquals
@@ -22,7 +23,7 @@ class LevyraStringsTest {
 
     @Test
     fun catalogAndStringBundlesStayInSync() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, LevyraStrings.supportedCodes())
         assertEquals(catalogCodes, LevyraStrings.all().map { it.code }.toSet())
         assertEquals(catalogCodes, lyricsActionLocalizationCodes())
@@ -150,7 +151,7 @@ class LevyraStringsTest {
     fun reactiveAuraStringsLocalizedAcrossLanguages() {
         val english = LevyraStrings.forCode("en")
         val languages = LevyraStrings.all()
-        assertEquals(41, languages.size)
+        assertEquals(47, languages.size)
         languages.filter { it.code != "en" }.forEach { strings ->
             if (strings.code != "ro") {
                 assertFalse("Calm falls back to English for ${strings.code}", strings.reactiveAuraPresetCalm == english.reactiveAuraPresetCalm)
@@ -354,11 +355,7 @@ class LevyraStringsTest {
         localizedDirs.forEach { directory ->
             val file = directory.resolve("strings.xml")
             val names = stringPattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
-            if (directory.fileName.toString() == "values-pt-rBR") {
-                assertTrue("Unknown resource keys in values-pt-rBR", expectedKeys.containsAll(names))
-            } else {
-                assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
-            }
+            assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
         }
 
         fun qualifierToTag(name: String): String {
@@ -407,7 +404,7 @@ class LevyraStringsTest {
 
     @Test
     fun newlySelectableLocalesResolveWithoutFallingBackToEnglish() {
-        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa", "bn", "kk", "sr", "sq")
+        val codes = listOf("zh-Hant", "hu", "bg", "fi", "nb", "ca", "hr", "sk", "ms", "fa", "bn", "kk", "sr", "sq", "ur", "ta", "te", "mr", "gu")
         codes.forEach { code ->
             val strings = LevyraStrings.forCode(code)
             assertEquals(code, strings.code)
@@ -500,17 +497,35 @@ class LevyraStringsTest {
         assertTrue(LevyraLanguageCatalog.isRtl("he-IL"))
         assertTrue(LevyraLanguageCatalog.isRtl("iw_IL"))
         assertTrue(LevyraLanguageCatalog.isRtl("fa-IR"))
+        assertTrue(LevyraLanguageCatalog.isRtl("ur-PK"))
+        assertFalse(LevyraLanguageCatalog.isRtl("ta-IN"))
         assertFalse(LevyraLanguageCatalog.isRtl("en-US"))
     }
 
     @Test
     fun rtlDynamicLatinTextUsesBidiIsolation() {
-        listOf("he", "ar", "fa").forEach { code ->
+        listOf("he", "ar", "fa", "ur").forEach { code ->
             val strings = LevyraStrings.forCode(code)
             assertTrue(strings.formatGreeting("Luca 96", 9).contains("\u2068Luca 96\u2069"))
             assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
             assertTrue(strings.formatInstalledVersion("2.3.11").contains("\u20682.3.11\u2069"))
             assertTrue(strings.formatLatestVersionReady("2.3.11").contains("\u2068LEVYRA 2.3.11\u2069"))
+        }
+    }
+
+    @Test
+    fun southAsianRegionalTagsKeepTheirLanguageAndMusicMarket() {
+        for (tag in listOf("ur-PK", "ta-IN", "te-IN", "mr-IN", "gu-IN")) {
+            val (code, country) = tag.split('-')
+            val strings = LevyraStrings.forCode(tag)
+            val content = LevyraContentLocales.catalogLocale(tag)
+            assertEquals(code, strings.code)
+            assertEquals(code, content.hl)
+            assertEquals(country, content.gl)
+            assertEquals(country.lowercase(), content.chartRegionId)
+            assertTrue(content.queryForMood("drive").isNotBlank())
+            assertFalse(strings.formatTrackCount(2).endsWith(" tracks"))
+            assertFalse(strings.formatSearchResults(2).endsWith(" results"))
         }
     }
 

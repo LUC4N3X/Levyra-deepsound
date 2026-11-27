@@ -52,7 +52,12 @@ private val sleepTimerCopies: Map<String, SleepTimerCopy> = mapOf(
     "vi" to SleepTimerCopy("Chọn thời điểm dừng nhạc", "Kết thúc lúc", "HẸN GIỜ ĐANG BẬT", "phút", "Giảm dần cuối bài đang bật"),
     "th" to SleepTimerCopy("เลือกเวลาที่จะหยุดเพลง", "สิ้นสุดเวลา", "ตัวตั้งเวลาทำงานอยู่", "นาที", "ค่อยๆ ลดเสียงตอนจบเปิดอยู่"),
     "fil" to SleepTimerCopy("Piliin kung kailan hihinto ang musika", "Matatapos nang", "AKTIBO ANG TIMER", "min", "Aktibo ang fade sa dulo"),
-    "he" to SleepTimerCopy("בחרו מתי המוזיקה תיפסק", "מסתיים ב-", "הטיימר פעיל", "דק׳", "דעיכה בסיום פעילה")
+    "he" to SleepTimerCopy("בחרו מתי המוזיקה תיפסק", "מסתיים ב-", "הטיימר פעיל", "דק׳", "דעיכה בסיום פעילה"),
+    "ur" to SleepTimerCopy("منتخب کریں کہ موسیقی کب بند ہونی چاہیے۔", "پر ختم ہوتا ہے۔", "ٹائمر ایکٹو", "منٹ", "ختم دھندلا فعال"),
+    "ta" to SleepTimerCopy("இசை எப்போது நிறுத்தப்பட வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்", "மணிக்கு முடிவடைகிறது", "டைமர் ஆக்டிவ்", "நிமிடம்", "முடிவு மங்கல் செயலில்"),
+    "te" to SleepTimerCopy("సంగీతం ఎప్పుడు ఆగిపోవాలో ఎంచుకోండి", "వద్ద ముగుస్తుంది", "టైమర్ యాక్టివ్", "నిమి", "ఎండ్ ఫేడ్ యాక్టివ్"),
+    "mr" to SleepTimerCopy("संगीत कधी थांबले पाहिजे ते निवडा", "वाजता संपेल", "टाइमर सक्रिय", "मि", "समाप्त फिकट सक्रिय"),
+    "gu" to SleepTimerCopy("સંગીત ક્યારે બંધ થવું જોઈએ તે પસંદ કરો", "વાગ્યે સમાપ્ત થાય છે", "ટાઈમર સક્રિય", "મિનિટ", "સમાપ્ત ફેડ સક્રિય")
 )
 
 internal fun sleepTimerCopy(code: String): SleepTimerCopy = localizedValueOrEnglish(sleepTimerCopies, code)

@@ -9,7 +9,7 @@ import org.junit.Test
 class LyricsSyncLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, lyricsSyncLocalizationCodes())
         val english = lyricsSyncCopy("en")
         supported.forEach { code ->

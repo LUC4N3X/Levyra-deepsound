@@ -157,7 +157,8 @@ class MoodEngine {
             "zh" -> "🇨🇳"
             "ja" -> "🇯🇵"
             "ko" -> "🇰🇷"
-            "hi" -> "🇮🇳"
+            "hi", "ta", "te", "mr", "gu" -> "🇮🇳"
+            "ur" -> "🇵🇰"
             "id" -> "🇮🇩"
             "vi" -> "🇻🇳"
             "th" -> "🇹🇭"
@@ -329,6 +330,56 @@ class MoodEngine {
                 "drive" to ("נסיעה" to "מוזיקה לדרך"),
                 "sad" to ("מלנכוליה" to "רגשות שזורמים לאט")
             )
+            "ur" -> mapOf(
+                "hits" to ("Trending hits" to "اب سب سے زیادہ کھیلا جاتا ہے۔"),
+                "gym" to ("Gym" to "طاقت اور توانائی"),
+                "chill" to ("Chill" to "نرم اور پرسکون"),
+                "focus" to ("Focus" to "مطالعہ اور حراستی"),
+                "local" to ("Local" to "آپ کی زبان چنتی ہے۔"),
+                "party" to ("Party" to "اسے تبدیل کرو"),
+                "drive" to ("Driving" to "روڈ ٹرپ میوزک"),
+                "sad" to ("Melancholy" to "سست جذبات")
+            )
+            "ta" -> mapOf(
+                "hits" to ("Trending hits" to "இப்போது அதிகம் விளையாடியது"),
+                "gym" to ("Gym" to "சக்தி மற்றும் ஆற்றல்"),
+                "chill" to ("Chill" to "மென்மையான மற்றும் அமைதியான"),
+                "focus" to ("Focus" to "படிப்பு மற்றும் செறிவு"),
+                "local" to ("Local" to "உங்கள் மொழி தேர்வு"),
+                "party" to ("Party" to "அதை திருப்பவும்"),
+                "drive" to ("Driving" to "சாலை பயண இசை"),
+                "sad" to ("Melancholy" to "மெதுவான உணர்ச்சிகள்")
+            )
+            "te" -> mapOf(
+                "hits" to ("Trending hits" to "ఇప్పుడు ఎక్కువగా ఆడుతున్నారు"),
+                "gym" to ("Gym" to "శక్తి మరియు శక్తి"),
+                "chill" to ("Chill" to "మృదువైన మరియు ప్రశాంతత"),
+                "focus" to ("Focus" to "అధ్యయనం మరియు ఏకాగ్రత"),
+                "local" to ("Local" to "మీ భాష ఎంపికలు"),
+                "party" to ("Party" to "దాన్ని తిరగండి"),
+                "drive" to ("Driving" to "రోడ్ ట్రిప్ సంగీతం"),
+                "sad" to ("Melancholy" to "నెమ్మదిగా భావోద్వేగాలు")
+            )
+            "mr" -> mapOf(
+                "hits" to ("Trending hits" to "आता सर्वाधिक खेळले"),
+                "gym" to ("Gym" to "शक्ती आणि ऊर्जा"),
+                "chill" to ("Chill" to "मऊ आणि शांत"),
+                "focus" to ("Focus" to "अभ्यास आणि एकाग्रता"),
+                "local" to ("Local" to "तुमची भाषा निवडते"),
+                "party" to ("Party" to "ते चालू करा"),
+                "drive" to ("Driving" to "रोड ट्रिप संगीत"),
+                "sad" to ("Melancholy" to "मंद भावना")
+            )
+            "gu" -> mapOf(
+                "hits" to ("Trending hits" to "હવે સૌથી વધુ રમાય છે"),
+                "gym" to ("Gym" to "શક્તિ અને ઊર્જા"),
+                "chill" to ("Chill" to "નરમ અને શાંત"),
+                "focus" to ("Focus" to "અભ્યાસ અને એકાગ્રતા"),
+                "local" to ("Local" to "તમારી ભાષા પસંદ કરે છે"),
+                "party" to ("Party" to "તેને ચાલુ કરો"),
+                "drive" to ("Driving" to "માર્ગ સફર સંગીત"),
+                "sad" to ("Melancholy" to "ધીમી લાગણીઓ")
+            )
             else -> mapOf(
                 "hits" to ("Trending hits" to "most played now"),
                 "gym" to ("Gym" to "power and energy"),
@@ -385,6 +436,11 @@ class MoodEngine {
             "zh-Hant" -> mapOf("hits" to "熱門", "rap" to "饒舌與 Trap", "local" to "華語", "pop" to "流行", "gym" to "健身", "chill" to "放鬆", "focus" to "專注", "sad" to "憂鬱", "party" to "派對", "rock" to "搖滾", "electro" to "電子", "rnb" to "R&B")
             "ms" -> mapOf("hits" to "Hit", "rap" to "Rap & Trap", "local" to "Malaysia", "pop" to "Pop", "gym" to "Gim", "chill" to "Santai", "focus" to "Fokus", "sad" to "Sayu", "party" to "Parti", "rock" to "Rock", "electro" to "Elektronik", "rnb" to "R&B")
             "bn" -> mapOf("hits" to "হিট", "rap" to "র‍্যাপ ও ট্র্যাপ", "local" to "বাংলা", "pop" to "পপ", "gym" to "জিম", "chill" to "চিল", "focus" to "ফোকাস", "sad" to "বিষণ্ণ", "party" to "পার্টি", "rock" to "রক", "electro" to "ইলেকট্রনিক", "rnb" to "R&B")
+            "ur" -> mapOf("hits" to "ہٹ", "rap" to "ریپ اینڈ ٹریپ", "local" to "مقامی", "pop" to "پاپ", "gym" to "جم", "chill" to "سکون", "focus" to "فوکس", "sad" to "اداسی", "party" to "پارٹی", "rock" to "چٹان", "electro" to "الیکٹرانک", "rnb" to "آر اینڈ بی")
+            "ta" -> mapOf("hits" to "ஹிட்ஸ்", "rap" to "ராப் & ட்ராப்", "local" to "உள்ளூர்", "pop" to "பாப்", "gym" to "உடற்பயிற்சி கூடம்", "chill" to "நிதானம்", "focus" to "கவனம்", "sad" to "மனச்சோர்வு", "party" to "பார்ட்டி", "rock" to "பாறை", "electro" to "மின்னணு", "rnb" to "ஆர்&பி")
+            "te" -> mapOf("hits" to "హిట్స్", "rap" to "ర్యాప్ & ట్రాప్", "local" to "స్థానిక", "pop" to "పాప్", "gym" to "వ్యాయామశాల", "chill" to "ప్రశాంతం", "focus" to "దృష్టి పెట్టండి", "sad" to "ముచ్చట", "party" to "పార్టీ", "rock" to "రాక్", "electro" to "ఎలక్ట్రానిక్", "rnb" to "R&B")
+            "mr" -> mapOf("hits" to "हिट्स", "rap" to "रॅप आणि ट्रॅप", "local" to "स्थानिक", "pop" to "पॉप", "gym" to "जिम", "chill" to "निवांत", "focus" to "लक्ष केंद्रित करा", "sad" to "खिन्नता", "party" to "पार्टी", "rock" to "खडक", "electro" to "इलेक्ट्रॉनिक", "rnb" to "R&B")
+            "gu" -> mapOf("hits" to "હિટ", "rap" to "રેપ અને ટ્રેપ", "local" to "સ્થાનિક", "pop" to "પૉપ", "gym" to "જિમ", "chill" to "હળવાશ", "focus" to "ફોકસ કરો", "sad" to "ખિન્નતા", "party" to "પાર્ટી", "rock" to "રોક", "electro" to "ઈલેક્ટ્રોનિક", "rnb" to "આર એન્ડ બી")
             else -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Local", "pop" to "Pop", "gym" to "Gym", "chill" to "Chill", "focus" to "Focus", "sad" to "Melancholy", "party" to "Party", "rock" to "Rock", "electro" to "Electronic", "rnb" to "R&B")
         }
     }

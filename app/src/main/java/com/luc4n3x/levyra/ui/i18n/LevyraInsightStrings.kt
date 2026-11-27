@@ -44,7 +44,13 @@ private val insightBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to insightStrings("Preview ng artwork", "I-save ang artwork", "Na-save ang artwork", "Hindi na-save ang artwork", "Ang ritmo mo", "I-calibrate ang sync"),
     "he" to insightStrings("תצוגה מקדימה של העטיפה", "שמירת העטיפה", "העטיפה נשמרה", "לא ניתן לשמור את העטיפה", "הקצב שלך", "כיול סנכרון"),
     "fi" to insightStrings("Kansikuvan esikatselu", "Tallenna kansikuva", "Kansikuva tallennettu", "Kansikuvaa ei voitu tallentaa", "Rytmisi", "Kalibroi synkronointi"),
-    "et" to insightStrings("Kaanepildi eelvaade", "Salvesta kaanepilt", "Kaanepilt salvestatud", "Kaanepilti ei õnnestunud salvestada", "Sinu rütm", "Kalibreeri sünkroonimine")
+    "et" to insightStrings("Kaanepildi eelvaade", "Salvesta kaanepilt", "Kaanepilt salvestatud", "Kaanepilti ei õnnestunud salvestada", "Sinu rütm", "Kalibreeri sünkroonimine"),
+    "ur" to insightStrings("آرٹ ورک کا پیش نظارہ", "آرٹ ورک کو محفوظ کریں۔", "آرٹ ورک محفوظ ہو گیا۔", "آرٹ ورک کو محفوظ نہیں کیا جا سکا", "آپ کی تال", "مطابقت پذیری کیلیبریٹ کریں۔"),
+    "ta" to insightStrings("கலைப்படைப்பு முன்னோட்டம்", "கலைப்படைப்புகளை சேமிக்கவும்", "கலைப்படைப்பு சேமிக்கப்பட்டது", "கலைப்படைப்பைச் சேமிக்க முடியவில்லை", "உங்கள் தாளம்", "ஒத்திசைவை அளவீடு செய்யவும்"),
+    "te" to insightStrings("కళాకృతి పరిదృశ్యం", "కళాకృతిని సేవ్ చేయండి", "కళాకృతి సేవ్ చేయబడింది", "కళాకృతిని సేవ్ చేయడం సాధ్యపడలేదు", "మీ లయ", "సమకాలీకరణను క్రమాంకనం చేయండి"),
+    "mr" to insightStrings("कलाकृती पूर्वावलोकन", "कलाकृती जतन करा", "कलाकृती जतन केली", "कलाकृती जतन करू शकलो नाही", "तुझी लय", "समक्रमण कॅलिब्रेट करा"),
+    "gu" to insightStrings("આર્ટવર્ક પૂર્વાવલોકન", "આર્ટવર્ક સાચવો", "આર્ટવર્ક સાચવ્યું", "આર્ટવર્ક સાચવી શકાયું નથી", "તમારી લય", "સમન્વયન માપાંકિત કરો"),
+    "pt-BR" to insightStrings("Visualização da arte", "Salvar arte", "Arte salva", "Não foi possível salvar a arte", "Seu ritmo", "Calibrar sincronização")
 )
 
 internal fun insightLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(insightBundles, code)

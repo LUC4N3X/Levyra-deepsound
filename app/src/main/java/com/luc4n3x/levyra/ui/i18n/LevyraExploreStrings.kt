@@ -59,6 +59,12 @@ private val exploreBundles: Map<String, Map<String, String>> = mapOf(
     "nb" to explore("Stemninger og sjangre", "Stemninger", "Klipp", "Vertikale klipp fra videoene som er populære nå", "Klipp er ikke tilgjengelige akkurat nå. Prøv igjen om litt.", "Prøv igjen", "Afrobeats"),
     "ca" to explore("Estats d'ànim i gèneres", "Estats d'ànim", "Mostres", "Clips verticals dels vídeos del moment", "Les mostres no estan disponibles ara mateix. Torna-ho a provar d'aquí a poc.", "Torna-ho a provar", "Afrobeats"),
     "et" to explore("Meeleolud ja žanrid", "Meeleolud", "Näidised", "Vertikaalsed klipid hetke videotest", "Näidised pole praegu saadaval. Proovi varsti uuesti.", "Proovi uuesti", "Afrobeats"),
+    "ur" to explore("مزاج اور انواع", "مزاج", "نمونے", "اس لمحے کی ویڈیوز سے عمودی کلپس", "نمونے ابھی دستیاب نہیں ہیں۔ تھوڑی دیر میں دوبارہ کوشش کریں۔", "دوبارہ کوشش کریں۔", "افروبیٹس"),
+    "ta" to explore("மனநிலை மற்றும் வகைகள்", "மனநிலைகள்", "மாதிரிகள்", "இந்த தருணத்தின் வீடியோக்களிலிருந்து செங்குத்து கிளிப்புகள்", "மாதிரிகள் இப்போது கிடைக்கவில்லை. சிறிது நேரத்தில் மீண்டும் முயற்சிக்கவும்.", "மீண்டும் முயற்சிக்கவும்", "ஆஃப்ரோபீட்ஸ்"),
+    "te" to explore("మూడ్‌లు & శైలులు", "మనోభావాలు", "నమూనాలు", "క్షణం వీడియోల నుండి నిలువు క్లిప్‌లు", "ప్రస్తుతం నమూనాలు అందుబాటులో లేవు. కాసేపట్లో మళ్లీ ప్రయత్నించండి.", "మళ్లీ ప్రయత్నించండి", "ఆఫ్రోబీట్స్"),
+    "mr" to explore("मूड आणि शैली", "मूड्स", "नमुने", "क्षणाच्या व्हिडिओंमधून उभ्या क्लिप", "नमुने सध्या उपलब्ध नाहीत. थोड्या वेळाने पुन्हा प्रयत्न करा.", "पुन्हा प्रयत्न करा", "अफ्रोबीट्स"),
+    "gu" to explore("મૂડ અને શૈલીઓ", "મૂડ", "નમૂનાઓ", "ક્ષણના વીડિયોમાંથી વર્ટિકલ ક્લિપ્સ", "નમૂનાઓ અત્યારે ઉપલબ્ધ નથી. ટૂંક સમયમાં ફરી પ્રયાસ કરો.", "ફરી પ્રયાસ કરો", "આફ્રોબીટ્સ"),
+    "pt-BR" to explore("Humores e gêneros", "Humores", "Amostras", "Clipes verticais dos vídeos do momento", "As amostras não estão disponíveis no momento. Tente novamente em breve.", "Tentar novamente", "Afrobeats"),
 )
 
 internal fun exploreLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(exploreBundles, code)

@@ -503,7 +503,7 @@ fun stringsFor(
     )
 }
 
-private fun localizedSubscriberLabel(tag: String): String = when (tag.substringBefore('-').lowercase()) {
+private fun localizedSubscriberLabel(tag: String): String = when (LevyraLanguageCatalog.normalize(tag)) {
     "it" -> "iscritti"
     "es" -> "suscriptores"
     "fr" -> "abonnés"
@@ -518,6 +518,12 @@ private fun localizedSubscriberLabel(tag: String): String = when (tag.substringB
     "zh" -> "订阅者"
     "fi" -> "tilaajaa"
     "et" -> "tellijat"
+    "ur" -> "سبسکرائبرز"
+    "ta" -> "சந்தாதாரர்கள்"
+    "te" -> "చందాదారులు"
+    "mr" -> "सदस्य"
+    "gu" -> "સબ્સ્ક્રાઇબર્સ"
+    "pt-BR" -> "assinantes"
     else -> "subscribers"
 }
 
