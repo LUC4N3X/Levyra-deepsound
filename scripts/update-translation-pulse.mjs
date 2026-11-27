@@ -217,28 +217,28 @@ const scriptGroupFor = code => {
 const shortDisplayName = name => name.replace(/\s*\([^)]*\)/g, '')
 
 const getTheme = isDark => ({
-  hero: isDark ? '#FAF0E6' : '#FBF2EA',
-  heroBorder: isDark ? 'none' : '#EAD8CA',
-  ink: '#2C1523',
-  muted: '#614656',
-  accent: '#8A3260',
-  stampBg: '#E4CEFA',
-  stampInk: '#3A1B59',
-  footer: isDark ? '#A898A3' : '#6E5A68',
+  hero: isDark ? '#ECF3FF' : '#F2F7FF',
+  heroBorder: isDark ? 'none' : '#D0E0FA',
+  ink: '#161F33',
+  muted: '#4A5B7A',
+  accent: '#295498',
+  stampBg: '#C8DCFD',
+  stampInk: '#122B52',
+  footer: isDark ? '#8EA0BE' : '#536482',
   tiles: isDark
     ? [
-        { bg: '#F6D2E0', ink: '#5A2238', muted: '#75334D' },
-        { bg: '#CBEFE0', ink: '#144230', muted: '#235B44' },
-        { bg: '#E6D5FA', ink: '#3F225F', muted: '#57367C' },
-        { bg: '#FAD6C4', ink: '#562614', muted: '#753B24' },
-        { bg: '#FAE3B4', ink: '#4B3409', muted: '#694B14' }
+        { bg: '#D4E4FF', ink: '#132C54', muted: '#284778' },
+        { bg: '#C7EFE4', ink: '#103D31', muted: '#1F5748' },
+        { bg: '#E3D6FC', ink: '#311D5A', muted: '#4A337A' },
+        { bg: '#C5ECF8', ink: '#0F3B4B', muted: '#1E5568' },
+        { bg: '#F1D6EC', ink: '#4A1C43', muted: '#682E5F' }
       ]
     : [
-        { bg: '#FCE4EE', ink: '#5A2238', muted: '#75334D' },
-        { bg: '#DCF6EB', ink: '#144230', muted: '#235B44' },
-        { bg: '#F0E4FD', ink: '#3F225F', muted: '#57367C' },
-        { bg: '#FCE3D6', ink: '#562614', muted: '#753B24' },
-        { bg: '#FDF0CF', ink: '#4B3409', muted: '#694B14' }
+        { bg: '#E1ECFF', ink: '#132C54', muted: '#284778' },
+        { bg: '#D8F5EC', ink: '#103D31', muted: '#1F5748' },
+        { bg: '#EDE3FE', ink: '#311D5A', muted: '#4A337A' },
+        { bg: '#D7F3FC', ink: '#0F3B4B', muted: '#1E5568' },
+        { bg: '#F8E3F4', ink: '#4A1C43', muted: '#682E5F' }
       ]
 })
 

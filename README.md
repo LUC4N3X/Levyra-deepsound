@@ -137,16 +137,16 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-3">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-3">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-3">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-3">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-3" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-sky-1">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-sky-1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-sky-1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-sky-1">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-sky-1" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
   </picture>
 </div>
 
 <p align="center">
-  <a href="https://hosted.weblate.org/projects/levyra/android/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile-light.svg?v=m3-expressive-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile.svg?v=m3-expressive-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-weblate-light.svg?v=m3-expressive-2"><img src="docs/assets/levyra-weblate.svg?v=m3-expressive-2" width="242" height="48" alt="Help translate Levyra on Weblate"></picture></a>
+  <a href="https://hosted.weblate.org/projects/levyra/android/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile-light.svg?v=m3-sky-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile.svg?v=m3-sky-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-weblate-light.svg?v=m3-sky-1"><img src="docs/assets/levyra-weblate.svg?v=m3-sky-1" width="242" height="48" alt="Help translate Levyra on Weblate"></picture></a>
 </p>
 
 <p align="center">
@@ -173,16 +173,16 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <p>
   <a href="https://luc4n3x.pages.dev/"><picture>
-    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-m3-author-mobile-light.webp?v=1">
-    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-m3-author-mobile.webp?v=1">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-m3-author-light.webp?v=1">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-m3-author.webp?v=1">
-    <img src="docs/assets/levyra-m3-author.webp?v=1" width="660" alt="LUC4N3X, creator and maintainer of Levyra">
+    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-studio-author-mobile-light.webp?v=1">
+    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-studio-author-mobile.webp?v=1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-studio-author-light.webp?v=1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-studio-author.webp?v=1">
+    <img src="docs/assets/levyra-studio-author.webp?v=1" width="660" alt="LUC4N3X, creator and maintainer of Levyra">
   </picture></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile-light.svg?v=m3-creator-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile.svg?v=m3-creator-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-github-light.svg?v=m3-creator-2"><img src="docs/assets/levyra-author-github.svg?v=m3-creator-2" width="120" height="48" alt="LUC4N3X on GitHub"></picture></a><a href="https://luc4n3x.pages.dev/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile-light.svg?v=m3-creator-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile.svg?v=m3-creator-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-website-light.svg?v=m3-creator-2"><img src="docs/assets/levyra-author-website.svg?v=m3-creator-2" width="128" height="48" alt="LUC4N3X Website"></picture></a>
+  <a href="https://github.com/LUC4N3X"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile-light.svg?v=m3-sky-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile.svg?v=m3-sky-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-github-light.svg?v=m3-sky-1"><img src="docs/assets/levyra-author-github.svg?v=m3-sky-1" width="120" height="48" alt="LUC4N3X on GitHub"></picture></a><a href="https://luc4n3x.pages.dev/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile-light.svg?v=m3-sky-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile.svg?v=m3-sky-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-website-light.svg?v=m3-sky-1"><img src="docs/assets/levyra-author-website.svg?v=m3-sky-1" width="128" height="48" alt="LUC4N3X Website"></picture></a>
 </p>
 
 </div>

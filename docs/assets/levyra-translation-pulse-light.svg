@@ -3,45 +3,45 @@
   <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português (Portugal): 100%, Português (Brasil): 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; }
-    .eyebrow { fill: #8A3260; font-size: 12.5px; font-weight: 720; letter-spacing: 1.7px; }
-    .hero { fill: #2C1523; font-size: 88px; font-weight: 780; letter-spacing: -4.5px; }
-    .hero-label { fill: #2C1523; font-size: 25px; font-weight: 680; letter-spacing: -.5px; }
-    .meta { fill: #614656; font-size: 14.5px; font-weight: 540; }
-    .status { fill: #3A1B59; font-size: 17px; font-weight: 800; }
-    .status-sub { fill: #3A1B59; font-size: 9.5px; font-weight: 720; letter-spacing: .6px; opacity: .85; }
+    .eyebrow { fill: #295498; font-size: 12.5px; font-weight: 720; letter-spacing: 1.7px; }
+    .hero { fill: #161F33; font-size: 88px; font-weight: 780; letter-spacing: -4.5px; }
+    .hero-label { fill: #161F33; font-size: 25px; font-weight: 680; letter-spacing: -.5px; }
+    .meta { fill: #4A5B7A; font-size: 14.5px; font-weight: 540; }
+    .status { fill: #122B52; font-size: 17px; font-weight: 800; }
+    .status-sub { fill: #122B52; font-size: 9.5px; font-weight: 720; letter-spacing: .6px; opacity: .85; }
     .tile-label { font-size: 15px; font-weight: 760; letter-spacing: .45px; }
     .tile-count { font-size: 31px; font-weight: 800; }
     .tile-examples { font-size: 12.6px; font-weight: 550; }
-    .footer { fill: #6E5A68; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
+    .footer { fill: #536482; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <path d="M 80.00 16.00 H 246.00 A 96 96 0 0 1 342.00 112.00 V 284.00 A 64 64 0 0 1 278.00 348.00 H 112.00 A 96 96 0 0 1 16.00 252.00 V 80.00 A 64 64 0 0 1 80.00 16.00 Z" fill="#FBF2EA" stroke="#EAD8CA" stroke-width="1"/>
+  <path d="M 80.00 16.00 H 246.00 A 96 96 0 0 1 342.00 112.00 V 284.00 A 64 64 0 0 1 278.00 348.00 H 112.00 A 96 96 0 0 1 16.00 252.00 V 80.00 A 64 64 0 0 1 80.00 16.00 Z" fill="#F2F7FF" stroke="#D0E0FA" stroke-width="1"/>
   <text x="54" y="68" class="eyebrow">LOCAL EVERYWHERE</text>
   <text x="50" y="170" class="hero">42</text>
   <text x="54" y="206" class="hero-label">languages</text>
   <text x="54" y="242" class="meta">Five writing systems</text>
   <text x="54" y="264" class="meta">1,271+ app strings</text>
-  <path d="M 253.13 231.43 A 11.22 11.22 0 0 1 274.87 231.43 A 11.22 11.22 0 0 1 293.70 242.30 A 11.22 11.22 0 0 1 304.57 261.13 A 11.22 11.22 0 0 1 304.57 282.87 A 11.22 11.22 0 0 1 293.70 301.70 A 11.22 11.22 0 0 1 274.87 312.57 A 11.22 11.22 0 0 1 253.13 312.57 A 11.22 11.22 0 0 1 234.30 301.70 A 11.22 11.22 0 0 1 223.43 282.87 A 11.22 11.22 0 0 1 223.43 261.13 A 11.22 11.22 0 0 1 234.30 242.30 A 11.22 11.22 0 0 1 253.13 231.43 Z" fill="#E4CEFA"/>
+  <path d="M 253.13 231.43 A 11.22 11.22 0 0 1 274.87 231.43 A 11.22 11.22 0 0 1 293.70 242.30 A 11.22 11.22 0 0 1 304.57 261.13 A 11.22 11.22 0 0 1 304.57 282.87 A 11.22 11.22 0 0 1 293.70 301.70 A 11.22 11.22 0 0 1 274.87 312.57 A 11.22 11.22 0 0 1 253.13 312.57 A 11.22 11.22 0 0 1 234.30 301.70 A 11.22 11.22 0 0 1 223.43 282.87 A 11.22 11.22 0 0 1 223.43 261.13 A 11.22 11.22 0 0 1 234.30 242.30 A 11.22 11.22 0 0 1 253.13 231.43 Z" fill="#C8DCFD"/>
   <text x="264" y="269" text-anchor="middle" class="status">100%</text>
   <text x="264" y="285" text-anchor="middle" class="status-sub">COMPLETE</text>
-  <path d="M 408.00 16.00 H 1032.00 A 52 52 0 0 1 1084.00 68.00 V 68.00 A 52 52 0 0 1 1032.00 120.00 H 390.00 A 34 34 0 0 1 356.00 86.00 V 68.00 A 52 52 0 0 1 408.00 16.00 Z" fill="#FCE4EE"/>
-  <text x="390" y="58" fill="#5A2238" class="tile-label">LATIN</text>
-  <text x="1050" y="62" text-anchor="end" fill="#5A2238" class="tile-count">26</text>
-  <text x="390" y="89" fill="#75334D" class="tile-examples">English · Italiano · Español · Français · Deutsch · Português</text>
-  <path d="M 390.00 132.00 H 733.00 A 51 51 0 0 1 784.00 183.00 V 200.00 A 34 34 0 0 1 750.00 234.00 H 407.00 A 51 51 0 0 1 356.00 183.00 V 166.00 A 34 34 0 0 1 390.00 132.00 Z" fill="#DCF6EB"/>
-  <text x="390" y="174" fill="#144230" class="tile-label">CYRILLIC + GREEK</text>
-  <text x="750" y="178" text-anchor="end" fill="#144230" class="tile-count">6</text>
-  <text x="390" y="205" fill="#235B44" class="tile-examples">Ελληνικά · Српски · Български · Українська · Русский</text>
-  <path d="M 847.00 132.00 H 1033.00 A 51 51 0 0 1 1084.00 183.00 V 183.00 A 51 51 0 0 1 1033.00 234.00 H 847.00 A 51 51 0 0 1 796.00 183.00 V 183.00 A 51 51 0 0 1 847.00 132.00 Z" fill="#F0E4FD"/>
-  <text x="830" y="174" fill="#3F225F" class="tile-label">CJK</text>
-  <text x="1050" y="178" text-anchor="end" fill="#3F225F" class="tile-count">4</text>
-  <text x="830" y="205" fill="#57367C" class="tile-examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
-  <path d="M 407.00 246.00 H 637.00 A 51 51 0 0 1 688.00 297.00 V 297.00 A 51 51 0 0 1 637.00 348.00 H 407.00 A 51 51 0 0 1 356.00 297.00 V 297.00 A 51 51 0 0 1 407.00 246.00 Z" fill="#FCE3D6"/>
-  <text x="390" y="288" fill="#562614" class="tile-label">ARABIC + HEBREW</text>
-  <text x="654" y="292" text-anchor="end" fill="#562614" class="tile-count">3</text>
-  <text x="390" y="319" fill="#753B24" class="tile-examples">العربية · فارسی · עברית</text>
-  <path d="M 734.00 246.00 H 1033.00 A 51 51 0 0 1 1084.00 297.00 V 297.00 A 51 51 0 0 1 1033.00 348.00 H 734.00 A 34 34 0 0 1 700.00 314.00 V 280.00 A 34 34 0 0 1 734.00 246.00 Z" fill="#FDF0CF"/>
-  <text x="734" y="288" fill="#4B3409" class="tile-label">INDIC + THAI</text>
-  <text x="1050" y="292" text-anchor="end" fill="#4B3409" class="tile-count">3</text>
-  <text x="734" y="319" fill="#694B14" class="tile-examples">हिन्दी · বাংলা · ไทย</text>
+  <path d="M 408.00 16.00 H 1032.00 A 52 52 0 0 1 1084.00 68.00 V 68.00 A 52 52 0 0 1 1032.00 120.00 H 390.00 A 34 34 0 0 1 356.00 86.00 V 68.00 A 52 52 0 0 1 408.00 16.00 Z" fill="#E1ECFF"/>
+  <text x="390" y="58" fill="#132C54" class="tile-label">LATIN</text>
+  <text x="1050" y="62" text-anchor="end" fill="#132C54" class="tile-count">26</text>
+  <text x="390" y="89" fill="#284778" class="tile-examples">English · Italiano · Español · Français · Deutsch · Português</text>
+  <path d="M 390.00 132.00 H 733.00 A 51 51 0 0 1 784.00 183.00 V 200.00 A 34 34 0 0 1 750.00 234.00 H 407.00 A 51 51 0 0 1 356.00 183.00 V 166.00 A 34 34 0 0 1 390.00 132.00 Z" fill="#D8F5EC"/>
+  <text x="390" y="174" fill="#103D31" class="tile-label">CYRILLIC + GREEK</text>
+  <text x="750" y="178" text-anchor="end" fill="#103D31" class="tile-count">6</text>
+  <text x="390" y="205" fill="#1F5748" class="tile-examples">Ελληνικά · Српски · Български · Українська · Русский</text>
+  <path d="M 847.00 132.00 H 1033.00 A 51 51 0 0 1 1084.00 183.00 V 183.00 A 51 51 0 0 1 1033.00 234.00 H 847.00 A 51 51 0 0 1 796.00 183.00 V 183.00 A 51 51 0 0 1 847.00 132.00 Z" fill="#EDE3FE"/>
+  <text x="830" y="174" fill="#311D5A" class="tile-label">CJK</text>
+  <text x="1050" y="178" text-anchor="end" fill="#311D5A" class="tile-count">4</text>
+  <text x="830" y="205" fill="#4A337A" class="tile-examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
+  <path d="M 407.00 246.00 H 637.00 A 51 51 0 0 1 688.00 297.00 V 297.00 A 51 51 0 0 1 637.00 348.00 H 407.00 A 51 51 0 0 1 356.00 297.00 V 297.00 A 51 51 0 0 1 407.00 246.00 Z" fill="#D7F3FC"/>
+  <text x="390" y="288" fill="#0F3B4B" class="tile-label">ARABIC + HEBREW</text>
+  <text x="654" y="292" text-anchor="end" fill="#0F3B4B" class="tile-count">3</text>
+  <text x="390" y="319" fill="#1E5568" class="tile-examples">العربية · فارسی · עברית</text>
+  <path d="M 734.00 246.00 H 1033.00 A 51 51 0 0 1 1084.00 297.00 V 297.00 A 51 51 0 0 1 1033.00 348.00 H 734.00 A 34 34 0 0 1 700.00 314.00 V 280.00 A 34 34 0 0 1 734.00 246.00 Z" fill="#F8E3F4"/>
+  <text x="734" y="288" fill="#4A1C43" class="tile-label">INDIC + THAI</text>
+  <text x="1050" y="292" text-anchor="end" fill="#4A1C43" class="tile-count">3</text>
+  <text x="734" y="319" fill="#682E5F" class="tile-examples">हिन्दी · বাংলা · ไทย</text>
   <text x="720" y="373" text-anchor="middle" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>

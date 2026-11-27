@@ -114,14 +114,15 @@ const brandIcons = {
   `,
 };
 
-// Delicate, airy Material 3 Expressive pastel palettes (zero cold blue)
+// Header store buttons keep existing colors; Weblate + Author buttons match Pearl-Sky showcase
 const storePalettes = {
   github: { dark: ['#FAD6C4', '#562614'], light: ['#FCE3D6', '#562614'] },
   fdroid: { dark: ['#C5ECF8', '#103B4B'], light: ['#D8F3FC', '#103B4B'] },
   openapk: { dark: ['#C9F0DC', '#133F2B'], light: ['#DCF7E9', '#133F2B'] },
   obtainium: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
-  weblate: { dark: ['#CBEFE0', '#144230'], light: ['#DCF6EB', '#144230'] },
-  website: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
+  weblate: { dark: ['#D2E3FF', '#132C54'], light: ['#E0ECFF', '#132C54'] },
+  authorGithub: { dark: ['#D2E3FF', '#132C54'], light: ['#E0ECFF', '#132C54'] },
+  website: { dark: ['#E3D6FC', '#311D5A'], light: ['#ECE3FE', '#311D5A'] },
 };
 
 const WEBLATE_ROSETTE = scallopPath(28, 24, 15, 18.4, 10);
@@ -144,7 +145,7 @@ function makeWeblateButton({ mobile = false, light = false }) {
 `;
 }
 
-function makeExpressiveStoreButton({ key, title, label, vw, mw, padLeft, padRight, corners, mobile = false, light = false }) {
+function makeExpressiveStoreButton({ key, iconKey = key, title, label, vw, mw, padLeft, padRight, corners, mobile = false, light = false }) {
   const [bg, fg] = storePalettes[key][light ? 'light' : 'dark'];
   const w = mobile ? mw : vw;
   const h = mobile ? 43 : 48;
@@ -156,7 +157,7 @@ function makeExpressiveStoreButton({ key, title, label, vw, mw, padLeft, padRigh
   <title>${escapeXml(title)}</title>
   <path d="${body}" fill="${bg}"/>
   <g transform="translate(${iconCx} 24)" style="color:${fg}">
-    ${brandIcons[key].trim()}
+    ${brandIcons[iconKey].trim()}
   </g>
   <text x="${textX}" y="29.3" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="15" font-weight="600" letter-spacing="0.05">${escapeXml(label)}</text>
 </svg>
@@ -223,7 +224,7 @@ for (const light of [false, true]) {
       ),
       writeFile(
         resolve(assetsDir, `levyra-author-github${suffix}`),
-        makeExpressiveStoreButton({ key: 'github', title: 'LUC4N3X on GitHub', label: 'GitHub', vw: 120, mw: 109, padLeft: 0, padRight: 1.5, corners: [24, 9, 9, 24], mobile, light }),
+        makeExpressiveStoreButton({ key: 'authorGithub', iconKey: 'github', title: 'LUC4N3X on GitHub', label: 'GitHub', vw: 120, mw: 109, padLeft: 0, padRight: 1.5, corners: [24, 9, 9, 24], mobile, light }),
         'utf8',
       ),
       writeFile(

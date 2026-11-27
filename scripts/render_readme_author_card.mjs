@@ -62,6 +62,16 @@ function scallopPath(cx, cy, rValley, rPeak, lobes = 12) {
   return parts.join(' ');
 }
 
+function flowerWatermark(cx, cy, r, petals = 10, amp = 0.10) {
+  const points = [];
+  for (let i = 0; i < 160; i += 1) {
+    const a = (i / 160) * Math.PI * 2;
+    const rad = r * (1 + amp * Math.cos(petals * a));
+    points.push(`${(cx + rad * Math.cos(a)).toFixed(1)},${(cy + rad * Math.sin(a)).toFixed(1)}`);
+  }
+  return `M ${points[0]} L ${points.slice(1).join(' L ')} Z`;
+}
+
 async function renderTextLine(content, ptSize, color, fontfile, family, letterSpacingPt = 0) {
   const ls = letterSpacingPt ? ` letter_spacing="${Math.round(letterSpacingPt * 1024)}"` : '';
   const safe = content.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -78,19 +88,22 @@ async function renderTextLine(content, ptSize, color, fontfile, family, letterSp
 
 function palette(light) {
   return {
-    surface: light ? '#F8E7F1' : '#F5E1EC',
-    border: light ? '#E6C8DA' : 'none',
-    glowA: '#E2C6FA',
-    glowB: '#FDE0CA',
-    ink: '#2C1322',
-    muted: '#533246',
-    chipBg: '#E3CCFA',
-    chipInk: '#3A1B59',
-    seg1Bg: '#C6EEDE',
-    seg1Ink: '#123D2B',
-    seg2Bg: '#FAE0AE',
-    seg2Ink: '#4A3308',
-    frameStroke: '#2C1322',
+    gradStart: light ? '#FAFDFE' : '#F6FAFF',
+    gradMid: light ? '#EDF4FF' : '#E8F0FF',
+    gradEnd: light ? '#D9E7FF' : '#D2E2FF',
+    border: light ? '#CBDDFB' : 'none',
+    glowA: '#B8D2FF',
+    glowB: '#DDD4FE',
+    flowerFill: '#DCE9FF',
+    ink: '#161F33',
+    muted: '#465776',
+    chipBg: '#CFE0FF',
+    chipInk: '#132C54',
+    seg1Bg: '#C4EEE2',
+    seg1Ink: '#103D31',
+    seg2Bg: '#E1D4FC',
+    seg2Ink: '#311D5A',
+    frameStroke: '#161F33',
     frameOpacity: '0.10',
   };
 }
@@ -169,6 +182,7 @@ async function renderDesktopCard(rawPhoto, light) {
   const chipY = 82;
   const chipPath = roundedCornersPath(textX, chipY, chipW, chipH, [29, 14, 29, 14]);
   const chipRosette = scallopPath(textX + 32, chipY + chipH / 2, 15, 18.8, 12);
+  const watermark = flowerWatermark(1190, 120, 165, 10, 0.10);
 
   const badges = await buildConnectedBadges(pal, textX, 514);
   const borderMarkup = pal.border === 'none'
@@ -178,19 +192,25 @@ async function renderDesktopCard(rawPhoto, light) {
   const bgSvg = svg(`
     <defs>
       <clipPath id="cardClip"><path d="${cardPath}"/></clipPath>
+      <linearGradient id="baseSky" x1="0" y1="0.1" x2="1" y2="0.95">
+        <stop offset="0%" stop-color="${pal.gradStart}"/>
+        <stop offset="56%" stop-color="${pal.gradMid}"/>
+        <stop offset="100%" stop-color="${pal.gradEnd}"/>
+      </linearGradient>
       <radialGradient id="gA" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="${pal.glowA}" stop-opacity=".55"/>
+        <stop offset="0%" stop-color="${pal.glowA}" stop-opacity=".42"/>
         <stop offset="100%" stop-color="${pal.glowA}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="gB" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="${pal.glowB}" stop-opacity=".50"/>
+        <stop offset="0%" stop-color="${pal.glowB}" stop-opacity=".38"/>
         <stop offset="100%" stop-color="${pal.glowB}" stop-opacity="0"/>
       </radialGradient>
     </defs>
-    <path d="${cardPath}" fill="${pal.surface}"/>
+    <path d="${cardPath}" fill="url(#baseSky)"/>
     <g clip-path="url(#cardClip)">
       <ellipse cx="340" cy="330" rx="440" ry="380" fill="url(#gA)"/>
-      <ellipse cx="1110" cy="130" rx="350" ry="270" fill="url(#gB)"/>
+      <ellipse cx="1110" cy="140" rx="350" ry="270" fill="url(#gB)"/>
+      <path d="${watermark}" fill="${pal.flowerFill}" fill-opacity=".55"/>
     </g>
     ${borderMarkup}
     <path d="${chipPath}" fill="${pal.chipBg}"/>
@@ -240,12 +260,17 @@ async function renderMobileCard(rawPhoto, light) {
   const bgSvg = svg(`
     <defs>
       <clipPath id="cardClip"><path d="${cardPath}"/></clipPath>
+      <linearGradient id="baseSky" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${pal.gradStart}"/>
+        <stop offset="56%" stop-color="${pal.gradMid}"/>
+        <stop offset="100%" stop-color="${pal.gradEnd}"/>
+      </linearGradient>
       <radialGradient id="gA" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="${pal.glowA}" stop-opacity=".55"/>
+        <stop offset="0%" stop-color="${pal.glowA}" stop-opacity=".42"/>
         <stop offset="100%" stop-color="${pal.glowA}" stop-opacity="0"/>
       </radialGradient>
     </defs>
-    <path d="${cardPath}" fill="${pal.surface}"/>
+    <path d="${cardPath}" fill="url(#baseSky)"/>
     <g clip-path="url(#cardClip)">
       <ellipse cx="${W / 2}" cy="440" rx="480" ry="420" fill="url(#gA)"/>
     </g>
@@ -288,10 +313,10 @@ const [darkDesk, lightDesk, darkMob, lightMob] = await Promise.all([
 ]);
 
 await Promise.all([
-  sharp(darkDesk).toFile(resolve(output, 'levyra-m3-author.webp')),
-  sharp(lightDesk).toFile(resolve(output, 'levyra-m3-author-light.webp')),
-  sharp(darkMob).toFile(resolve(output, 'levyra-m3-author-mobile.webp')),
-  sharp(lightMob).toFile(resolve(output, 'levyra-m3-author-mobile-light.webp')),
+  sharp(darkDesk).toFile(resolve(output, 'levyra-studio-author.webp')),
+  sharp(lightDesk).toFile(resolve(output, 'levyra-studio-author-light.webp')),
+  sharp(darkMob).toFile(resolve(output, 'levyra-studio-author-mobile.webp')),
+  sharp(lightMob).toFile(resolve(output, 'levyra-studio-author-mobile-light.webp')),
 ]);
 
-console.log('Rendered levyra-m3-author (pastel M3 Expressive, desktop/mobile, dark/light).');
+console.log('Rendered levyra-studio-author (Pearl-Sky Studio M3 Expressive, desktop/mobile, dark/light).');

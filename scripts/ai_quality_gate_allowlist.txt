@@ -70,10 +70,10 @@ docs/assets/levyra-github-banner-light.webp
 docs/assets/levyra-banner-ai-cinematic.png
 docs/assets/levyra-signature.png
 docs/assets/levyra-signature.webp
-docs/assets/levyra-m3-author.webp
-docs/assets/levyra-m3-author-light.webp
-docs/assets/levyra-m3-author-mobile.webp
-docs/assets/levyra-m3-author-mobile-light.webp
+docs/assets/levyra-studio-author.webp
+docs/assets/levyra-studio-author-light.webp
+docs/assets/levyra-studio-author-mobile.webp
+docs/assets/levyra-studio-author-mobile-light.webp
 docs/assets/showcase/00_levyra_hero_wall_player.webp
 docs/assets/showcase/00_levyra_hero_dance_studio.webp
 docs/assets/showcase/levyra_street_banner_2160x810.webp
