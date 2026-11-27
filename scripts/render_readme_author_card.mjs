@@ -84,9 +84,14 @@ function palette(light) {
         glowA: '#E8CEF8',
         glowB: '#FCE0C8',
         ink: '#2B1624',
-        muted: '#5E4455',
+        muted: '#5B4052',
+        divider: '#DEC0D2',
         chipBg: '#FAE3B4',
         chipInk: '#4B3409',
+        tagBg: '#EFE0EA',
+        tagBorder: '#DFC5D6',
+        tagInk: '#4A2D41',
+        tagDot: '#9B3E70',
         frameStroke: '#2B1624',
         frameOpacity: '0.11',
       }
@@ -96,9 +101,14 @@ function palette(light) {
         glowA: '#A855F7',
         glowB: '#F59E0B',
         ink: '#FBF2F7',
-        muted: '#DCCBD7',
+        muted: '#DECED9',
+        divider: '#463144',
         chipBg: '#F6D2E0',
         chipInk: '#5A2238',
+        tagBg: '#392838',
+        tagBorder: '#523A50',
+        tagInk: '#F4E5EF',
+        tagDot: '#F6B8D6',
         frameStroke: '#FFFFFF',
         frameOpacity: '0.18',
       };
@@ -120,17 +130,51 @@ async function preparePortrait(rawPhoto, size, radius, pal) {
   return sharp(clipped).composite([{ input: rim }]).png().toBuffer();
 }
 
+async function buildTagPills(pal, startX, y, centeredWidth = 0) {
+  const items = [
+    { label: 'Kotlin', corners: [26, 10, 26, 10] },
+    { label: 'Compose', corners: [26, 26, 26, 26] },
+    { label: 'GPL-3.0', corners: [10, 26, 10, 26] },
+  ];
+  const h = 52;
+  const gap = 10;
+  const rendered = await Promise.all(
+    items.map(it => renderTextLine(it.label, 16.5, pal.tagInk, outfitMedium, 'Outfit Medium', 0.2)),
+  );
+  const widths = rendered.map(r => r.info.width + 54);
+  const totalW = widths.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+  let curX = centeredWidth > 0 ? Math.round((centeredWidth - totalW) / 2) : startX;
+
+  const svgPaths = [];
+  const composites = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const w = widths[i];
+    const d = roundedCornersPath(curX, y, w, h, items[i].corners);
+    svgPaths.push(`<path d="${d}" fill="${pal.tagBg}" stroke="${pal.tagBorder}" stroke-width="1.5"/>`);
+    svgPaths.push(`<circle cx="${curX + 21}" cy="${y + h / 2}" r="4.5" fill="${pal.tagDot}"/>`);
+    composites.push({
+      input: rendered[i].data,
+      left: curX + 34,
+      top: Math.round(y + h / 2 - rendered[i].info.height / 2),
+    });
+    curX += w + gap;
+  }
+  return { svgMarkup: svgPaths.join('\n'), composites };
+}
+
 async function renderDesktopCard(rawPhoto, light) {
-  const W = 1620;
-  const H = 820;
+  const W = 1360;
+  const H = 664;
   const pal = palette(light);
-  const cardPath = roundedCornersPath(4, 4, W - 8, H - 8, [84, 54, 84, 54]);
-  const textX = 844;
-  const chipW = 368;
-  const chipH = 58;
-  const chipY = 232;
-  const chipPath = roundedCornersPath(textX, chipY, chipW, chipH, [29, 14, 29, 14]);
-  const chipRosette = scallopPath(textX + 32, chipY + chipH / 2, 15, 18.8, 10);
+  const cardPath = roundedCornersPath(4, 4, W - 8, H - 8, [72, 46, 72, 46]);
+  const textX = 684;
+  const chipW = 342;
+  const chipH = 54;
+  const chipY = 86;
+  const chipPath = roundedCornersPath(textX, chipY, chipW, chipH, [27, 13, 27, 13]);
+  const chipRosette = scallopPath(textX + 30, chipY + chipH / 2, 14, 17.5, 10);
+
+  const tags = await buildTagPills(pal, textX, 514);
 
   const bgSvg = svg(`
     <defs>
@@ -146,46 +190,51 @@ async function renderDesktopCard(rawPhoto, light) {
     </defs>
     <path d="${cardPath}" fill="${pal.surface}"/>
     <g clip-path="url(#cardClip)">
-      <ellipse cx="410" cy="410" rx="520" ry="440" fill="url(#gA)"/>
-      <ellipse cx="1360" cy="180" rx="420" ry="300" fill="url(#gB)"/>
+      <ellipse cx="332" cy="332" rx="440" ry="380" fill="url(#gA)"/>
+      <ellipse cx="1160" cy="140" rx="360" ry="260" fill="url(#gB)"/>
     </g>
     <path d="${cardPath}" fill="none" stroke="${pal.border}" stroke-width="2.5"/>
     <path d="${chipPath}" fill="${pal.chipBg}"/>
     <path d="${chipRosette}" fill="${pal.chipInk}" fill-opacity=".12"/>
-    <path d="M${textX + 32} ${chipY + chipH / 2 - 10} l2.5 5.6 5.8 0.6 -4.4 4 1.3 5.7 -5.2 -3 -5.2 3 1.3 -5.7 -4.4 -4 5.8 -0.6 Z" fill="${pal.chipInk}"/>
+    <path d="M${textX + 30} ${chipY + chipH / 2 - 9.5} l2.3 5.2 5.4 0.6 -4.1 3.7 1.2 5.3 -4.8 -2.8 -4.8 2.8 1.2 -5.3 -4.1 -3.7 5.4 -0.6 Z" fill="${pal.chipInk}"/>
+    <line x1="${textX}" y1="276" x2="${W - 56}" y2="276" stroke="${pal.divider}" stroke-width="2"/>
+    ${tags.svgMarkup}
   `, W, H);
 
-  const portrait = await preparePortrait(rawPhoto, 740, 44, pal);
-  const chipLabel = await renderTextLine('CREATOR & MAINTAINER', 17.5, pal.chipInk, outfitBold, 'Outfit SemiBold', 1.15);
-  const nameLine = await renderTextLine('LUC4N3X', 64, pal.ink, outfitBold, 'Outfit SemiBold', -0.8);
-  const bio1 = await renderTextLine('I built Levyra and still maintain the Android,', 25, pal.muted, outfitRegular, 'Outfit', 0);
-  const bio2 = await renderTextLine('Windows and Linux apps. I review contributions,', 25, pal.muted, outfitRegular, 'Outfit', 0);
-  const bio3 = await renderTextLine('fix bugs and handle releases.', 25, pal.muted, outfitRegular, 'Outfit', 0);
+  const portrait = await preparePortrait(rawPhoto, 600, 40, pal);
+  const chipLabel = await renderTextLine('CREATOR & MAINTAINER', 16, pal.chipInk, outfitBold, 'Outfit SemiBold', 1.05);
+  const nameLine = await renderTextLine('LUC4N3X', 58, pal.ink, outfitBold, 'Outfit SemiBold', -0.7);
+  const bio1 = await renderTextLine('I built Levyra and still maintain the Android,', 21.5, pal.muted, outfitRegular, 'Outfit', 0);
+  const bio2 = await renderTextLine('Windows and Linux apps. I review contributions,', 21.5, pal.muted, outfitRegular, 'Outfit', 0);
+  const bio3 = await renderTextLine('fix bugs and handle releases.', 21.5, pal.muted, outfitRegular, 'Outfit', 0);
 
   return sharp(bgSvg)
     .composite([
-      { input: portrait, left: 40, top: 40 },
-      { input: chipLabel.data, left: textX + 60, top: Math.round(chipY + chipH / 2 - chipLabel.info.height / 2) },
-      { input: nameLine.data, left: textX, top: 320 },
-      { input: bio1.data, left: textX, top: 442 },
-      { input: bio2.data, left: textX, top: 492 },
-      { input: bio3.data, left: textX, top: 542 },
+      { input: portrait, left: 32, top: 32 },
+      { input: chipLabel.data, left: textX + 56, top: Math.round(chipY + chipH / 2 - chipLabel.info.height / 2) },
+      { input: nameLine.data, left: textX, top: 164 },
+      { input: bio1.data, left: textX, top: 308 },
+      { input: bio2.data, left: textX, top: 354 },
+      { input: bio3.data, left: textX, top: 400 },
+      ...tags.composites,
     ])
     .webp({ quality: 95, smartSubsample: false, effort: 5 })
     .toBuffer();
 }
 
 async function renderMobileCard(rawPhoto, light) {
-  const W = 960;
-  const H = 1328;
+  const W = 920;
+  const H = 1364;
   const pal = palette(light);
-  const cardPath = roundedCornersPath(4, 4, W - 8, H - 8, [76, 76, 48, 48]);
-  const chipW = 368;
-  const chipH = 58;
+  const cardPath = roundedCornersPath(4, 4, W - 8, H - 8, [72, 72, 46, 46]);
+  const chipW = 348;
+  const chipH = 54;
   const chipX = Math.round((W - chipW) / 2);
-  const chipY = 924;
-  const chipPath = roundedCornersPath(chipX, chipY, chipW, chipH, [29, 14, 29, 14]);
-  const chipRosette = scallopPath(chipX + 32, chipY + chipH / 2, 15, 18.8, 10);
+  const chipY = 898;
+  const chipPath = roundedCornersPath(chipX, chipY, chipW, chipH, [27, 13, 27, 13]);
+  const chipRosette = scallopPath(chipX + 30, chipY + chipH / 2, 14, 17.5, 10);
+
+  const tags = await buildTagPills(pal, 0, 1252, W);
 
   const bgSvg = svg(`
     <defs>
@@ -197,29 +246,31 @@ async function renderMobileCard(rawPhoto, light) {
     </defs>
     <path d="${cardPath}" fill="${pal.surface}"/>
     <g clip-path="url(#cardClip)">
-      <ellipse cx="${W / 2}" cy="460" rx="500" ry="440" fill="url(#gA)"/>
+      <ellipse cx="${W / 2}" cy="440" rx="480" ry="420" fill="url(#gA)"/>
     </g>
     <path d="${cardPath}" fill="none" stroke="${pal.border}" stroke-width="2.5"/>
     <path d="${chipPath}" fill="${pal.chipBg}"/>
     <path d="${chipRosette}" fill="${pal.chipInk}" fill-opacity=".12"/>
-    <path d="M${chipX + 32} ${chipY + chipH / 2 - 10} l2.5 5.6 5.8 0.6 -4.4 4 1.3 5.7 -5.2 -3 -5.2 3 1.3 -5.7 -4.4 -4 5.8 -0.6 Z" fill="${pal.chipInk}"/>
+    <path d="M${chipX + 30} ${chipY + chipH / 2 - 9.5} l2.3 5.2 5.4 0.6 -4.1 3.7 1.2 5.3 -4.8 -2.8 -4.8 2.8 1.2 -5.3 -4.1 -3.7 5.4 -0.6 Z" fill="${pal.chipInk}"/>
+    ${tags.svgMarkup}
   `, W, H);
 
-  const portrait = await preparePortrait(rawPhoto, 832, 46, pal);
-  const chipLabel = await renderTextLine('CREATOR & MAINTAINER', 17.5, pal.chipInk, outfitBold, 'Outfit SemiBold', 1.15);
-  const nameLine = await renderTextLine('LUC4N3X', 58, pal.ink, outfitBold, 'Outfit SemiBold', -0.7);
-  const bio1 = await renderTextLine('I built Levyra and still maintain the Android,', 24.5, pal.muted, outfitRegular, 'Outfit', 0);
-  const bio2 = await renderTextLine('Windows and Linux apps. I review contributions,', 24.5, pal.muted, outfitRegular, 'Outfit', 0);
-  const bio3 = await renderTextLine('fix bugs and handle releases.', 24.5, pal.muted, outfitRegular, 'Outfit', 0);
+  const portrait = await preparePortrait(rawPhoto, 808, 44, pal);
+  const chipLabel = await renderTextLine('CREATOR & MAINTAINER', 16, pal.chipInk, outfitBold, 'Outfit SemiBold', 1.05);
+  const nameLine = await renderTextLine('LUC4N3X', 56, pal.ink, outfitBold, 'Outfit SemiBold', -0.7);
+  const bio1 = await renderTextLine('I built Levyra and still maintain the Android,', 23.5, pal.muted, outfitRegular, 'Outfit', 0);
+  const bio2 = await renderTextLine('Windows and Linux apps. I review contributions,', 23.5, pal.muted, outfitRegular, 'Outfit', 0);
+  const bio3 = await renderTextLine('fix bugs and handle releases.', 23.5, pal.muted, outfitRegular, 'Outfit', 0);
 
   return sharp(bgSvg)
     .composite([
-      { input: portrait, left: 64, top: 52 },
-      { input: chipLabel.data, left: chipX + 60, top: Math.round(chipY + chipH / 2 - chipLabel.info.height / 2) },
-      { input: nameLine.data, left: Math.round((W - nameLine.info.width) / 2), top: 1004 },
-      { input: bio1.data, left: Math.round((W - bio1.info.width) / 2), top: 1112 },
-      { input: bio2.data, left: Math.round((W - bio2.info.width) / 2), top: 1158 },
-      { input: bio3.data, left: Math.round((W - bio3.info.width) / 2), top: 1204 },
+      { input: portrait, left: 56, top: 48 },
+      { input: chipLabel.data, left: chipX + 56, top: Math.round(chipY + chipH / 2 - chipLabel.info.height / 2) },
+      { input: nameLine.data, left: Math.round((W - nameLine.info.width) / 2), top: 974 },
+      { input: bio1.data, left: Math.round((W - bio1.info.width) / 2), top: 1080 },
+      { input: bio2.data, left: Math.round((W - bio2.info.width) / 2), top: 1126 },
+      { input: bio3.data, left: Math.round((W - bio3.info.width) / 2), top: 1172 },
+      ...tags.composites,
     ])
     .webp({ quality: 95, smartSubsample: false, effort: 5 })
     .toBuffer();
@@ -236,10 +287,10 @@ const [darkDesk, lightDesk, darkMob, lightMob] = await Promise.all([
 ]);
 
 await Promise.all([
-  sharp(darkDesk).toFile(resolve(output, 'levyra-author-card.webp')),
-  sharp(lightDesk).toFile(resolve(output, 'levyra-author-card-light.webp')),
-  sharp(darkMob).toFile(resolve(output, 'levyra-author-card-mobile.webp')),
-  sharp(lightMob).toFile(resolve(output, 'levyra-author-card-mobile-light.webp')),
+  sharp(darkDesk).toFile(resolve(output, 'levyra-creator-bento.webp')),
+  sharp(lightDesk).toFile(resolve(output, 'levyra-creator-bento-light.webp')),
+  sharp(darkMob).toFile(resolve(output, 'levyra-creator-bento-mobile.webp')),
+  sharp(lightMob).toFile(resolve(output, 'levyra-creator-bento-mobile-light.webp')),
 ]);
 
-console.log('Rendered levyra-author-card (desktop/mobile, dark/light).');
+console.log('Rendered levyra-creator-bento (compact 680px, desktop/mobile, dark/light).');
