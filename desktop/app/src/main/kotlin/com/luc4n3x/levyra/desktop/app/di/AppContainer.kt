@@ -207,7 +207,10 @@ class AppContainer {
                 .map { accounts -> accounts.firstOrNull { it.active }?.id }
                 .distinctUntilChanged()
                 .drop(1)
-                .collect { homeFeedController.reloadCurated() }
+                .collect {
+                    catalogRepository.forgetGeneratedMixes()
+                    homeFeedController.reloadCurated()
+                }
         }
         if (initialSettings.resumeOnStartup) {
             playbackController.restoreSession()

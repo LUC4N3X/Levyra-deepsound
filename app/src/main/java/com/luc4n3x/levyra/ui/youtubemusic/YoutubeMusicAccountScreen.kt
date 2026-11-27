@@ -361,38 +361,43 @@ private fun ColumnScope.YoutubeMusicGrid(state: YoutubeMusicAccountUiState, copy
     ) {
         item(key = "overview", span = { GridItemSpan(maxLineSpan) }) { YoutubeMusicOverview(state, copy, tone, viewModel, actions.accounts) }
         items(page?.entries.orEmpty(), key = { it.browseId }, contentType = { "YoutubeMusicAccountScreen-page" }) { entry ->
-            val artist = entry.collection == YoutubeMusicCollection.Artists
-            Column(
-                Modifier.levyraPressable(
-                    onClick = {
-                        if (artist) {
-                            actions.close()
-                            actions.artist(ArtistHit(entry.title, entry.subtitle, entry.thumbnailUrl, 0, 0, entry.browseId))
-                        } else viewModel.openDetail(entry)
-                    },
-                    pressedScale = LevyraPressScale.Tile,
-                    role = Role.Button,
-                    onClickLabel = entry.title
-                ),
-                horizontalAlignment = if (artist) Alignment.CenterHorizontally else Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().aspectRatio(1f).clip(if (artist) CircleShape else RoundedCornerShape(24.dp))
-                        .background(Brush.linearGradient(listOf(tone.softContainer, MaterialTheme.colorScheme.surfaceContainerHigh))),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(if (artist) Icons.Rounded.Person else Icons.Rounded.LibraryMusic, null, Modifier.size(44.dp), tint = tone.accent)
-                    AsyncImage(entry.thumbnailUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-                Column(Modifier.padding(horizontal = 4.dp), horizontalAlignment = if (artist) Alignment.CenterHorizontally else Alignment.Start, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(entry.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = if (artist) TextAlign.Center else TextAlign.Start, color = MaterialTheme.colorScheme.onSurface)
-                    if (entry.subtitle.isNotBlank()) Text(entry.subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            YoutubeMusicEntryTile(entry, tone) {
+                if (entry.collection == YoutubeMusicCollection.Artists) {
+                    actions.close()
+                    actions.artist(ArtistHit(entry.title, entry.subtitle, entry.thumbnailUrl, 0, 0, entry.browseId))
+                } else viewModel.openDetail(entry)
             }
         }
         if (page != null && page.entries.isEmpty() && !state.busy && error == null) item(key = "empty", span = { GridItemSpan(maxLineSpan) }) { YoutubeMusicEmpty(copy, tone) }
         if (page?.continuation?.isNotBlank() == true) item(key = "more", span = { GridItemSpan(maxLineSpan) }) { YoutubeMusicMore(copy, state.busy, viewModel::loadMore) }
+    }
+}
+
+@Composable
+private fun YoutubeMusicEntryTile(entry: YoutubeMusicLibraryEntry, tone: LevyraUtilityColors, onOpen: () -> Unit) {
+    val artist = entry.collection == YoutubeMusicCollection.Artists
+    Column(
+        Modifier.levyraPressable(
+            onClick = onOpen,
+            pressedScale = LevyraPressScale.Tile,
+            role = Role.Button,
+            onClickLabel = entry.title
+        ),
+        horizontalAlignment = if (artist) Alignment.CenterHorizontally else Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(1f).clip(if (artist) CircleShape else RoundedCornerShape(24.dp))
+                .background(Brush.linearGradient(listOf(tone.softContainer, MaterialTheme.colorScheme.surfaceContainerHigh))),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(if (artist) Icons.Rounded.Person else Icons.Rounded.LibraryMusic, null, Modifier.size(44.dp), tint = tone.accent)
+            AsyncImage(entry.thumbnailUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
+        Column(Modifier.padding(horizontal = 4.dp), horizontalAlignment = if (artist) Alignment.CenterHorizontally else Alignment.Start, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(entry.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = if (artist) TextAlign.Center else TextAlign.Start, color = MaterialTheme.colorScheme.onSurface)
+            if (entry.subtitle.isNotBlank()) Text(entry.subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

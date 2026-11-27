@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.core.account
 
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicDeviceLink
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkChannel
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkClient
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkDevice
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkException
@@ -202,53 +203,57 @@ class YoutubeMusicLinkHost internal constructor(
                     runCatching { channel.open(YoutubeMusicDeviceLink.CANCEL, false, YoutubeMusicDeviceLink.sealedOf(message, YoutubeMusicDeviceLink.CANCEL)) }
                     backToWaiting(current)
                 }
-                YoutubeMusicDeviceLink.LOGINS -> {
-                    val payload = try {
-                        val plain = channel.open(YoutubeMusicDeviceLink.LOGINS, false, YoutubeMusicDeviceLink.sealedOf(message, YoutubeMusicDeviceLink.LOGINS))
-                        try {
-                            YoutubeMusicDeviceLink.decodePayload(plain)
-                        } finally {
-                            plain.fill(0)
-                        }
-                    } catch (_: YoutubeMusicLinkException) {
-                        reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Rejected, emptyList()))
-                        publish(current, YoutubeMusicLinkState.Rejected(LinkRejection.InvalidCode))
-                        return
-                    }
-                    val claimed = synchronized(this) { session === current && current.spent.compareAndSet(false, true) }
-                    if (!claimed) {
-                        runCatching { reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Closed, emptyList())) }
-                        return
-                    }
-                    publish(current, YoutubeMusicLinkState.SigningIn)
-                    val result = try {
-                        signIn(payload)
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Exception) {
-                        YoutubeMusicLinkResult(YoutubeMusicLinkStatus.SignInFailed, emptyList())
-                    }
-                    runCatching { reply(output, channel, result) }
-                    synchronized(this) {
-                        if (session !== current) return
-                        if (result.status == YoutubeMusicLinkStatus.Accepted) {
-                            close(current)
-                            _state.value = YoutubeMusicLinkState.Done(result.accounts)
-                        } else if (clock() >= current.waiting.expiresAtMs) {
-                            close(current)
-                            _state.value = YoutubeMusicLinkState.Expired
-                        } else {
-                            current.spent.set(false)
-                            _state.value = YoutubeMusicLinkState.Rejected(
-                                if (result.status == YoutubeMusicLinkStatus.Rejected) LinkRejection.InvalidCode else LinkRejection.SignInFailed
-                            )
-                        }
-                    }
-                }
+                YoutubeMusicDeviceLink.LOGINS -> signInFromPhone(current, output, channel, message)
                 else -> backToWaiting(current)
             }
         } finally {
             channel.close()
+        }
+    }
+
+    private suspend fun signInFromPhone(current: Session, output: java.io.OutputStream, channel: YoutubeMusicLinkChannel, message: org.json.JSONObject) {
+        val payload = try {
+            val plain = channel.open(YoutubeMusicDeviceLink.LOGINS, false, YoutubeMusicDeviceLink.sealedOf(message, YoutubeMusicDeviceLink.LOGINS))
+            try {
+                YoutubeMusicDeviceLink.decodePayload(plain)
+            } finally {
+                plain.fill(0)
+            }
+        } catch (_: YoutubeMusicLinkException) {
+            reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Rejected, emptyList()))
+            publish(current, YoutubeMusicLinkState.Rejected(LinkRejection.InvalidCode))
+            return
+        }
+        val claimed = synchronized(this) { session === current && current.spent.compareAndSet(false, true) }
+        if (!claimed) {
+            runCatching { reply(output, channel, YoutubeMusicLinkResult(YoutubeMusicLinkStatus.Closed, emptyList())) }
+            return
+        }
+        publish(current, YoutubeMusicLinkState.SigningIn)
+        val result = try {
+            signIn(payload)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            YoutubeMusicLinkResult(YoutubeMusicLinkStatus.SignInFailed, emptyList())
+        }
+        runCatching { reply(output, channel, result) }
+        finishSignIn(current, result)
+    }
+
+    private fun finishSignIn(current: Session, result: YoutubeMusicLinkResult) = synchronized(this) {
+        if (session !== current) return@synchronized
+        if (result.status == YoutubeMusicLinkStatus.Accepted) {
+            close(current)
+            _state.value = YoutubeMusicLinkState.Done(result.accounts)
+        } else if (clock() >= current.waiting.expiresAtMs) {
+            close(current)
+            _state.value = YoutubeMusicLinkState.Expired
+        } else {
+            current.spent.set(false)
+            _state.value = YoutubeMusicLinkState.Rejected(
+                if (result.status == YoutubeMusicLinkStatus.Rejected) LinkRejection.InvalidCode else LinkRejection.SignInFailed
+            )
         }
     }
 
@@ -260,7 +265,7 @@ class YoutubeMusicLinkHost internal constructor(
         synchronized(this) { if (session === current) _state.value = next }
     }
 
-    private fun reply(output: java.io.OutputStream, channel: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLinkChannel, result: YoutubeMusicLinkResult) {
+    private fun reply(output: java.io.OutputStream, channel: YoutubeMusicLinkChannel, result: YoutubeMusicLinkResult) {
         YoutubeMusicDeviceLink.writeMessage(
             output,
             YoutubeMusicDeviceLink.message(YoutubeMusicDeviceLink.LOGINS, channel.seal(YoutubeMusicDeviceLink.LOGINS, true, YoutubeMusicDeviceLink.encodeResult(result)))

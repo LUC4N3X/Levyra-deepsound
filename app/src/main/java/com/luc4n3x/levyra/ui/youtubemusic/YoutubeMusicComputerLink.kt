@@ -184,7 +184,7 @@ private fun LinkIllustration(state: ComputerLinkState) {
                 Icon(centerIcon, contentDescription = null, tint = tint, modifier = Modifier.size(28.dp))
             } else {
                 repeat(DOTS) { index ->
-                    val lit = moving && ((phase * DOTS).toInt() == index)
+                    val lit = moving && (phase * DOTS).toInt() == index
                     Box(
                         Modifier.size(8.dp).scale(if (lit) 1.35f else 1f).alpha(if (lit || !moving) 1f else 0.35f)
                             .clip(CircleShape).background(tint)
