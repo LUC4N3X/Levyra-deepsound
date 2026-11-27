@@ -171,23 +171,18 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <div align="center">
 
-<a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="290" alt="LUC4N3X, creator of Levyra">
-</a>
-
-### LUC4N3X
-
-<p><sub>Creator &amp; maintainer</sub></p>
-
 <p>
-  I built Levyra and still maintain the Android and Windows apps.<br>
-  I review contributions, fix bugs and handle releases.
+  <a href="https://luc4n3x.pages.dev/"><picture>
+    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-card-mobile-light.webp?v=m3-creator-1">
+    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-card-mobile.webp?v=m3-creator-1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-card-light.webp?v=m3-creator-1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-card.webp?v=m3-creator-1">
+    <img src="docs/assets/levyra-creator-card.webp?v=m3-creator-1" width="700" alt="LUC4N3X, creator and maintainer of Levyra">
+  </picture></a>
 </p>
 
-<p>
-  <a href="https://github.com/LUC4N3X">GitHub</a>
-  &nbsp;·&nbsp;
-  <a href="https://luc4n3x.pages.dev/">Website</a>
+<p align="center">
+  <a href="https://github.com/LUC4N3X"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile-light.svg?v=m3-creator-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile.svg?v=m3-creator-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-github-light.svg?v=m3-creator-1"><img src="docs/assets/levyra-author-github.svg?v=m3-creator-1" width="112" height="44" alt="LUC4N3X on GitHub"></picture></a><a href="https://luc4n3x.pages.dev/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile-light.svg?v=m3-creator-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile.svg?v=m3-creator-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-website-light.svg?v=m3-creator-1"><img src="docs/assets/levyra-author-website.svg?v=m3-creator-1" width="119" height="44" alt="LUC4N3X Website"></picture></a>
 </p>
 
 </div>
