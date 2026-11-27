@@ -618,7 +618,8 @@ internal fun navDockGeometry(floating: Boolean, collapsible: Boolean, requestedH
         (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
     }.coerceAtMost(height)
     val iconTop = navIconTop(height, contentRoom)
-    val lift = if (floating) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
+    val recenters = floating || contentRoom == 0.dp
+    val lift = if (recenters) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
     return NavDockGeometry(height, compactHeight, labelRoom, iconTop, lift)
 }
 
@@ -666,6 +667,33 @@ private fun splitOrbShape(detach: Float): Shape {
     )
 }
 
+internal fun navCompactionSqueeze(floating: Boolean, expansion: NavExpansion?, tuning: NavTuning, geometry: NavDockGeometry): Dp =
+    if (floating && expansion != null && tuning.indicator.expandsAsPill) (geometry.height - geometry.compactHeight) / 2 else 0.dp
+
+private val NavIndicator.expandsAsPill: Boolean
+    get() = this == NavIndicator.Pill || this == NavIndicator.Morph || this == NavIndicator.Circle
+
+internal fun NavIndicator.pillSettle(visibleHeight: Float, fullHeight: Float): Float =
+    if (expandsAsPill) (visibleHeight / fullHeight).coerceIn(0f, 1f) else 1f
+
+internal fun expandingPillHeight(pill: Float, settle: Float, visibleHeight: Float, edge: Float, iconBox: Float): Float =
+    minOf(pill * settle, visibleHeight - edge).coerceAtLeast(iconBox)
+
+internal fun navSqueezeSide(squeezePx: Float, compaction: Float, hold: Float): Int =
+    (squeezePx * compaction.coerceIn(0f, 1f) * (1f - hold.coerceIn(0f, 1f))).roundToInt()
+
+private fun Modifier.navSqueeze(squeeze: Dp, compaction: () -> Float, hold: () -> Float): Modifier =
+    if (squeeze <= 0.dp) {
+        this
+    } else {
+        layout { measurable, constraints ->
+            val side = navSqueezeSide(squeeze.toPx(), compaction(), hold())
+            val width = (constraints.maxWidth - side * 2).coerceAtLeast(0)
+            val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+            layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(side, 0) }
+        }
+    }
+
 private fun Modifier.navDockSizing(floating: Boolean, compaction: () -> Float, geometry: NavDockGeometry): Modifier =
     if (floating) {
         dockLerpHeight(compaction, geometry.height, geometry.compactHeight)
@@ -699,9 +727,13 @@ private fun Modifier.navMorphCapsule(
     geometry: NavDockGeometry,
     surface: Modifier,
     slots: DockMorphSlots,
-    row: DockMorphRow
+    row: DockMorphRow,
+    squeeze: Dp,
+    link: DockLink?
 ): Modifier {
-    val framed = navFloatingInset(floating).fillMaxWidth()
+    val framed = navFloatingInset(floating)
+        .fillMaxWidth()
+        .navSqueeze(squeeze, compaction) { maxOf(link?.attach?.invoke() ?: 0f, morph?.fraction ?: 0f) }
     val sized = if (floating) framed.dockMorphFrame(morph, frame, geometry.compactHeight) else framed
     return sized
         .navDockSizing(floating, compaction, geometry)
@@ -819,7 +851,9 @@ internal fun StyledBottomTabs(
                     geometry = geometry,
                     surface = surface,
                     slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
-                    row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap)
+                    row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap),
+                    squeeze = navCompactionSqueeze(floating, expansion, tuning, geometry),
+                    link = link
                 ),
                 entries = entries,
                 selected = selected,
@@ -986,7 +1020,8 @@ private fun SplitDockRow(
     Row(
         modifier = Modifier
             .navFloatingInset(true)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .navSqueeze(navCompactionSqueeze(true, expansion, tuning, geometry), compaction) { morph?.fraction ?: 0f },
         verticalAlignment = Alignment.CenterVertically
     ) {
         StyledTabCapsule(
@@ -1722,7 +1757,8 @@ private fun DrawScope.drawExpandingIndicator(
     val presence = (fraction * 1.6f).coerceIn(0f, 1f) * alpha
     if (presence <= 0f) return
     val grown = fraction.coerceIn(0f, 1f)
-    val inset = expansion.inset.toPx()
+    val settle = tuning.indicator.pillSettle(visibleHeight, size.height)
+    val inset = expansion.inset.toPx() * settle
     val iconBox = StyledNavIconBox.toPx()
     val scale = tuning.indicatorScale / 100f
     val centerX = size.width / 2f
@@ -1731,7 +1767,7 @@ private fun DrawScope.drawExpandingIndicator(
     val width = restWidth + (fullWidth - restWidth) * grown
     when (tuning.indicator) {
         NavIndicator.Pill, NavIndicator.Morph, NavIndicator.Circle -> {
-            val height = minOf(expansion.pillHeight.toPx() * scale, visibleHeight - 8.dp.toPx()).coerceAtLeast(iconBox)
+            val height = expandingPillHeight(expansion.pillHeight.toPx() * scale, settle, visibleHeight, 8.dp.toPx(), iconBox)
             val bend = if (tuning.indicator == NavIndicator.Morph || expansion.morph) grown else 0f
             drawRoundRect(
                 color = colors.indicator,
