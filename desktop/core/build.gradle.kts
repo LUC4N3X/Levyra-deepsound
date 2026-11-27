@@ -13,6 +13,7 @@ val prepareSharedAudioSources = tasks.register("prepareSharedAudioSources") {
         include("com/luc4n3x/levyra/domain/HighQualityAudio.kt")
         include("com/luc4n3x/levyra/domain/PlaybackManifest.kt")
         include("com/luc4n3x/levyra/player/offline/TidalDashFlac.kt")
+        include("com/luc4n3x/levyra/data/YoutubeMusicPlaylistPageParser.kt")
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicAuth.kt")
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicSessionCodec.kt")
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicAccountParser.kt")

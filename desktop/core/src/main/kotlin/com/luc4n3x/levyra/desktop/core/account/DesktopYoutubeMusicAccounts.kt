@@ -16,6 +16,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,10 +64,10 @@ class DesktopYoutubeMusicAccounts internal constructor(
 
     fun newLinkHost(): YoutubeMusicLinkHost = YoutubeMusicLinkHost(::signInResult)
 
-    suspend fun browse(browseId: String, language: String): JSONObject? {
+    suspend fun browse(browseId: String, language: String, continuation: String = ""): JSONObject? {
         val session = activeSession() ?: return null
         return try {
-            client.browse(session, browseId, language)
+            client.browse(session, browseId, language, continuation)
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
@@ -169,7 +170,7 @@ class DesktopYoutubeMusicAccounts internal constructor(
     }
 
     private suspend fun persist(next: YoutubeMusicSavedSessions) {
-        withContext(Dispatchers.IO) {
+        withContext(NonCancellable + Dispatchers.IO) {
             if (next.sessions.isEmpty()) {
                 Files.deleteIfExists(file)
             } else {
@@ -188,9 +189,9 @@ class DesktopYoutubeMusicAccounts internal constructor(
                     Files.deleteIfExists(temp)
                 }
             }
+            saved = next
+            publish()
         }
-        saved = next
-        publish()
     }
 
     private fun publish() {

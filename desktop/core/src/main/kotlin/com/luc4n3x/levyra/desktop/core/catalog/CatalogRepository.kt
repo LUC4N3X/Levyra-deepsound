@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.desktop.core.model.PageCursor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.Locale
+import com.luc4n3x.levyra.data.YoutubeMusicPlaylistPageParser
 import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONObject
 import kotlinx.coroutines.CancellationException
@@ -39,7 +40,8 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
 class CatalogRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val personalBrowse: (suspend (browseId: String, language: String) -> JSONObject?)? = null
+    private val personalBrowse: (suspend (browseId: String, language: String, continuation: String) -> JSONObject?)? = null,
+    private val personalAccount: () -> String? = { null }
 ) {
     private val music = YoutubeMusicBrowse()
     private val artistAudience = SpotifyArtistAudience(clientFactory = { ExtractorHttp.client })
@@ -167,22 +169,41 @@ class CatalogRepository(
     private suspend fun playlistDetail(ref: CollectionRef): CollectionDetail {
         val mixId = CatalogMapper.collectionIdOf(ref.url).takeIf(::isGeneratedMixId)
             ?: return fetchPlaylistDetail(ref)
-        val key = generatedMixKey(mixId, ExtractorRuntime.localization().localizationCode, ExtractorRuntime.contentCountry().countryCode)
+        val generation = generatedMixGeneration.get()
+        val account = personalAccount().orEmpty()
+        val key = "$account|" + generatedMixKey(mixId, ExtractorRuntime.localization().localizationCode, ExtractorRuntime.contentCountry().countryCode)
         val now = System.currentTimeMillis()
         generatedMixSnapshots[key]?.takeIf { now - it.first < GENERATED_MIX_TTL_MS }?.let { return it.second }
         val detail = personalMix(ref, mixId.removePrefix("VL")) ?: fetchPlaylistDetail(ref)
-        if (detail.page.tracks.isNotEmpty()) {
+        if (detail.page.tracks.isNotEmpty() && generatedMixGeneration.get() == generation && personalAccount().orEmpty() == account) {
             if (generatedMixSnapshots.size >= MAX_GENERATED_MIX_SNAPSHOTS) generatedMixSnapshots.clear()
             generatedMixSnapshots[key] = now to detail
         }
         return detail
     }
 
-    fun forgetGeneratedMixes() = generatedMixSnapshots.clear()
+    fun forgetGeneratedMixes() {
+        generatedMixGeneration.incrementAndGet()
+        generatedMixSnapshots.clear()
+    }
 
     private suspend fun personalMix(ref: CollectionRef, mixId: String): CollectionDetail? {
-        val root = personalBrowse?.invoke("VL$mixId", ExtractorRuntime.localization().languageCode) ?: return null
-        val tracks = YoutubeMusicArtistPage.tracks(root, "", videos = false)
+        val browse = personalBrowse ?: return null
+        val language = ExtractorRuntime.localization().languageCode
+        val root = browse("VL$mixId", language, "") ?: return null
+        val collected = LinkedHashMap<String, Track>()
+        YoutubeMusicArtistPage.tracks(root, "", videos = false).forEach { collected.putIfAbsent(it.id, it) }
+        var continuation = YoutubeMusicPlaylistPageParser.continuation(root)
+        var pages = 0
+        while (continuation.isNotBlank() && collected.size < PERSONAL_MIX_TRACK_LIMIT && pages < PERSONAL_MIX_CONTINUATIONS) {
+            val page = browse("", language, continuation) ?: break
+            val pageTracks = YoutubeMusicArtistPage.tracks(page, "", videos = false)
+            if (pageTracks.isEmpty()) break
+            pageTracks.forEach { collected.putIfAbsent(it.id, it) }
+            continuation = YoutubeMusicPlaylistPageParser.continuation(page)
+            pages++
+        }
+        val tracks = collected.values.take(PERSONAL_MIX_TRACK_LIMIT)
         if (tracks.isEmpty()) return null
         return CollectionDetail(
             ref = ref.copy(artworkUrl = ref.artworkUrl.ifBlank { tracks.first().artworkUrl }, itemCount = tracks.size.toLong()),
@@ -394,6 +415,9 @@ internal fun isGeneratedMixId(playlistId: String): Boolean = playlistId.removePr
 internal fun generatedMixKey(mixId: String, language: String, country: String): String = "$language|$country|${mixId.removePrefix("VL")}"
 
 private val generatedMixSnapshots = ConcurrentHashMap<String, Pair<Long, CollectionDetail>>()
+private val generatedMixGeneration = java.util.concurrent.atomic.AtomicLong()
+private const val PERSONAL_MIX_TRACK_LIMIT = 200
+private const val PERSONAL_MIX_CONTINUATIONS = 3
 private const val GENERATED_MIX_TTL_MS = 6L * 60L * 60L * 1_000L
 private const val MAX_GENERATED_MIX_SNAPSHOTS = 24
 

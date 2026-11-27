@@ -72,7 +72,10 @@ class AppContainer {
         MoodsRepository.innerTubeLanguage(settingsStore.current.language.tag)
     }
     val browserCookieImport = BrowserCookieImport()
-    private val catalogRepository = CatalogRepository(personalBrowse = youtubeMusicAccounts::browse)
+    private val catalogRepository = CatalogRepository(
+        personalBrowse = youtubeMusicAccounts::browse,
+        personalAccount = { youtubeMusicAccounts.activeAccountId }
+    )
     private val youtubeResolver = YoutubeStreamResolver()
     private val streamResolver = DirectStreamResolver(DesktopHighQualityResolver.create(scope, youtubeResolver, paths.root.resolve("cache"),
         { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }))
@@ -142,7 +145,7 @@ class AppContainer {
         repository = lyricsRepository
     )
 
-    private val moodsRepository = MoodsRepository(personalBrowse = youtubeMusicAccounts::browse)
+    private val moodsRepository = MoodsRepository(personalBrowse = { browseId, language -> youtubeMusicAccounts.browse(browseId, language) })
 
     private val moodsController = MoodsController(scope, moodsRepository)
 
