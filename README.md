@@ -173,11 +173,11 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <p>
   <a href="https://luc4n3x.pages.dev/"><picture>
-    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-bento-mobile-light.webp?v=m3-compact-1">
-    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-bento-mobile.webp?v=m3-compact-1">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-bento-light.webp?v=m3-compact-1">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-bento.webp?v=m3-compact-1">
-    <img src="docs/assets/levyra-creator-bento.webp?v=m3-compact-1" width="680" alt="LUC4N3X, creator and maintainer of Levyra">
+    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-m3-author-mobile-light.webp?v=1">
+    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-m3-author-mobile.webp?v=1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-m3-author-light.webp?v=1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-m3-author.webp?v=1">
+    <img src="docs/assets/levyra-m3-author.webp?v=1" width="660" alt="LUC4N3X, creator and maintainer of Levyra">
   </picture></a>
 </p>
 
