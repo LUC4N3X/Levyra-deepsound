@@ -137,16 +137,16 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
 
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-1">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-1">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-1">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-1">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-1" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-2">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-2">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-2">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-2">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-2" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
   </picture>
 </div>
 
 <p align="center">
-  <a href="https://hosted.weblate.org/projects/levyra/android/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile-light.svg?v=m3-expressive-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile.svg?v=m3-expressive-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-weblate-light.svg?v=m3-expressive-1"><img src="docs/assets/levyra-weblate.svg?v=m3-expressive-1" width="238" height="46" alt="Help translate Levyra on Weblate"></picture></a>
+  <a href="https://hosted.weblate.org/projects/levyra/android/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile-light.svg?v=m3-expressive-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile.svg?v=m3-expressive-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-weblate-light.svg?v=m3-expressive-2"><img src="docs/assets/levyra-weblate.svg?v=m3-expressive-2" width="242" height="48" alt="Help translate Levyra on Weblate"></picture></a>
 </p>
 
 <p align="center">
@@ -171,18 +171,23 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <div align="center">
 
+<a href="https://luc4n3x.pages.dev/"><picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-portrait-light.webp?v=m3-creator-2">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-author-portrait.webp?v=m3-creator-2">
+  <img src="docs/assets/levyra-author-portrait.webp?v=m3-creator-2" width="280" alt="LUC4N3X, creator of Levyra">
+</picture></a>
+
+### LUC4N3X
+
+<p><sub>Creator &amp; maintainer</sub></p>
+
 <p>
-  <a href="https://luc4n3x.pages.dev/"><picture>
-    <source media="(max-width: 600px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-card-mobile-light.webp?v=m3-creator-1">
-    <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-card-mobile.webp?v=m3-creator-1">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-creator-card-light.webp?v=m3-creator-1">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-card.webp?v=m3-creator-1">
-    <img src="docs/assets/levyra-creator-card.webp?v=m3-creator-1" width="700" alt="LUC4N3X, creator and maintainer of Levyra">
-  </picture></a>
+  I built Levyra and still maintain the Android, Windows and Linux apps.<br>
+  I review contributions, fix bugs and handle releases.
 </p>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile-light.svg?v=m3-creator-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile.svg?v=m3-creator-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-github-light.svg?v=m3-creator-1"><img src="docs/assets/levyra-author-github.svg?v=m3-creator-1" width="112" height="44" alt="LUC4N3X on GitHub"></picture></a><a href="https://luc4n3x.pages.dev/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile-light.svg?v=m3-creator-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile.svg?v=m3-creator-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-website-light.svg?v=m3-creator-1"><img src="docs/assets/levyra-author-website.svg?v=m3-creator-1" width="119" height="44" alt="LUC4N3X Website"></picture></a>
+  <a href="https://github.com/LUC4N3X"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile-light.svg?v=m3-creator-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-github-mobile.svg?v=m3-creator-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-github-light.svg?v=m3-creator-2"><img src="docs/assets/levyra-author-github.svg?v=m3-creator-2" width="120" height="48" alt="LUC4N3X on GitHub"></picture></a><a href="https://luc4n3x.pages.dev/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile-light.svg?v=m3-creator-2"><source media="(max-width: 600px)" srcset="docs/assets/levyra-author-website-mobile.svg?v=m3-creator-2"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-author-website-light.svg?v=m3-creator-2"><img src="docs/assets/levyra-author-website.svg?v=m3-creator-2" width="128" height="48" alt="LUC4N3X Website"></picture></a>
 </p>
 
 </div>

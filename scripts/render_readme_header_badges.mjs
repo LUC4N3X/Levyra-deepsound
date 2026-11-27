@@ -114,32 +114,32 @@ const brandIcons = {
   `,
 };
 
-// Delicate, airy Material 3 Expressive pastel palettes (GitHub in warm soft Peach)
+// Delicate, airy Material 3 Expressive pastel palettes (zero cold blue)
 const storePalettes = {
   github: { dark: ['#FAD6C4', '#562614'], light: ['#FCE3D6', '#562614'] },
   fdroid: { dark: ['#C5ECF8', '#103B4B'], light: ['#D8F3FC', '#103B4B'] },
   openapk: { dark: ['#C9F0DC', '#133F2B'], light: ['#DCF7E9', '#133F2B'] },
   obtainium: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
-  weblate: { dark: ['#CFE2FF', '#14345C'], light: ['#DEE9FF', '#14345C'] },
-  website: { dark: ['#CFE2FF', '#14345C'], light: ['#DEE9FF', '#14345C'] },
+  weblate: { dark: ['#CBEFE0', '#144230'], light: ['#DCF6EB', '#144230'] },
+  website: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
 };
 
-const WEBLATE_ROSETTE = scallopPath(28, 23, 14.5, 17.8, 10);
+const WEBLATE_ROSETTE = scallopPath(28, 24, 15, 18.4, 10);
 
 function makeWeblateButton({ mobile = false, light = false }) {
   const [bg, fg] = storePalettes.weblate[light ? 'light' : 'dark'];
-  const vw = 238;
-  const w = mobile ? 214 : vw;
-  const h = mobile ? 41 : 46;
-  const body = roundedCornersPath(0, 0, vw, 46, [23, 10, 23, 10]);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 46" role="img" aria-label="Help translate Levyra on Weblate">
+  const vw = 242;
+  const w = mobile ? 218 : vw;
+  const h = mobile ? 43 : 48;
+  const body = roundedCornersPath(0, 0, vw, 48, [24, 24, 24, 24]);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 48" role="img" aria-label="Help translate Levyra on Weblate">
   <title>Help translate Levyra on Weblate</title>
   <path d="${body}" fill="${bg}"/>
   <path d="${WEBLATE_ROSETTE}" fill="${fg}" fill-opacity="0.11"/>
-  <g transform="translate(28 23)" style="color:${fg}">
+  <g transform="translate(28 24)" style="color:${fg}">
     ${brandIcons.weblate.trim()}
   </g>
-  <text x="53" y="28.2" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14.5" font-weight="600" letter-spacing="0.05">Translate on Weblate</text>
+  <text x="54" y="29.2" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14.5" font-weight="600" letter-spacing="0.05">Translate on Weblate</text>
 </svg>
 `;
 }
