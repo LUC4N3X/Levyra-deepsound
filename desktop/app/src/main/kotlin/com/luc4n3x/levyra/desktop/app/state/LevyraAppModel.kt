@@ -2,6 +2,8 @@
 
 package com.luc4n3x.levyra.desktop.app.state
 
+import com.luc4n3x.levyra.desktop.core.account.BrowserCookieImport
+import com.luc4n3x.levyra.desktop.core.account.DesktopYoutubeMusicAccounts
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
@@ -56,7 +58,9 @@ class LevyraAppModel internal constructor(
     val playbackController: PlaybackController,
     val downloadController: OfflineDownloadController,
     val localMusicController: LocalMusicController,
-    val discoveryDeckController: DiscoveryDeckController
+    val discoveryDeckController: DiscoveryDeckController,
+    val youtubeMusicAccounts: DesktopYoutubeMusicAccounts,
+    val browserCookieImport: BrowserCookieImport
 ) {
     private val destinationState = MutableStateFlow(Destination.HOME)
     private val previousDestination = MutableStateFlow(Destination.HOME)

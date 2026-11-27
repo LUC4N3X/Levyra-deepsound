@@ -50,7 +50,8 @@ fun moodBrowseOrder(categories: List<MoodCategory>, decades: List<MoodCategory>)
 
 class MoodsRepository(
     client: OkHttpClient = ExtractorHttp.client,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val personalBrowse: (suspend (browseId: String, language: String) -> JSONObject?)? = null
 ) {
     private val music = YoutubeMusicBrowse(client)
     private val shelfCache = ConcurrentHashMap<String, List<MoodShelf>>()
@@ -79,7 +80,10 @@ class MoodsRepository(
             .orEmpty()
 
     suspend fun curatedShelves(languageTag: String, country: String): List<MoodShelf> = withContext(dispatcher) {
-        val mixed = async { music.browse(languageTag, country, MIXED_BROWSE_ID, "")?.let(MoodsParser::homeShelves).orEmpty() }
+        val mixed = async {
+            (personalBrowse?.invoke(MIXED_BROWSE_ID, innerTubeLanguage(languageTag)) ?: music.browse(languageTag, country, MIXED_BROWSE_ID, ""))
+                ?.let(MoodsParser::homeShelves).orEmpty()
+        }
         val home = async { curatedHome(languageTag, country) }
         val mixedShelves = mixed.await()
         val homeShelves = home.await()

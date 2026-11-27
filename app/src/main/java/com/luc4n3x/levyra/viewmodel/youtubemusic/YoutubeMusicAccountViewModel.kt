@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.concurrent.thread
 import kotlin.coroutines.coroutineContext
 
 internal enum class YoutubeMusicAccountError { Network, SignIn, Protocol, Storage, Limit }
@@ -51,7 +52,23 @@ internal data class YoutubeMusicAccountUiState(
     val homeSource: YoutubeMusicHomeSource get() = youtubeMusicHomeSource(restoring, active?.id, home, homeFailed)
 }
 
+internal sealed interface ComputerLinkState {
+    data object Idle : ComputerLinkState
+    data object Connecting : ComputerLinkState
+    data class Confirm(val device: YoutubeMusicLinkDevice) : ComputerLinkState
+    data class Sending(val device: YoutubeMusicLinkDevice) : ComputerLinkState
+    data class Done(val device: YoutubeMusicLinkDevice) : ComputerLinkState
+    data class Failed(val reason: ComputerLinkFailure) : ComputerLinkState
+}
+
+internal enum class ComputerLinkFailure { InvalidCode, Unreachable, Refused, SignInFailed, NotSignedIn, CameraUnavailable }
+
 internal class YoutubeMusicAccountViewModel(application: Application) : AndroidViewModel(application) {
+    private val _computerLink = MutableStateFlow<ComputerLinkState>(ComputerLinkState.Idle)
+    val computerLink: StateFlow<ComputerLinkState> = _computerLink.asStateFlow()
+    private var computerConnection: YoutubeMusicLinkConnection? = null
+    private var computerJob: Job? = null
+
     private val repository = YoutubeMusicAccountRepository(application.applicationContext)
     private val homeCache = YoutubeMusicHomeCache(application.applicationContext)
     private val _state = MutableStateFlow(YoutubeMusicAccountUiState())
@@ -412,6 +429,87 @@ internal class YoutubeMusicAccountViewModel(application: Application) : AndroidV
         generation++
         operation?.cancel()
         _state.update { it.copy(busy = false, checkingLogin = false) }
+    }
+
+    fun linkComputer(code: String) {
+        closeComputerLink()
+        val offer = YoutubeMusicLinkOffer.parse(code)
+        if (offer == null) {
+            _computerLink.value = ComputerLinkState.Failed(ComputerLinkFailure.InvalidCode)
+            return
+        }
+        if (saved.active == null) {
+            _computerLink.value = ComputerLinkState.Failed(ComputerLinkFailure.NotSignedIn)
+            return
+        }
+        _computerLink.value = ComputerLinkState.Connecting
+        computerJob = viewModelScope.launch {
+            try {
+                val connection = YoutubeMusicLinkClient.connect(offer)
+                computerConnection = connection
+                _computerLink.value = ComputerLinkState.Confirm(connection.device)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _computerLink.value = ComputerLinkState.Failed(computerLinkFailure(error))
+            }
+        }
+    }
+
+    fun confirmComputerLink() {
+        val confirm = _computerLink.value as? ComputerLinkState.Confirm ?: return
+        val connection = computerConnection ?: return
+        val session = saved.active
+        if (session == null) {
+            closeComputerLink()
+            _computerLink.value = ComputerLinkState.Failed(ComputerLinkFailure.NotSignedIn)
+            return
+        }
+        computerConnection = null
+        _computerLink.value = ComputerLinkState.Sending(confirm.device)
+        computerJob = viewModelScope.launch {
+            _computerLink.value = try {
+                val result = connection.send(YoutubeMusicLinkPayload(session.cookie, session.account.id))
+                when (result.status) {
+                    YoutubeMusicLinkStatus.Accepted -> ComputerLinkState.Done(confirm.device)
+                    YoutubeMusicLinkStatus.SignInFailed -> ComputerLinkState.Failed(ComputerLinkFailure.SignInFailed)
+                    else -> ComputerLinkState.Failed(ComputerLinkFailure.Refused)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                ComputerLinkState.Failed(computerLinkFailure(error))
+            }
+        }
+    }
+
+    fun computerScanUnavailable() {
+        closeComputerLink()
+        _computerLink.value = ComputerLinkState.Failed(ComputerLinkFailure.CameraUnavailable)
+    }
+
+    fun dismissComputerLink() {
+        closeComputerLink()
+        _computerLink.value = ComputerLinkState.Idle
+    }
+
+    private fun closeComputerLink() {
+        computerJob?.cancel()
+        computerJob = null
+        val connection = computerConnection ?: return
+        computerConnection = null
+        thread(name = "levyra-computer-link-cancel", isDaemon = true) { connection.cancel() }
+    }
+
+    private fun computerLinkFailure(error: Exception): ComputerLinkFailure = when {
+        error is YoutubeMusicLinkException && error.status == YoutubeMusicLinkStatus.SignInFailed -> ComputerLinkFailure.SignInFailed
+        error is YoutubeMusicLinkException -> ComputerLinkFailure.Refused
+        else -> ComputerLinkFailure.Unreachable
+    }
+
+    override fun onCleared() {
+        closeComputerLink()
+        super.onCleared()
     }
 
     private fun runOperation(sessionId: String? = saved.activeId, block: suspend () -> Unit) {
