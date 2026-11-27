@@ -47,8 +47,8 @@ const LOCALE_META = {
   'es': { name: 'Español', code: 'ES' },
   'fr': { name: 'Français', code: 'FR' },
   'de': { name: 'Deutsch', code: 'DE' },
-  'pt-PT': { name: 'Português (Portugal)', code: 'PT' },
-  'pt-BR': { name: 'Português (Brasil)', code: 'BR' },
+  'pt-pt': { name: 'Português (Portugal)', code: 'PT' },
+  'pt-br': { name: 'Português (Brasil)', code: 'BR' },
   'nl': { name: 'Nederlands', code: 'NL' },
   'pl': { name: 'Polski', code: 'PL' },
   'ro': { name: 'Română', code: 'RO' },
@@ -159,14 +159,50 @@ const collectRepositoryCoverage = async () => {
   }
 }
 
-const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+const FONT = "Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+
+const makeScallopPath = (cx, cy, rValley, rPeak, lobes = 12) => {
+  const step = (2 * Math.PI) / lobes
+  const halfStep = step / 2
+  const dMid = rValley * Math.cos(halfStep)
+  const chord = 2 * rValley * Math.sin(halfStep)
+  const sagitta = rPeak - dMid
+  const radius = sagitta / 2 + (chord ** 2) / (8 * sagitta)
+  const x0 = cx + rValley * Math.sin(-halfStep)
+  const y0 = cy - rValley * Math.cos(-halfStep)
+  const parts = [`M ${x0.toFixed(2)} ${y0.toFixed(2)}`]
+  for (let i = 0; i < lobes; i += 1) {
+    const aEnd = (i + 0.5) * step
+    const xEnd = cx + rValley * Math.sin(aEnd)
+    const yEnd = cy - rValley * Math.cos(aEnd)
+    parts.push(`A ${radius.toFixed(2)} ${radius.toFixed(2)} 0 0 1 ${xEnd.toFixed(2)} ${yEnd.toFixed(2)}`)
+  }
+  parts.push('Z')
+  return parts.join(' ')
+}
+
+const roundedCornersPath = (x, y, w, h, [tl, tr, br, bl]) => {
+  const x1 = x + w
+  const y1 = y + h
+  return [
+    `M ${(x + tl).toFixed(2)} ${y.toFixed(2)}`,
+    `H ${(x1 - tr).toFixed(2)}`,
+    `A ${tr} ${tr} 0 0 1 ${x1.toFixed(2)} ${(y + tr).toFixed(2)}`,
+    `V ${(y1 - br).toFixed(2)}`,
+    `A ${br} ${br} 0 0 1 ${(x1 - br).toFixed(2)} ${y1.toFixed(2)}`,
+    `H ${(x + bl).toFixed(2)}`,
+    `A ${bl} ${bl} 0 0 1 ${x.toFixed(2)} ${(y1 - bl).toFixed(2)}`,
+    `V ${(y + tl).toFixed(2)}`,
+    `A ${tl} ${tl} 0 0 1 ${(x + tl).toFixed(2)} ${y.toFixed(2)} Z`
+  ].join(' ')
+}
 
 const SCRIPT_GROUPS = [
-  { id: 'latin', label: 'LATIN' },
-  { id: 'cyrillic', label: 'CYRILLIC + GREEK' },
-  { id: 'cjk', label: 'CJK' },
-  { id: 'rtl', label: 'ARABIC + HEBREW' },
-  { id: 'brahmic', label: 'INDIC + THAI' }
+  { id: 'latin', label: 'LATIN', maxExamples: 6 },
+  { id: 'cyrillic', label: 'CYRILLIC + GREEK', maxExamples: 5 },
+  { id: 'cjk', label: 'CJK', maxExamples: 4 },
+  { id: 'rtl', label: 'ARABIC + HEBREW', maxExamples: 3 },
+  { id: 'brahmic', label: 'INDIC + THAI', maxExamples: 3 }
 ]
 
 const scriptGroupFor = code => {
@@ -178,16 +214,32 @@ const scriptGroupFor = code => {
   return 'latin'
 }
 
+const shortDisplayName = name => name.replace(/\s*\([^)]*\)/g, '')
+
 const getTheme = isDark => ({
-  background: isDark ? '#0D1117' : '#FBF8F6',
-  hero: isDark ? '#2B1D2A' : '#F0DCE7',
-  heroStrong: isDark ? '#493347' : '#DFC1D2',
-  ink: isDark ? '#F7F1F5' : '#241B21',
-  muted: isDark ? '#C9BDC5' : '#62545D',
-  accent: isDark ? '#F09ACB' : '#8B416E',
-  tiles: ['#E7B5D3', '#B9DDCF', '#C9CCF5', '#F2C5B2', '#E8D59C'],
-  tileInk: '#241923',
-  tileMuted: '#493741'
+  hero: isDark ? '#1B2436' : '#E8F0FE',
+  heroBorder: isDark ? '#2B3852' : '#C9DCFA',
+  ink: isDark ? '#EAF1FF' : '#13294B',
+  muted: isDark ? '#9EB0CE' : '#4B6387',
+  accent: isDark ? '#A5C8FF' : '#24569C',
+  stampBg: isDark ? '#CFE2FF' : '#C4DCFF',
+  stampInk: '#123158',
+  footer: isDark ? '#8B9AB5' : '#586A87',
+  tiles: isDark
+    ? [
+        { bg: '#F6D2E0', ink: '#5A2238', muted: '#75334D' },
+        { bg: '#CBEFE0', ink: '#144230', muted: '#235B44' },
+        { bg: '#E6D5FA', ink: '#3F225F', muted: '#57367C' },
+        { bg: '#FAD6C4', ink: '#562614', muted: '#753B24' },
+        { bg: '#FAE3B4', ink: '#4B3409', muted: '#694B14' }
+      ]
+    : [
+        { bg: '#FCE4EE', ink: '#5A2238', muted: '#75334D' },
+        { bg: '#DCF6EB', ink: '#144230', muted: '#235B44' },
+        { bg: '#F0E4FD', ink: '#3F225F', muted: '#57367C' },
+        { bg: '#FCE3D6', ink: '#562614', muted: '#753B24' },
+        { bg: '#FDF0CF', ink: '#4B3409', muted: '#694B14' }
+      ]
 })
 
 const groupRows = languages => SCRIPT_GROUPS.map(group => {
@@ -195,7 +247,7 @@ const groupRows = languages => SCRIPT_GROUPS.map(group => {
   return {
     ...group,
     count: members.length,
-    examples: members.slice(0, 6).map(language => language.name).join(' · ')
+    examples: members.slice(0, group.maxExamples).map(language => shortDisplayName(language.name)).join(' · ')
   }
 }).filter(group => group.count > 0)
 
@@ -207,89 +259,96 @@ const makePulse = ({ languages, globalPercent, catalogCount, isDark, mobile }) =
   const description = languages.map(language => `${language.name}: ${Math.round(language.percent)}%`).join(', ')
 
   if (mobile) {
+    const heroPath = roundedCornersPath(16, 12, 688, 152, [34, 34, 14, 14])
+    const stampPath = makeScallopPath(634, 88, 38, 45, 12)
     const layouts = [
-      { x: 26, y: 190, w: 668, h: 92, r: 38 },
-      { x: 26, y: 298, w: 402, h: 88, r: 32 },
-      { x: 444, y: 298, w: 250, h: 88, r: 32 },
-      { x: 26, y: 402, w: 304, h: 88, r: 32 },
-      { x: 346, y: 402, w: 348, h: 88, r: 32 }
+      { x: 16, y: 176, w: 688, h: 94, c: [14, 14, 12, 12] },
+      { x: 16, y: 280, w: 404, h: 92, c: [12, 12, 12, 12] },
+      { x: 430, y: 280, w: 274, h: 92, c: [12, 12, 12, 12] },
+      { x: 16, y: 382, w: 326, h: 92, c: [12, 12, 12, 32] },
+      { x: 352, y: 382, w: 352, h: 92, c: [12, 12, 32, 12] }
     ]
     const tiles = groups.map((group, index) => {
       const box = layouts[index]
-      const showExamples = box.w > 340
-      return `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="${box.r}" fill="${theme.tiles[index]}"/>
-  <text x="${box.x + 24}" y="${box.y + 38}" class="tile-label">${escapeXml(group.label)}</text>
-  <text x="${box.x + box.w - 25}" y="${box.y + 42}" text-anchor="end" class="tile-count">${group.count}</text>
-${showExamples ? `  <text x="${box.x + 24}" y="${box.y + 66}" class="tile-examples">${escapeXml(group.examples)}</text>` : ''}`
+      const pal = theme.tiles[index]
+      const d = roundedCornersPath(box.x, box.y, box.w, box.h, box.c)
+      return `<path d="${d}" fill="${pal.bg}"/>
+  <text x="${box.x + 24}" y="${box.y + 38}" fill="${pal.ink}" class="tile-label">${escapeXml(group.label)}</text>
+  <text x="${box.x + box.w - 24}" y="${box.y + 42}" text-anchor="end" fill="${pal.ink}" class="tile-count">${group.count}</text>
+  <text x="${box.x + 24}" y="${box.y + 68}" fill="${pal.muted}" class="tile-examples">${escapeXml(group.examples)}</text>`
     }).join('\n  ')
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="530" viewBox="0 0 720 530" role="img" aria-label="${escapeXml(aria)}">
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="508" viewBox="0 0 720 508" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .eyebrow { fill: ${theme.accent}; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
-    .hero { fill: ${theme.ink}; font-size: 58px; font-weight: 760; letter-spacing: -3px; }
-    .meta { fill: ${theme.muted}; font-size: 14px; font-weight: 580; }
-    .status { fill: ${theme.ink}; font-size: 14px; font-weight: 780; }
-    .tile-label { fill: ${theme.tileInk}; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
-    .tile-count { fill: ${theme.tileInk}; font-size: 28px; font-weight: 820; }
-    .tile-examples { fill: ${theme.tileMuted}; font-size: 12px; font-weight: 560; }
-    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 650; letter-spacing: .25px; }
+    .eyebrow { fill: ${theme.accent}; font-size: 12px; font-weight: 700; letter-spacing: 1.6px; }
+    .hero { fill: ${theme.ink}; font-size: 54px; font-weight: 760; letter-spacing: -2px; }
+    .meta { fill: ${theme.muted}; font-size: 14px; font-weight: 550; }
+    .status { fill: ${theme.stampInk}; font-size: 16px; font-weight: 780; }
+    .status-sub { fill: ${theme.stampInk}; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; opacity: .82; }
+    .tile-label { font-size: 14.5px; font-weight: 760; letter-spacing: .4px; }
+    .tile-count { font-size: 28px; font-weight: 800; }
+    .tile-examples { font-size: 12.2px; font-weight: 550; }
+    .footer { fill: ${theme.footer}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <rect width="720" height="530" rx="34" fill="${theme.background}"/>
-  <rect x="26" y="20" width="668" height="150" rx="44" fill="${theme.hero}"/>
-  <text x="58" y="62" class="eyebrow">LOCAL EVERYWHERE</text>
-  <text x="54" y="126" class="hero">${languages.length} languages</text>
-  <text x="58" y="151" class="meta">Five writing systems · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
-  <rect x="578" y="48" width="88" height="40" rx="20" fill="${theme.heroStrong}"/>
-  <text x="622" y="73" text-anchor="middle" class="status">${roundedPercent}%</text>
+  <path d="${heroPath}" fill="${theme.hero}" stroke="${theme.heroBorder}" stroke-width="1"/>
+  <text x="46" y="50" class="eyebrow">LOCAL EVERYWHERE</text>
+  <text x="44" y="112" class="hero">${languages.length} languages</text>
+  <text x="46" y="142" class="meta">Five writing systems · ${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <path d="${stampPath}" fill="${theme.stampBg}"/>
+  <text x="634" y="85" text-anchor="middle" class="status">${roundedPercent}%</text>
+  <text x="634" y="100" text-anchor="middle" class="status-sub">COMPLETE</text>
   ${tiles}
-  <text x="28" y="517" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
+  <text x="360" y="497" text-anchor="middle" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>`
   }
 
+  const heroPath = roundedCornersPath(16, 16, 326, 330, [36, 14, 14, 36])
+  const stampPath = makeScallopPath(276, 282, 42, 49, 12)
   const layouts = [
-    { x: 360, y: 46, w: 712, h: 100, r: 42 },
-    { x: 360, y: 162, w: 414, h: 88, r: 34 },
-    { x: 790, y: 162, w: 282, h: 88, r: 34 },
-    { x: 360, y: 266, w: 314, h: 88, r: 34 },
-    { x: 690, y: 266, w: 382, h: 88, r: 34 }
+    { x: 354, y: 16, w: 730, h: 104, c: [14, 36, 12, 12] },
+    { x: 354, y: 130, w: 432, h: 103, c: [12, 12, 12, 12] },
+    { x: 796, y: 130, w: 288, h: 103, c: [12, 12, 12, 12] },
+    { x: 354, y: 243, w: 334, h: 103, c: [12, 12, 12, 14] },
+    { x: 698, y: 243, w: 386, h: 103, c: [12, 12, 36, 12] }
   ]
   const tiles = groups.map((group, index) => {
     const box = layouts[index]
-    const showExamples = box.w > 340
-    return `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="${box.r}" fill="${theme.tiles[index]}"/>
-  <text x="${box.x + 28}" y="${box.y + 40}" class="tile-label">${escapeXml(group.label)}</text>
-  <text x="${box.x + box.w - 28}" y="${box.y + 43}" text-anchor="end" class="tile-count">${group.count}</text>
-${showExamples ? `  <text x="${box.x + 28}" y="${box.y + 68}" class="tile-examples">${escapeXml(group.examples)}</text>` : ''}`
+    const pal = theme.tiles[index]
+    const d = roundedCornersPath(box.x, box.y, box.w, box.h, box.c)
+    return `<path d="${d}" fill="${pal.bg}"/>
+  <text x="${box.x + 26}" y="${box.y + 41}" fill="${pal.ink}" class="tile-label">${escapeXml(group.label)}</text>
+  <text x="${box.x + box.w - 26}" y="${box.y + 45}" text-anchor="end" fill="${pal.ink}" class="tile-count">${group.count}</text>
+  <text x="${box.x + 26}" y="${box.y + 74}" fill="${pal.muted}" class="tile-examples">${escapeXml(group.examples)}</text>`
   }).join('\n  ')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="${escapeXml(aria)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="380" viewBox="0 0 1100 380" role="img" aria-label="${escapeXml(aria)}">
   <title>${escapeXml(aria)}</title>
   <desc>${escapeXml(description)}</desc>
   <style>
     text { font-family: ${FONT}; }
-    .eyebrow { fill: ${theme.accent}; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
-    .hero { fill: ${theme.ink}; font-size: 92px; font-weight: 780; letter-spacing: -6px; }
-    .hero-label { fill: ${theme.ink}; font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
-    .meta { fill: ${theme.muted}; font-size: 15px; font-weight: 580; }
-    .status { fill: ${theme.ink}; font-size: 14px; font-weight: 780; }
-    .tile-label { fill: ${theme.tileInk}; font-size: 16px; font-weight: 820; letter-spacing: .25px; }
-    .tile-count { fill: ${theme.tileInk}; font-size: 32px; font-weight: 840; }
-    .tile-examples { fill: ${theme.tileMuted}; font-size: 12px; font-weight: 560; }
-    .footer { fill: ${theme.muted}; font-size: 11px; font-weight: 680; letter-spacing: .25px; }
+    .eyebrow { fill: ${theme.accent}; font-size: 12.5px; font-weight: 720; letter-spacing: 1.7px; }
+    .hero { fill: ${theme.ink}; font-size: 88px; font-weight: 780; letter-spacing: -4.5px; }
+    .hero-label { fill: ${theme.ink}; font-size: 25px; font-weight: 680; letter-spacing: -.5px; }
+    .meta { fill: ${theme.muted}; font-size: 14.5px; font-weight: 540; }
+    .status { fill: ${theme.stampInk}; font-size: 17px; font-weight: 800; }
+    .status-sub { fill: ${theme.stampInk}; font-size: 9.5px; font-weight: 720; letter-spacing: .6px; opacity: .82; }
+    .tile-label { font-size: 15px; font-weight: 760; letter-spacing: .45px; }
+    .tile-count { font-size: 31px; font-weight: 800; }
+    .tile-examples { font-size: 12.8px; font-weight: 550; }
+    .footer { fill: ${theme.footer}; font-size: 11px; font-weight: 650; letter-spacing: .5px; }
   </style>
-  <rect width="1100" height="390" rx="34" fill="${theme.background}"/>
-  <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="${theme.hero}"/>
-  <text x="58" y="72" class="eyebrow">LOCAL EVERYWHERE</text>
-  <text x="51" y="183" class="hero">${languages.length}</text>
-  <text x="58" y="218" class="hero-label">languages</text>
-  <text x="58" y="252" class="meta">Five writing systems</text>
-  <text x="58" y="272" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
-  <circle cx="280" cy="315" r="49" fill="${theme.heroStrong}"/>
-  <text x="280" y="311" text-anchor="middle" class="status">${roundedPercent}%</text>
-  <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
+  <path d="${heroPath}" fill="${theme.hero}" stroke="${theme.heroBorder}" stroke-width="1"/>
+  <text x="50" y="64" class="eyebrow">LOCAL EVERYWHERE</text>
+  <text x="46" y="168" class="hero">${languages.length}</text>
+  <text x="50" y="204" class="hero-label">languages</text>
+  <text x="50" y="242" class="meta">Five writing systems</text>
+  <text x="50" y="264" class="meta">${catalogCount.toLocaleString('en-US')}+ app strings</text>
+  <path d="${stampPath}" fill="${theme.stampBg}"/>
+  <text x="276" y="279" text-anchor="middle" class="status">${roundedPercent}%</text>
+  <text x="276" y="295" text-anchor="middle" class="status-sub">COMPLETE</text>
   ${tiles}
-  <text x="362" y="378" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
+  <text x="719" y="369" text-anchor="middle" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>`
 }
 

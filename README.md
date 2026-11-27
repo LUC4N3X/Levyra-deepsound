@@ -21,7 +21,7 @@ Keep streamed tracks and local files in one library, save music for offline list
 <p align="center"><b>Get Levyra</b></p>
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile-light.svg?v=m3-expressive-4"><source media="(max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile.svg?v=m3-expressive-4"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg?v=m3-expressive-4"><img src="docs/assets/levyra-github-download.svg?v=m3-expressive-4" width="122" height="48" alt="Download Levyra from GitHub Releases"></picture></a><a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile-light.svg?v=m3-expressive-4"><source media="(max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile.svg?v=m3-expressive-4"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-fdroid-light.svg?v=m3-expressive-4"><img src="docs/assets/levyra-fdroid.svg?v=m3-expressive-4" width="126" height="48" alt="Get Levyra on F-Droid"></picture></a><a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile-light.svg?v=m3-expressive-4"><source media="(max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile.svg?v=m3-expressive-4"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-openapk-light.svg?v=m3-expressive-4"><img src="docs/assets/levyra-openapk.svg?v=m3-expressive-4" width="140" height="48" alt="Get Levyra on OpenAPK"></picture></a><a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile-light.svg?v=m3-expressive-4"><source media="(max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile.svg?v=m3-expressive-4"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-obtainium-download-light.svg?v=m3-expressive-4"><img src="docs/assets/levyra-obtainium-download.svg?v=m3-expressive-4" width="146" height="48" alt="Install Levyra with Obtainium"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-github-download.svg?v=m3-expressive-5" width="122" height="48" alt="Download Levyra from GitHub Releases"></picture></a><a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-fdroid-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-fdroid.svg?v=m3-expressive-5" width="126" height="48" alt="Get Levyra on F-Droid"></picture></a><a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-openapk-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-openapk.svg?v=m3-expressive-5" width="140" height="48" alt="Get Levyra on OpenAPK"></picture></a><a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-obtainium-download-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-obtainium-download.svg?v=m3-expressive-5" width="146" height="48" alt="Install Levyra with Obtainium"></picture></a>
 </p>
 
 <p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; No telemetry</sub></p>
@@ -135,21 +135,19 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 Volunteers have helped me translate Levyra into 42 languages. If a string reads wrong or your language is missing, you can help on Weblate.
 
-<p align="center">
-  <a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widget/levyra/svg-badge.svg" alt="Levyra translation status"></a>
-</p>
-
 <div align="center">
   <picture>
-    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=editorial-atlas-v8">
-    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v8">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v8">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8" alt="Levyra translation coverage across 42 languages and five writing systems" width="920">
+    <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-mobile-light.svg?v=m3-expressive-1">
+    <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=m3-expressive-1">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=m3-expressive-1">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-1">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=m3-expressive-1" alt="Levyra translation coverage across 42 languages and five writing systems" width="900">
   </picture>
 </div>
 
-<p align="center"><a href="https://hosted.weblate.org/projects/levyra/android/"><b>Help translate Levyra on Weblate</b></a></p>
+<p align="center">
+  <a href="https://hosted.weblate.org/projects/levyra/android/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile-light.svg?v=m3-expressive-1"><source media="(max-width: 600px)" srcset="docs/assets/levyra-weblate-mobile.svg?v=m3-expressive-1"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-weblate-light.svg?v=m3-expressive-1"><img src="docs/assets/levyra-weblate.svg?v=m3-expressive-1" width="238" height="46" alt="Help translate Levyra on Weblate"></picture></a>
+</p>
 
 <p align="center">
   <sub><a href="https://weblate.org/">Hosted Weblate</a> provides translation hosting at no cost to the project.</sub>

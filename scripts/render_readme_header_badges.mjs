@@ -102,15 +102,41 @@ const brandIcons = {
       <path fill="currentColor" d="M16.85.97c-.269.004-.77.17-2.751.899-.668.245-1.291.48-1.758.658a40 40 0 0 0-.737.292 1 1 0 0 0-.083.04.526.526 0 0 0-.218.6c.026.092.143.429.308.89a262 262 0 0 0 1.383 3.781q.081.211.104.259a.6.6 0 0 0 .168.226c.07.05.162.07.288.06.252-.02.656-.154 1.395-.415.745-.263 1.112-.394 1.31-.44a.4.4 0 0 1 .188-.018c.037.01.062.03.103.063.058.048.082.073.09.11a.6.6 0 0 1-.031.206c-.03.121-.198.582-.43 1.197a192 192 0 0 1-1.663 4.227 41 41 0 0 1-.38.897l-.028.058-.014.023-.08.09a.14.14 0 0 1-.077.041c-.063.013-.175-.012-.4-.113-.45-.202-1.349-.702-3.246-1.75-.68-.373-1.31-.727-1.782-.996a41 41 0 0 1-.74-.433l-.073-.05c-.086-.079-.117-.163-.104-.243s.074-.16.185-.224c.044-.026.217-.1.451-.193.234-.092.53-.205.835-.315s.599-.222.829-.312l.289-.117q.113-.048.153-.07a.5.5 0 0 0 .191-.172.45.45 0 0 0 .044-.278c-.023-.238-.147-.604-.385-1.247-.207-.56-.583-1.588-.836-2.283-.126-.347-.253-.69-.357-.962a11 11 0 0 0-.216-.542.65.65 0 0 0-.266-.303.5.5 0 0 0-.369-.042q-.053.013-.278.092A280 280 0 0 0 3.371 5.8q-.108.041-.176.069-.065.025-.086.036c-.206.107-.41.354-.537.644-.03.067-.191.482-.433 1.104s-.562 1.45-.902 2.333a131 131 0 0 0-.943 2.501q-.15.418-.222.648a1.3 1.3 0 0 0-.072.297c0 .157.04.279.196.416s.423.296.886.55c.407.225 2.627 1.455 4.932 2.735 8.284 4.598 10.051 5.577 10.356 5.738l.043.023v-.008c.16.082.29.138.397.143.118.005.215-.04.315-.128a.2.2 0 0 0 .036-.048q.02-.035.048-.093.057-.116.154-.345c.13-.307.32-.777.589-1.456a903 903 0 0 0 2.687-6.944c.924-2.405 1.763-4.61 2.372-6.224a272 272 0 0 0 .919-2.474q.034-.097.05-.15.01-.027.014-.044c.003-.011.006-.015.006-.028 0-.123-.061-.248-.174-.37a2 2 0 0 0-.488-.362C20.29 2.678 18.755 1.83 17.94 1.401a8 8 0 0 0-.784-.376.7.7 0 0 0-.306-.055"/>
     </g>
   `,
+  weblate: `
+    <g transform="translate(-11 -11.4) scale(0.9167)">
+      <path fill="currentColor" d="M9.662 3.809c-1.875 1.19-2.81 3.515-2.83 5.795-.014 2.628.666 5.258 1.988 7.305.936 1.46 2.238 2.715 3.836 3.412a6.942 6.942 0 005.647-.07c1.997-.927 3.523-2.73 4.463-4.785 1.606-3.518 1.643-7.724.12-11.295-1.146.458-2.166-.271-2.166-.271s.003 1.122-1.083 1.685c1.115 2.612 1.088 5.717-.03 8.263-.538 1.225-1.358 2.365-2.498 3.01-.917.52-2.04.625-3.052.184-1.342-.585-2.293-1.864-2.89-3.254-.466-1.067-.782-2.447-.802-3.878-.037-1.724.728-3.193 1.635-3.218.622-.024 1.427.918 1.598 2.435.158 1.543-.177 3.72-1.174 5.49.677 1.085 1.77 1.98 2.951 1.974 1.386-2.338 1.827-4.911 1.793-6.987-.02-2.28-.955-4.603-2.83-5.795-1.437-.907-3.173-.948-4.676 0zM3.278 3.9s-1.018.73-2.163.27c-1.524 3.573-1.488 7.778.12 11.296.94 2.056 2.465 3.858 4.462 4.785a6.95 6.95 0 005.523.124 9.12 9.12 0 01-1.75-1.455 11.18 11.18 0 01-1.267-1.628c-.768-.08-1.498-.482-2.003-.913-1.447-1.213-2.453-3.478-2.632-5.9-.12-1.635.14-3.354.795-4.894C3.276 5.022 3.278 3.9 3.278 3.9z"/>
+    </g>
+  `,
 };
 
-// Delicate, airy Material 3 Expressive pastel palettes
+// Delicate, airy Material 3 Expressive pastel palettes (GitHub in warm soft Peach)
 const storePalettes = {
-  github: { dark: ['#CFE2FF', '#14345C'], light: ['#DEE9FF', '#14345C'] },
+  github: { dark: ['#FAD6C4', '#562614'], light: ['#FCE3D6', '#562614'] },
   fdroid: { dark: ['#C5ECF8', '#103B4B'], light: ['#D8F3FC', '#103B4B'] },
   openapk: { dark: ['#C9F0DC', '#133F2B'], light: ['#DCF7E9', '#133F2B'] },
   obtainium: { dark: ['#E6D5FA', '#3F225F'], light: ['#F0E4FD', '#3F225F'] },
+  weblate: { dark: ['#CFE2FF', '#14345C'], light: ['#DEE9FF', '#14345C'] },
 };
+
+const WEBLATE_ROSETTE = scallopPath(28, 23, 14.5, 17.8, 10);
+
+function makeWeblateButton({ mobile = false, light = false }) {
+  const [bg, fg] = storePalettes.weblate[light ? 'light' : 'dark'];
+  const vw = 238;
+  const w = mobile ? 214 : vw;
+  const h = mobile ? 41 : 46;
+  const body = roundedCornersPath(0, 0, vw, 46, [23, 10, 23, 10]);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vw} 46" role="img" aria-label="Help translate Levyra on Weblate">
+  <title>Help translate Levyra on Weblate</title>
+  <path d="${body}" fill="${bg}"/>
+  <path d="${WEBLATE_ROSETTE}" fill="${fg}" fill-opacity="0.11"/>
+  <g transform="translate(28 23)" style="color:${fg}">
+    ${brandIcons.weblate.trim()}
+  </g>
+  <text x="53" y="28.2" fill="${fg}" font-family="Roboto,system-ui,-apple-system,'Segoe UI',Arial,sans-serif" font-size="14.5" font-weight="600" letter-spacing="0.05">Translate on Weblate</text>
+</svg>
+`;
+}
 
 function makeExpressiveStoreButton({ key, title, label, vw, mw, padLeft, padRight, corners, mobile = false, light = false }) {
   const [bg, fg] = storePalettes[key][light ? 'light' : 'dark'];
@@ -182,6 +208,11 @@ for (const light of [false, true]) {
       writeFile(
         resolve(assetsDir, `levyra-obtainium-download${suffix}`),
         makeExpressiveStoreButton({ key: 'obtainium', title: 'Install Levyra with Obtainium', label: 'Obtainium', vw: 146, mw: 132, padLeft: 1.5, padRight: 0, corners: [9, 24, 24, 9], mobile, light }),
+        'utf8',
+      ),
+      writeFile(
+        resolve(assetsDir, `levyra-weblate${suffix}`),
+        makeWeblateButton({ mobile, light }),
         'utf8',
       ),
     );
