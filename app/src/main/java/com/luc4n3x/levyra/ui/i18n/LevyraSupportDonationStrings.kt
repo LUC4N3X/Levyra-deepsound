@@ -295,6 +295,48 @@ private val supportDonationCopies = mapOf(
         "את Levyra בונה מפתח יחיד, בלי פרסומות ובלי מעקב. אם היא משפרת את המוזיקה שלכם, תרומה קטנה עוזרת לה להמשיך.",
         "חודשי או חד־פעמי",
         "תרומה חד־פעמית"
+    ),
+    "ur" to SupportDonationCopy(
+        "Levyra کی حمایت کریں۔",
+        "مفت، کوئی اشتہار نہیں، کوئی ٹریکنگ نہیں۔ ایک عطیہ اسے اسی طرح رکھتا ہے۔",
+        "Levyra اشتہارات یا ٹریکنگ کے بغیر ایک ڈویلپر نے بنایا ہے۔ اگر یہ آپ کی موسیقی کو بہتر بناتا ہے، تو ایک چھوٹا سا عطیہ اسے جاری رکھنے میں مدد کرتا ہے۔",
+        "ماہانہ یا ایک بار",
+        "ایک بار کا عطیہ"
+    ),
+    "ta" to SupportDonationCopy(
+        "ஆதரவு Levyra",
+        "இலவசம், விளம்பரங்கள் இல்லை, கண்காணிப்பு இல்லை. ஒரு நன்கொடை அதை அப்படியே வைத்திருக்கும்.",
+        "Levyra விளம்பரங்கள் அல்லது கண்காணிப்பு இல்லாமல் ஒரு டெவலப்பரால் உருவாக்கப்பட்டது. இது உங்கள் இசையை சிறப்பாக்கினால், ஒரு சிறிய நன்கொடை அதைத் தொடர உதவும்.",
+        "மாதாந்திர அல்லது ஒரு முறை",
+        "ஒருமுறை நன்கொடை"
+    ),
+    "te" to SupportDonationCopy(
+        "మద్దతు Levyra",
+        "ఉచితం, ప్రకటనలు లేవు, ట్రాకింగ్ లేదు. విరాళం దానిని అలాగే ఉంచుతుంది.",
+        "Levyra ప్రకటనలు లేదా ట్రాకింగ్ లేకుండా ఒక డెవలపర్ ద్వారా నిర్మించబడింది. ఇది మీ సంగీతాన్ని మెరుగుపరచినట్లయితే, చిన్న విరాళం దానిని కొనసాగించడంలో సహాయపడుతుంది.",
+        "నెలవారీ లేదా ఒక సారి",
+        "ఒక్కసారి విరాళం"
+    ),
+    "mr" to SupportDonationCopy(
+        "Levyra चे समर्थन करा",
+        "विनामूल्य, जाहिराती नाहीत, ट्रॅकिंग नाही. देणगी तशीच ठेवते.",
+        "Levyra जाहिराती किंवा ट्रॅकिंगशिवाय एका विकसकाने तयार केले आहे. जर ते तुमचे संगीत चांगले बनवते, तर एक लहान देणगी ते चालू ठेवण्यास मदत करते.",
+        "मासिक किंवा एकदाच",
+        "एकवेळ दान"
+    ),
+    "gu" to SupportDonationCopy(
+        "આધાર Levyra",
+        "મફત, કોઈ જાહેરાતો, કોઈ ટ્રેકિંગ નહીં. દાન તે રીતે રાખે છે.",
+        "Levyra જાહેરાતો અથવા ટ્રેકિંગ વિના, એક વિકાસકર્તા દ્વારા બનાવવામાં આવ્યું છે. જો તે તમારા સંગીતને વધુ સારું બનાવે છે, તો એક નાનું દાન તેને ચાલુ રાખવામાં મદદ કરે છે.",
+        "માસિક અથવા એક વખત",
+        "એક વખતનું દાન"
+    ),
+    "pt-BR" to SupportDonationCopy(
+        "Apoie o Levyra",
+        "Grátis, sem anúncios e sem rastreamento. Uma doação ajuda a manter assim.",
+        "O Levyra é feito por um único desenvolvedor, sem anúncios e sem rastreamento. Se ele deixa sua música melhor, uma pequena doação ajuda a manter o projeto vivo.",
+        "Mensal ou avulsa",
+        "Doação avulsa"
     )
 ).also { copies ->
     require(copies.keys == supportedLocalizationCodes()) {
@@ -302,13 +344,5 @@ private val supportDonationCopies = mapOf(
     }
 }
 
-private val brazilianSupportDonationCopy = SupportDonationCopy(
-    "Apoie o Levyra",
-    "Grátis, sem anúncios e sem rastreamento. Uma doação ajuda a manter assim.",
-    "O Levyra é feito por um único desenvolvedor, sem anúncios e sem rastreamento. Se ele deixa sua música melhor, uma pequena doação ajuda a manter o projeto vivo.",
-    "Mensal ou avulsa",
-    "Doação avulsa"
-)
-
 internal fun supportDonationCopy(code: String): SupportDonationCopy =
-    localizedValueOrEnglish(supportDonationCopies, code).forBrazil(code) { brazilianSupportDonationCopy }
+    localizedValueOrEnglish(supportDonationCopies, code)

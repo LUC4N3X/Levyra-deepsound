@@ -41,7 +41,13 @@ private val homeVideoShelfTitles: Map<String, String> = mapOf(
     "vi" to "Video âm nhạc mới",
     "th" to "มิวสิกวิดีโอใหม่",
     "fil" to "Mga bagong music video",
-    "he" to "קליפים מוזיקליים חדשים"
+    "he" to "קליפים מוזיקליים חדשים",
+    "ur" to "نئے میوزک ویڈیوز",
+    "ta" to "புதிய இசை வீடியோக்கள்",
+    "te" to "కొత్త మ్యూజిక్ వీడియోలు",
+    "mr" to "नवीन संगीत व्हिडिओ",
+    "gu" to "નવા સંગીત વિડિઓઝ",
+    "pt-BR" to "Novos videoclipes"
 )
 
 internal val LevyraStrings.homeVideoShelfTitle: String
@@ -88,7 +94,13 @@ private val homeTrendingVideoShelfTitles: Map<String, String> = mapOf(
     "vi" to "Video âm nhạc thịnh hành",
     "th" to "มิวสิกวิดีโอยอดนิยม",
     "fil" to "Mga trending na music video",
-    "he" to "קליפים מוזיקליים פופולריים"
+    "he" to "קליפים מוזיקליים פופולריים",
+    "ur" to "ٹرینڈنگ میوزک ویڈیوز",
+    "ta" to "பிரபலமான இசை வீடியோக்கள்",
+    "te" to "ట్రెండింగ్ మ్యూజిక్ వీడియోలు",
+    "mr" to "ट्रेंडिंग संगीत व्हिडिओ",
+    "gu" to "ટ્રેન્ડિંગ મ્યુઝિક વીડિયો",
+    "pt-BR" to "Vídeos musicais populares"
 )
 
 internal val LevyraStrings.homeTrendingVideoShelfTitle: String

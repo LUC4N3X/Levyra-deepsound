@@ -10,7 +10,7 @@ import java.util.Locale
 class AudioSettingsLocalizationTest {
     @Test
     fun everySupportedLanguageShipsPersonalizedSearchCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, personalizedSearchLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = personalizedSearchCopy(strings.code)
@@ -27,7 +27,7 @@ class AudioSettingsLocalizationTest {
 
     @Test
     fun everySupportedLanguageShipsSpeedDialCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, speedDialLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = strings.speedDialCopy()
@@ -42,7 +42,7 @@ class AudioSettingsLocalizationTest {
 
     @Test
     fun everySupportedLanguageShipsParametricProfileCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, parametricProfileLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = strings.parametricProfileCopy()
@@ -58,7 +58,7 @@ class AudioSettingsLocalizationTest {
 
     @Test
     fun everySupportedLanguageShipsParametricEqualizerCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, parametricEqLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = strings.parametricEqCopy()
@@ -87,7 +87,7 @@ class AudioSettingsLocalizationTest {
 
     @Test
     fun everySupportedLanguageShipsOrbitEqualizerCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, orbitEqLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = strings.orbitEqCopy()
@@ -102,7 +102,7 @@ class AudioSettingsLocalizationTest {
 
     @Test
     fun everySupportedLanguageShipsTheAudioScreenCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, audioLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.code, strings.audioSectionQuality.isNotBlank())

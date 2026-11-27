@@ -24,7 +24,7 @@ Keep streamed tracks and local files in one library, save music for offline list
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-github-download.svg?v=m3-expressive-5" width="122" height="48" alt="Download Levyra from GitHub Releases"></picture></a><a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-fdroid-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-fdroid.svg?v=m3-expressive-5" width="126" height="48" alt="Get Levyra on F-Droid"></picture></a><a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-openapk-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-openapk.svg?v=m3-expressive-5" width="140" height="48" alt="Get Levyra on OpenAPK"></picture></a><a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile-light.svg?v=m3-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-obtainium-download-mobile.svg?v=m3-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-obtainium-download-light.svg?v=m3-expressive-5"><img src="docs/assets/levyra-obtainium-download.svg?v=m3-expressive-5" width="146" height="48" alt="Install Levyra with Obtainium"></picture></a>
 </p>
 
-<p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; No telemetry</sub></p>
+<p align="center"><sub>47 languages &nbsp;·&nbsp; 100% Android resource coverage &nbsp;·&nbsp; No telemetry</sub></p>
 
 <p align="center">
   <picture>
@@ -133,7 +133,7 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 ## Translations
 
-Volunteers have helped me translate Levyra into 42 languages. If a string reads wrong or your language is missing, you can help on Weblate.
+Levyra is available in 47 languages, with translations contributed by volunteers. If a string reads wrong or your language is missing, you can help on Weblate.
 
 <div align="center">
   <picture>
@@ -141,7 +141,7 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
     <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-chart-mobile.svg?v=1">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translations-chart-light.svg?v=1">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translations-chart.svg?v=1">
-    <img src="docs/assets/levyra-translations-chart.svg?v=1" alt="Levyra localized strings by feature across 42 languages" width="900">
+    <img src="docs/assets/levyra-translations-chart.svg?v=1" alt="Levyra localized strings by feature across 47 languages" width="900">
   </picture>
 </div>
 

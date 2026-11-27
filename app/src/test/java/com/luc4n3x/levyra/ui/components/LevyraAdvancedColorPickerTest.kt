@@ -180,12 +180,12 @@ class LevyraAdvancedColorPickerTest {
 
     @Test
     fun colorPickerCopyCoversEverySupportedLanguageWithoutBlankEntries() {
-        val expected = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val expected = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(expected, colorPickerLocalizationCodes())
         assertEquals(expected, colorPickerCompleteLocalizationCodes())
         assertEquals(expected, com.luc4n3x.levyra.ui.i18n.playerColorLocalizationCodes())
 
-        for (language in LevyraLanguageCatalog.languages) {
+        for (language in LevyraLanguageCatalog.selectableLanguages) {
             val copy = LevyraStrings.forCode(language.code).colorPickerCopy
             for (key in ColorPickerText.entries) {
                 val value = copy[key]

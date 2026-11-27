@@ -2,7 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 
-fun playlistImportStartedMessage(code: String): String = when (translationKey(code)) {
+fun playlistImportStartedMessage(code: String): String = when (translationKey(code, regional = true)) {
     "it" -> "Importazione playlist in corso…"
     "es" -> "Importando la playlist…"
     "fr" -> "Importation de la playlist…"
@@ -30,10 +30,16 @@ fun playlistImportStartedMessage(code: String): String = when (translationKey(co
     "he" -> "מייבא פלייליסט…"
     "fi" -> "Tuodaan soittolistaa…"
     "et" -> "Esitusloendi importimine…"
+    "ur" -> "پلے لسٹ درآمد ہو رہی ہے…"
+    "ta" -> "பிளேலிஸ்ட்டை இறக்குமதி செய்கிறது…"
+    "te" -> "ప్లేజాబితాను దిగుమతి చేస్తోంది..."
+    "mr" -> "प्लेलिस्ट इंपोर्ट करत आहे..."
+    "gu" -> "પ્લેલિસ્ટ આયાત કરી રહ્યું છે..."
+    "pt-BR" -> "Importando playlist…"
     else -> "Importing playlist…"
 }.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
-fun playlistImportAlreadyRunningMessage(code: String): String = when (translationKey(code)) {
+fun playlistImportAlreadyRunningMessage(code: String): String = when (translationKey(code, regional = true)) {
     "it" -> "Un’importazione è già in corso."
     "es" -> "Ya hay una importación en curso."
     "fr" -> "Une importation est déjà en cours."
@@ -61,10 +67,16 @@ fun playlistImportAlreadyRunningMessage(code: String): String = when (translatio
     "he" -> "ייבוא כבר מתבצע."
     "fi" -> "Tuonti on jo käynnissä."
     "et" -> "Importimine juba käib."
+    "ur" -> "ایک درآمد پہلے سے جاری ہے۔"
+    "ta" -> "ஒரு இறக்குமதி ஏற்கனவே நடந்து கொண்டிருக்கிறது."
+    "te" -> "ఇప్పటికే దిగుమతి ప్రోగ్రెస్‌లో ఉంది."
+    "mr" -> "एक आयात आधीच प्रगतीपथावर आहे."
+    "gu" -> "આયાત પહેલેથી જ ચાલુ છે."
+    "pt-BR" -> "Uma importação já está em andamento."
     else -> "An import is already in progress."
 }.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
-fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String): String = when (translationKey(code)) {
+fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String): String = when (translationKey(code, regional = true)) {
     "it" -> "Importati $count brani in $playlistName"
     "es" -> "Se importaron $count canciones a $playlistName"
     "fr" -> "$count titres importés dans $playlistName"
@@ -92,6 +104,12 @@ fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String)
     "he" -> "יובאו $count שירים אל $playlistName"
     "fi" -> "Tuotiin $count kappaletta soittolistaan $playlistName"
     "et" -> "Imporditi $count lugu esitusloendisse $playlistName"
+    "ur" -> "$count ٹریک کو $playlistName میں درآمد کیا گیا۔"
+    "ta" -> "$count டிராக்குகள் $playlistName இல் இறக்குமதி செய்யப்பட்டது"
+    "te" -> "$count ట్రాక్‌లు ${playlistName}లోకి దిగుమతి చేయబడ్డాయి"
+    "mr" -> "$playlistName मध्ये $count ट्रॅक आयात केले"
+    "gu" -> "$playlistName માં $count ટ્રૅક્સ આયાત કર્યા"
+    "pt-BR" -> "$count faixas importadas para $playlistName"
     else -> "Imported $count tracks into $playlistName"
 }
 
@@ -102,7 +120,7 @@ fun playlistImportSuccessMessage(
     playlistName: String
 ): String {
     if (requestedCount <= importedCount) return playlistImportSuccessMessage(code, importedCount, playlistName)
-    return when (translationKey(code)) {
+    return when (translationKey(code, regional = true)) {
         "it" -> "Importati $importedCount di $requestedCount brani in $playlistName"
         "es" -> "Se importaron $importedCount de $requestedCount canciones a $playlistName"
         "fr" -> "$importedCount titres sur $requestedCount importés dans $playlistName"
@@ -130,11 +148,17 @@ fun playlistImportSuccessMessage(
         "he" -> "יובאו $importedCount מתוך $requestedCount שירים אל $playlistName"
         "fi" -> "Tuotiin $importedCount/$requestedCount kappaletta soittolistaan $playlistName"
         "et" -> "Imporditi $importedCount/$requestedCount lugu esitusloendisse $playlistName"
+        "ur" -> "$requestedCount ٹریکس کے $importedCount کو $playlistName میں درآمد کیا گیا"
+        "ta" -> "$requestedCount இன் $importedCount டிராக்குகள் $playlistName இல் இறக்குமதி செய்யப்பட்டது"
+        "te" -> "$requestedCount యొక్క $importedCount ట్రాక్‌లు ${playlistName}లోకి దిగుమతి చేయబడ్డాయి"
+        "mr" -> "$requestedCount ट्रॅकचे $importedCount $playlistName मध्ये आयात केले"
+        "gu" -> "$requestedCount ટ્રેકના $importedCount ને $playlistName માં આયાત કર્યા"
+        "pt-BR" -> "$importedCount de $requestedCount faixas importadas para $playlistName"
         else -> "Imported $importedCount of $requestedCount tracks into $playlistName"
     }
 }
 
-fun playlistImportFailureMessage(code: String): String = when (translationKey(code)) {
+fun playlistImportFailureMessage(code: String): String = when (translationKey(code, regional = true)) {
     "it" -> "Importazione non riuscita. Controlla il link o il backup e riprova."
     "es" -> "No se pudo importar. Comprueba el enlace o la copia de seguridad e inténtalo de nuevo."
     "fr" -> "L’importation a échoué. Vérifiez le lien ou la sauvegarde, puis réessayez."
@@ -162,6 +186,12 @@ fun playlistImportFailureMessage(code: String): String = when (translationKey(co
     "he" -> "הייבוא נכשל. בדקו את הקישור או את הגיבוי ונסו שוב."
     "fi" -> "Tuonti epäonnistui. Tarkista linkki tai varmuuskopio ja yritä uudelleen."
     "et" -> "Importimine ebaõnnestus. Kontrolli linki või varukoopiat ja proovi uuesti."
+    "ur" -> "درآمد ناکام ہو گیا۔ لنک یا بیک اپ چیک کریں اور دوبارہ کوشش کریں۔"
+    "ta" -> "இறக்குமதி தோல்வியடைந்தது. இணைப்பு அல்லது காப்புப்பிரதியைச் சரிபார்த்து மீண்டும் முயலவும்."
+    "te" -> "దిగుమతి విఫలమైంది. లింక్ లేదా బ్యాకప్‌ని తనిఖీ చేసి, మళ్లీ ప్రయత్నించండి."
+    "mr" -> "आयात अयशस्वी. लिंक किंवा बॅकअप तपासा आणि पुन्हा प्रयत्न करा."
+    "gu" -> "આયાત નિષ્ફળ. લિંક અથવા બેકઅપ તપાસો અને ફરી પ્રયાસ કરો."
+    "pt-BR" -> "Falha na importação. Verifique o link ou backup e tente novamente."
     else -> "Import failed. Check the link or backup and try again."
 }.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
@@ -176,7 +206,7 @@ private data class PlaylistImportFailureCopy(
     val dismiss: String
 )
 
-private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy = when (translationKey(code)) {
+private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy = when (translationKey(code, regional = true)) {
     "it" -> PlaylistImportFailureCopy("Il link o il backup non è riconosciuto. Controllalo e riprova.", "Non riesco a leggere questa playlist. Verifica che sia pubblica e accessibile.", "Questa playlist supera il limite di importazione supportato{limit}.", "Nessun brano compatibile è stato riconosciuto nel catalogo Levyra.", "Errore di rete durante l’importazione. Controlla la connessione e riprova.", "Il servizio musicale ha restituito un formato non riconosciuto. Riprova più tardi o usa un backup compatibile.", "Non è stato possibile salvare la playlist. Riprova.", "Nascondi suggerimento di importazione")
     "es" -> PlaylistImportFailureCopy("No se reconoce el enlace o la copia de seguridad. Compruébalo e inténtalo de nuevo.", "No se puede leer esta playlist. Comprueba que sea pública y accesible.", "Esta playlist supera el límite de importación admitido{limit}.", "No se pudo identificar ninguna canción compatible en el catálogo de Levyra.", "Se produjo un error de red durante la importación. Comprueba la conexión e inténtalo de nuevo.", "El servicio de música devolvió un formato no reconocido. Inténtalo más tarde o utiliza una copia de seguridad compatible.", "No se pudo guardar la playlist. Inténtalo de nuevo.", "Ocultar sugerencia de importación")
     "fr" -> PlaylistImportFailureCopy("Le lien ou la sauvegarde n’est pas reconnu. Vérifiez-le puis réessayez.", "Impossible de lire cette playlist. Vérifiez qu’elle est publique et accessible.", "Cette playlist dépasse la limite d’importation prise en charge{limit}.", "Aucun titre compatible n’a pu être identifié dans le catalogue Levyra.", "Une erreur réseau s’est produite pendant l’importation. Vérifiez votre connexion puis réessayez.", "Le service musical a renvoyé un format non reconnu. Réessayez plus tard ou utilisez une sauvegarde compatible.", "Impossible d’enregistrer la playlist. Réessayez.", "Masquer la suggestion d’importation")
@@ -204,6 +234,12 @@ private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy =
     "he" -> PlaylistImportFailureCopy("הקישור או הגיבוי לא זוהו. בדקו אותם ונסו שוב.", "לא ניתן לקרוא את הפלייליסט הזה. ודאו שהוא ציבורי ונגיש.", "הפלייליסט חורג ממגבלת הייבוא הנתמכת{limit}.", "לא נמצאו שירים תואמים בקטלוג Levyra.", "אירעה שגיאת רשת במהלך הייבוא. בדקו את החיבור ונסו שוב.", "שירות המוזיקה החזיר פורמט לא מזוהה. נסו שוב מאוחר יותר או השתמשו בגיבוי תואם.", "לא ניתן לשמור את הפלייליסט. נסו שוב.", "הסתרת הצעת הייבוא")
     "fi" -> PlaylistImportFailureCopy("Linkkiä tai varmuuskopiota ei tunnisteta. Tarkista se ja yritä uudelleen.", "Tätä soittolistaa ei voida lukea. Varmista, että se on julkinen ja käytettävissä.", "Tämä soittolista ylittää tuetun tuontirajan{limit}.", "Levyran luettelosta ei löytynyt yhteensopivia kappaleita.", "Tuonnin aikana tapahtui verkkovirhe. Tarkista yhteys ja yritä uudelleen.", "Musiikkipalvelu palautti tuntemattoman muodon. Yritä myöhemmin uudelleen tai käytä yhteensopivaa varmuuskopiota.", "Soittolistaa ei voitu tallentaa. Yritä uudelleen.", "Piilota tuontiehdotus")
     "et" -> PlaylistImportFailureCopy("Linki või varukoopiat ei tuvastatud. Kontrolli seda ja proovi uuesti.", "Seda esitusloendit ei saa lugeda. Veendu, et see on avalik ja kättesaadav.", "See esitusloend ületab toetatud importimislimiidi{limit}.", "Levyra kataloogist ei leitud ühilduvaid lugusid.", "Importimisel tekkis võrguviga. Kontrolli ühendust ja proovi uuesti.", "Muusikateenus tagastas tundmatu vormingu. Proovi hiljem uuesti või kasuta ühilduvat varukoopiat.", "Esitusloendit ei saanud salvestada. Proovi uuesti.", "Peida importimise soovitus")
+    "ur" -> PlaylistImportFailureCopy("لنک یا بیک اپ کی شناخت نہیں ہے۔ اسے چیک کریں اور دوبارہ کوشش کریں۔", "یہ پلے لسٹ پڑھی نہیں جا سکتی۔ یقینی بنائیں کہ یہ عوامی اور قابل رسائی ہے۔", "یہ پلے لسٹ تعاون یافتہ درآمدی حد {limit} سے زیادہ ہے۔", "Levyra کیٹلاگ میں کوئی مطابقت پذیر ٹریکس نہیں مل سکے۔", "درآمد کرتے وقت نیٹ ورک کی خرابی پیش آگئی۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔", "میوزک سروس نے ایک غیر تسلیم شدہ فارمیٹ لوٹا دیا۔ بعد میں دوبارہ کوشش کریں یا ہم آہنگ بیک اپ استعمال کریں۔", "پلے لسٹ کو محفوظ نہیں کیا جا سکا۔ دوبارہ کوشش کریں۔", "درآمد کی تجویز چھپائیں۔")
+    "ta" -> PlaylistImportFailureCopy("இணைப்பு அல்லது காப்புப்பிரதி அங்கீகரிக்கப்படவில்லை. சரிபார்த்து மீண்டும் முயலவும்.", "இந்த பிளேலிஸ்ட்டை படிக்க முடியாது. இது பொது மற்றும் அணுகக்கூடியது என்பதை உறுதிப்படுத்தவும்.", "இந்த பிளேலிஸ்ட் ஆதரிக்கப்படும் இறக்குமதி வரம்பை மீறுகிறது{limit}.", "Levyra அட்டவணையில் இணக்கமான தடங்கள் எதுவும் பொருந்தவில்லை.", "இறக்குமதி செய்யும் போது நெட்வொர்க் பிழை ஏற்பட்டது. உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயலவும்.", "இசை சேவை அங்கீகரிக்கப்படாத வடிவமைப்பை வழங்கியது. பிறகு முயற்சிக்கவும் அல்லது இணக்கமான காப்புப்பிரதியைப் பயன்படுத்தவும்.", "பிளேலிஸ்ட்டைச் சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.", "இறக்குமதி பரிந்துரையை மறை")
+    "te" -> PlaylistImportFailureCopy("లింక్ లేదా బ్యాకప్ గుర్తించబడలేదు. దాన్ని తనిఖీ చేసి, మళ్లీ ప్రయత్నించండి.", "ఈ ప్లేజాబితా చదవబడదు. ఇది పబ్లిక్ మరియు యాక్సెస్ చేయగలదని నిర్ధారించుకోండి.", "ఈ ప్లేజాబితా మద్దతు ఉన్న దిగుమతి పరిమితిని మించిపోయింది{limit}.", "Levyra కేటలాగ్‌లో అనుకూల ట్రాక్‌లు ఏవీ సరిపోలలేదు.", "దిగుమతి చేస్తున్నప్పుడు నెట్‌వర్క్ లోపం సంభవించింది. మీ కనెక్షన్‌ని తనిఖీ చేసి, మళ్లీ ప్రయత్నించండి.", "సంగీత సేవ గుర్తించబడని ఆకృతిని అందించింది. తర్వాత మళ్లీ ప్రయత్నించండి లేదా అనుకూల బ్యాకప్‌ని ఉపయోగించండి.", "ప్లేజాబితా సేవ్ చేయబడలేదు. మళ్లీ ప్రయత్నించండి.", "దిగుమతి సూచనను దాచండి")
+    "mr" -> PlaylistImportFailureCopy("दुवा किंवा बॅकअप ओळखला गेला नाही. ते तपासा आणि पुन्हा प्रयत्न करा.", "ही प्लेलिस्ट वाचली जाऊ शकत नाही. ते सार्वजनिक आणि प्रवेशयोग्य असल्याची खात्री करा.", "ही प्लेलिस्ट समर्थित आयात मर्यादा{limit} ओलांडते.", "Levyra कॅटलॉगमध्ये कोणतेही सुसंगत ट्रॅक जुळले जाऊ शकत नाहीत.", "आयात करताना नेटवर्क त्रुटी आली. तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.", "संगीत सेवेने एक अपरिचित स्वरूप परत केले. नंतर पुन्हा प्रयत्न करा किंवा सुसंगत बॅकअप वापरा.", "प्लेलिस्ट सेव्ह करता आली नाही. पुन्हा प्रयत्न करा.", "आयात सूचना लपवा")
+    "gu" -> PlaylistImportFailureCopy("લિંક અથવા બેકઅપ ઓળખાયેલ નથી. તેને તપાસો અને ફરી પ્રયાસ કરો.", "આ પ્લેલિસ્ટ વાંચી શકાતું નથી. ખાતરી કરો કે તે સાર્વજનિક અને સુલભ છે.", "આ પ્લેલિસ્ટ સપોર્ટેડ આયાત મર્યાદા{limit} ને ઓળંગે છે.", "Levyra કૅટેલોગમાં કોઈ સુસંગત ટ્રૅક્સ મેળ કરી શકાતા નથી.", "આયાત કરતી વખતે નેટવર્ક ભૂલ આવી. તમારું કનેક્શન તપાસો અને ફરી પ્રયાસ કરો.", "સંગીત સેવાએ એક અજાણ્યું ફોર્મેટ પાછું આપ્યું. પછીથી ફરી પ્રયાસ કરો અથવા સુસંગત બેકઅપનો ઉપયોગ કરો.", "પ્લેલિસ્ટ સાચવી શકાયું નથી. ફરી પ્રયાસ કરો.", "આયાત સૂચન છુપાવો")
+    "pt-BR" -> PlaylistImportFailureCopy("O link ou backup não é reconhecido. Verifique e tente novamente.", "Esta lista de reprodução não pode ser lida. Certifique-se de que seja público e acessível.", "Esta playlist excede o limite de importação compatível{limit}.", "Nenhuma faixa compatível pôde ser encontrada no catálogo Levyra.", "Ocorreu um erro de rede durante a importação. Verifique sua conexão e tente novamente.", "O serviço de música retornou um formato não reconhecido. Tente novamente mais tarde ou use um backup compatível.", "A lista de reprodução não pôde ser salva. Tente novamente.", "Ocultar sugestão de importação")
     else -> PlaylistImportFailureCopy("The link or backup is not recognized. Check it and try again.", "This playlist cannot be read. Make sure it is public and accessible.", "This playlist exceeds the supported import limit{limit}.", "No compatible tracks could be matched in the Levyra catalog.", "A network error occurred while importing. Check your connection and try again.", "The music service returned an unrecognized format. Try again later or use a compatible backup.", "The playlist could not be saved. Try again.", "Hide import suggestion")
 }.forBrazil(code) { brazilian() }
 
@@ -229,7 +265,7 @@ fun playlistImportFailureMessage(
         PlaylistImportFailureKind.NO_USABLE_TRACKS -> playlistImportHubCopy(code)["fNoTracks"]
     }
     val limitText = limit?.let { value ->
-        when (translationKey(code)) {
+        when (translationKey(code, regional = true)) {
             "it" -> ": massimo $value brani"
             "es" -> ": máximo $value canciones"
             "fr" -> " : $value titres maximum"
@@ -257,6 +293,12 @@ fun playlistImportFailureMessage(
             "he" -> ": עד $value שירים"
             "fi" -> ": enintään $value kappaletta"
             "et" -> ": maksimaalselt $value lugu"
+            "ur" -> ": زیادہ سے زیادہ $value ٹریکس"
+            "ta" -> ": அதிகபட்ச $value தடங்கள்"
+            "te" -> ": గరిష్ట $value ట్రాక్‌లు"
+            "mr" -> ": कमाल $value ट्रॅक"
+            "gu" -> ": મહત્તમ $value ટ્રેક"
+            "pt-BR" -> ": máximo de trilhas $value"
             else -> ": maximum $value tracks"
         }
     }.orEmpty()

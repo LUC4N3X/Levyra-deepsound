@@ -128,6 +128,24 @@ internal object LevyraMonoStrings {
         ),
         "he" to MonoCopy(
             skinBody = "מינימליזם כהה שמציב את המוזיקה בחזית. טיפוגרפיה מונוכרומטית, נגיעת קרח אחת ומעגן שזז איתך."
+        ),
+        "ur" to MonoCopy(
+            skinBody = "سامنے موسیقی کے ساتھ گہرا minimalism۔ مونوکروم قسم، ایک برف کا لہجہ اور ایک گودی جو آپ کے ساتھ چلتی ہے۔"
+        ),
+        "ta" to MonoCopy(
+            skinBody = "டார்க் மினிமலிசம் இசையுடன் முன்னால். மோனோக்ரோம் வகை, ஒரு பனி உச்சரிப்பு மற்றும் உங்களுடன் நகரும் கப்பல்துறை."
+        ),
+        "te" to MonoCopy(
+            skinBody = "ముందు సంగీతంతో ముదురు మినిమలిజం. మోనోక్రోమ్ రకం, ఒక మంచు యాస మరియు మీతో పాటు కదిలే డాక్."
+        ),
+        "mr" to MonoCopy(
+            skinBody = "समोर संगीतासह गडद मिनिमलिझम. मोनोक्रोम प्रकार, एक बर्फाचा उच्चार आणि एक डॉक जो तुमच्यासोबत फिरतो."
+        ),
+        "gu" to MonoCopy(
+            skinBody = "આગળ સંગીત સાથે ડાર્ક મિનિમલિઝમ. મોનોક્રોમ પ્રકાર, એક બરફનો ઉચ્ચાર અને એક ડોક જે તમારી સાથે ફરે છે."
+        ),
+        "pt-BR" to MonoCopy(
+            skinBody = "Minimalismo sombrio com música na frente. Tipo monocromático, um detalhe de gelo e uma doca que se move com você."
         )
     )
 

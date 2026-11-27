@@ -36,6 +36,11 @@
     <locale android:name="ko" />
     <locale android:name="hi" />
     <locale android:name="bn" />
+    <locale android:name="ur" />
+    <locale android:name="ta" />
+    <locale android:name="te" />
+    <locale android:name="mr" />
+    <locale android:name="gu" />
     <locale android:name="id" />
     <locale android:name="ms" />
     <locale android:name="vi" />

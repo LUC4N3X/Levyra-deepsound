@@ -50,7 +50,12 @@ private val dailyTop100Copies = mapOf(
     "vi" to DailyTop100Copy("Top 100 · Hôm nay", "Những bài hát được nghe nhiều nhất ở từng quốc gia", "Toàn cầu", "Không tải được bảng xếp hạng này", "Thử lại"),
     "th" to DailyTop100Copy("Top 100 · วันนี้", "เพลงที่ถูกเล่นมากที่สุดในแต่ละประเทศ", "ทั่วโลก", "โหลดชาร์ตนี้ไม่สำเร็จ", "ลองอีกครั้ง"),
     "fil" to DailyTop100Copy("Top 100 · Ngayon", "Ang pinakapinakikinggang kanta sa bawat bansa", "Mundo", "Hindi na-load ang chart na ito", "Subukan ulit"),
-    "he" to DailyTop100Copy("טופ 100 · היום", "השירים המושמעים ביותר בכל מדינה", "עולמי", "המצעד לא נטען", "לנסות שוב")
+    "he" to DailyTop100Copy("טופ 100 · היום", "השירים המושמעים ביותר בכל מדינה", "עולמי", "המצעד לא נטען", "לנסות שוב"),
+    "ur" to DailyTop100Copy("سرفہرست 100 · آج", "سب سے زیادہ چلائے جانے والے گانے، ملک بہ ملک", "عالمی", "یہ چارٹ لوڈ نہیں ہوا۔", "دوبارہ کوشش کریں۔"),
+    "ta" to DailyTop100Copy("முதல் 100 · இன்று", "நாடு வாரியாக அதிகம் கேட்கப்பட்ட பாடல்கள்", "உலகளாவிய", "இந்த விளக்கப்படம் ஏற்றப்படவில்லை", "மீண்டும் முயற்சிக்கவும்"),
+    "te" to DailyTop100Copy("టాప్ 100 · ఈరోజు", "దేశం వారీగా ఎక్కువగా ప్లే చేయబడిన పాటలు", "గ్లోబల్", "ఈ చార్ట్ లోడ్ కాలేదు", "మళ్లీ ప్రయత్నించండి"),
+    "mr" to DailyTop100Copy("टॉप 100 · आज", "देशानुसार सर्वाधिक प्ले केलेली गाणी", "जागतिक", "हा चार्ट लोड झाला नाही", "पुन्हा प्रयत्न करा"),
+    "gu" to DailyTop100Copy("ટોચના 100 · આજે", "દેશ પ્રમાણે સૌથી વધુ વગાડવામાં આવેલા ગીતો", "વૈશ્વિક", "આ ચાર્ટ લોડ થયો નથી", "ફરી પ્રયાસ કરો")
 )
 
 internal fun dailyTop100Copy(code: String): DailyTop100Copy = localizedValueOrEnglish(dailyTop100Copies, code)

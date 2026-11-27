@@ -45,7 +45,12 @@ internal object LevyraOnboardingArtistStrings {
         "ms" to OnboardingArtistCopy("Muzik anda bermula di sini", "Pilih sekurang-kurangnya 3 artis kegemaran. Kami akan membentuk penemuan muzik anda.", "Tiada artis ditemui dalam cadangan ini."),
         "vi" to OnboardingArtistCopy("Âm nhạc của bạn bắt đầu từ đây", "Chọn ít nhất 3 nghệ sĩ yêu thích. Chúng tôi sẽ gợi ý nhạc dựa trên họ.", "Không tìm thấy nghệ sĩ trong các gợi ý này."),
         "th" to OnboardingArtistCopy("เพลงของคุณเริ่มต้นที่นี่", "เลือกศิลปินที่ชอบอย่างน้อย 3 คน เราจะแนะนำเพลงใหม่จากรสนิยมของคุณ", "ไม่พบศิลปินในคำแนะนำเหล่านี้"),
-        "fil" to OnboardingArtistCopy("Dito nagsisimula ang musika mo", "Pumili ng kahit 3 paboritong artist. Iaangkop namin ang mga bagong tuklas mo sa kanila.", "Walang artist sa mga mungkahing ito.")
+        "fil" to OnboardingArtistCopy("Dito nagsisimula ang musika mo", "Pumili ng kahit 3 paboritong artist. Iaangkop namin ang mga bagong tuklas mo sa kanila.", "Walang artist sa mga mungkahing ito."),
+        "ur" to OnboardingArtistCopy("آپ کی موسیقی یہاں سے شروع ہوتی ہے۔", "کم از کم 3 فنکاروں کا انتخاب کریں جنہیں آپ پسند کرتے ہیں۔ ہم آپ کی دریافتوں کو ان کے ارد گرد شکل دیں گے۔", "ان تجاویز میں کوئی فنکار نہیں ملا۔"),
+        "ta" to OnboardingArtistCopy("உங்கள் இசை இங்கே தொடங்குகிறது", "நீங்கள் விரும்பும் குறைந்தது 3 கலைஞர்களைத் தேர்வு செய்யவும். அவற்றைச் சுற்றி உங்கள் கண்டுபிடிப்புகளை வடிவமைப்போம்.", "இந்தப் பரிந்துரைகளில் கலைஞர்கள் இல்லை."),
+        "te" to OnboardingArtistCopy("మీ సంగీతం ఇక్కడ ప్రారంభమవుతుంది", "మీరు ఇష్టపడే కనీసం 3 మంది కళాకారులను ఎంచుకోండి. మేము వాటి చుట్టూ మీ ఆవిష్కరణలను రూపొందిస్తాము.", "ఈ సూచనలలో కళాకారులు ఎవరూ కనుగొనబడలేదు."),
+        "mr" to OnboardingArtistCopy("तुमचे संगीत येथून सुरू होते", "तुम्हाला आवडणारे किमान 3 कलाकार निवडा. आम्ही तुमच्या शोधांना त्यांच्याभोवती आकार देऊ.", "या सूचनांमध्ये कोणतेही कलाकार आढळले नाहीत."),
+        "gu" to OnboardingArtistCopy("તમારું સંગીત અહીંથી શરૂ થાય છે", "તમને ગમતા ઓછામાં ઓછા 3 કલાકારો પસંદ કરો. અમે તેમની આસપાસ તમારી શોધોને આકાર આપીશું.", "આ સૂચનોમાં કોઈ કલાકારો મળ્યા નથી.")
     )
 
     fun forCode(code: String): OnboardingArtistCopy = localizedValueOrEnglish(copies, code)

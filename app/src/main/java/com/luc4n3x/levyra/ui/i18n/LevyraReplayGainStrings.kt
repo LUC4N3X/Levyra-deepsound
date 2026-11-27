@@ -17,7 +17,7 @@ internal data class ReplayGainCopy(
     }
 }
 
-internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (translationKey(code)) {
+internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (translationKey(code, regional = true)) {
     "it" -> ReplayGainCopy("Traccia", "Album", "Smart", "Protezione clipping", "Usa i picchi ReplayGain")
     "es" -> ReplayGainCopy("Pista", "Álbum", "Inteligente", "Protección contra clipping", "Usa los picos ReplayGain")
     "fr" -> ReplayGainCopy("Piste", "Album", "Intelligent", "Protection contre l’écrêtage", "Utilise les pics ReplayGain")
@@ -58,6 +58,12 @@ internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (translationK
     "th" -> ReplayGainCopy("แทร็ก", "อัลบั้ม", "อัจฉริยะ", "ป้องกันคลิป", "ใช้ค่าพีก ReplayGain")
     "fil" -> ReplayGainCopy("Track", "Album", "Smart", "Proteksyon sa clipping", "Gumagamit ng ReplayGain peak values")
     "he" -> ReplayGainCopy("רצועה", "אלבום", "חכם", "הגנת clipping", "משתמש בערכי השיא של ReplayGain")
+    "ur" -> ReplayGainCopy("ٹریک", "البم", "ہوشیار", "تراشنا تحفظ", "ReplayGain چوٹی کی اقدار کا استعمال کرتا ہے۔")
+    "ta" -> ReplayGainCopy("பாடல்", "ஆல்பம்", "புத்திசாலி", "கிளிப்பிங் பாதுகாப்பு", "ReplayGain உச்ச மதிப்புகளைப் பயன்படுத்துகிறது")
+    "te" -> ReplayGainCopy("పాట", "ఆల్బమ్", "తెలివైన", "క్లిప్పింగ్ రక్షణ", "ReplayGain గరిష్ట విలువలను ఉపయోగిస్తుంది")
+    "mr" -> ReplayGainCopy("गाणे", "अल्बम", "स्मार्ट", "क्लिपिंग संरक्षण", "ReplayGain शिखर मूल्ये वापरते")
+    "gu" -> ReplayGainCopy("ગીત", "આલ્બમ", "સ્માર્ટ", "ક્લિપિંગ રક્ષણ", "ReplayGain પીક મૂલ્યોનો ઉપયોગ કરે છે")
+    "pt-BR" -> ReplayGainCopy("Faixa", "Álbum", "Inteligente", "Proteção contra recorte", "Usa valores de pico ReplayGain")
     else -> ReplayGainCopy("Track", "Album", "Smart", "Clipping protection", "Uses ReplayGain peak values")
 }.forBrazil(code) { brazilian() }
 

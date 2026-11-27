@@ -189,6 +189,30 @@ private val updateReleaseCopies: Map<String, LevyraUpdateReleaseCopy> = mapOf(
     "he" to updateReleaseCopy(
         "העדכון מוכן", "מ־", "אל", "שינויים עיקריים", "עדכון מוגן",
         "APK רשמי מ-GitHub · החבילה וזהות החתימה מאומתות לפני ההתקנה"
+    ),
+    "ur" to updateReleaseCopy(
+        "اپ ڈیٹ تیار ہے۔", "سے", "کو", "کلیدی تبدیلیاں", "محفوظ اپ ڈیٹ",
+        "آفیشل GitHub APK · پیکیج اور دستخطی شناخت کی تصدیق انسٹال کرنے سے پہلے"
+    ),
+    "ta" to updateReleaseCopy(
+        "புதுப்பிப்பு தயார்", "இருந்து", "செய்ய", "முக்கிய மாற்றங்கள்", "பாதுகாக்கப்பட்ட புதுப்பிப்பு",
+        "அதிகாரப்பூர்வ GitHub APK · தொகுப்பு மற்றும் கையொப்பமிடுதல் அடையாளம் நிறுவும் முன் சரிபார்க்கப்பட்டது"
+    ),
+    "te" to updateReleaseCopy(
+        "అప్‌డేట్ సిద్ధంగా ఉంది", "నుండి", "కు", "కీలక మార్పులు", "రక్షిత నవీకరణ",
+        "అధికారిక GitHub APK · ఇన్‌స్టాల్ చేయడానికి ముందు ప్యాకేజీ మరియు సంతకం గుర్తింపు ధృవీకరించబడ్డాయి"
+    ),
+    "mr" to updateReleaseCopy(
+        "अपडेट तयार आहे", "पासून", "ला", "मुख्य बदल", "संरक्षित अद्यतन",
+        "अधिकृत GitHub APK · पॅकेज आणि स्वाक्षरी ओळख स्थापित करण्यापूर्वी सत्यापित"
+    ),
+    "gu" to updateReleaseCopy(
+        "અપડેટ તૈયાર છે", "થી", "થી", "મુખ્ય ફેરફારો", "સંરક્ષિત અપડેટ",
+        "અધિકૃત GitHub APK · પેકેજ અને હસ્તાક્ષર ઓળખ સ્થાપિત કરતા પહેલા ચકાસાયેલ છે"
+    ),
+    "pt-BR" to updateReleaseCopy(
+        "Atualização pronta", "De", "Para", "Principais mudanças", "Atualização protegida",
+        "APK GitHub oficial · pacote e identidade de assinatura verificada antes da instalação"
     )
 )
 

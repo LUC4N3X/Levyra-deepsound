@@ -50,7 +50,7 @@ internal data class TechnicalAudioInfoCopy(
     val no: String = "No"
 )
 
-internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (translationKey(code)) {
+internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (translationKey(code, regional = true)) {
     "it" -> TechnicalAudioInfoCopy(
         "Info audio tecniche", "Formato reale, sorgente e percorso del segnale in tempo reale",
         "IN RIPRODUZIONE", "SORGENTE", "USCITA & DSP",
@@ -131,6 +131,60 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Usaldusväärsus", "Pole teatatud", "Puudub", "Taotletud", "Varulahendus",
         "Normaliseerimine", "Ekvalaiser", "Piiraja", "Virtualiseerija", "Eelvõimendi",
         codecId = "Koodeki ID", remotePlayback = "Kaugesitus", receiverManaged = "Vastuvõtja haldab"
+    )
+    "ur" -> TechnicalAudioInfoCopy(
+        "تکنیکی آڈیو معلومات", "لائیو پلے بیک فارمیٹ، سورس اور سگنل پاتھ",
+        "ابھی چل رہا ہے", "ذریعہ", "آؤٹ پٹ اور ڈی ایس پی",
+        "کوڈیک", "بٹریٹ", "نمونہ کی شرح", "چینلز", "MIME", "کنٹینر", "فراہم کرنے والا",
+        "ڈیلیوری", "معیار", "بٹ گہرائی", "سلسلہ", "اونچ نیچ", "آؤٹ پٹ", "راستہ",
+        "آواز کی سطح", "انجن", "پائپ لائن", "پروسیسنگ", "آڈیو سیشن", "تصدیق شدہ ذریعہ",
+        "اعتماد", "اطلاع نہیں دی گئی۔", "کوئی نہیں۔", "درخواست کی۔", "فال بیک",
+        "نارملائزیشن", "برابر کرنے والا", "حد", "ورچوئلائزر", "پریمپ"
+    )
+    "ta" -> TechnicalAudioInfoCopy(
+        "தொழில்நுட்ப ஆடியோ தகவல்", "நேரடி பின்னணி வடிவம், மூல மற்றும் சமிக்ஞை பாதை",
+        "இப்போது இயங்குகிறது", "ஆதாரம்", "வெளியீடு & டிஎஸ்பி",
+        "கோடெக்", "பிட்ரேட்", "மாதிரி விகிதம்", "சேனல்கள்", "MIME", "கொள்கலன்", "வழங்குபவர்",
+        "டெலிவரி", "தரம்", "பிட் ஆழம்", "ஸ்ட்ரீம்", "சத்தம்", "வெளியீடு", "பாதை",
+        "ஒலி அளவு", "இயந்திரம்", "குழாய்", "செயலாக்கம்", "ஆடியோ அமர்வு", "சரிபார்க்கப்பட்ட ஆதாரம்",
+        "நம்பிக்கை", "தெரிவிக்கப்படவில்லை", "இல்லை", "கோரப்பட்டது", "வீழ்ச்சி",
+        "இயல்பாக்குதல்", "சமநிலைப்படுத்தி", "வரம்பு", "மெய்நிகராக்கி", "பிரேம்ப்"
+    )
+    "te" -> TechnicalAudioInfoCopy(
+        "సాంకేతిక ఆడియో సమాచారం", "ప్రత్యక్ష ప్లేబ్యాక్ ఫార్మాట్, మూలం మరియు సిగ్నల్ మార్గం",
+        "ఇప్పుడు ప్లే అవుతోంది", "మూలం", "అవుట్‌పుట్ & DSP",
+        "కోడెక్", "బిట్రేట్", "నమూనా రేటు", "ఛానెల్‌లు", "MIME", "కంటైనర్", "ప్రొవైడర్",
+        "డెలివరీ", "నాణ్యత", "బిట్ లోతు", "స్ట్రీమ్", "శబ్దము", "అవుట్‌పుట్", "మార్గం",
+        "వాల్యూమ్", "ఇంజిన్", "పైప్లైన్", "ప్రాసెసింగ్", "ఆడియో సెషన్", "ధృవీకరించబడిన మూలం",
+        "విశ్వాసం", "నివేదించబడలేదు", "ఏదీ లేదు", "అభ్యర్థించారు", "ఫాల్ బ్యాక్",
+        "సాధారణీకరణ", "ఈక్వలైజర్", "పరిమితి", "వర్చువలైజర్", "ప్రీయాంప్"
+    )
+    "mr" -> TechnicalAudioInfoCopy(
+        "तांत्रिक ऑडिओ माहिती", "थेट प्लेबॅक स्वरूप, स्त्रोत आणि सिग्नल पथ",
+        "आता वाजत आहे", "स्रोत", "आउटपुट आणि डीएसपी",
+        "कोडेक", "बिटरेट", "नमुना दर", "चॅनेल", "MIME", "कंटेनर", "प्रदाता",
+        "डिलिव्हरी", "गुणवत्ता", "थोडी खोली", "प्रवाह", "जोरात", "आउटपुट", "मार्ग",
+        "आवाजाची पातळी", "इंजिन", "पाइपलाइन", "प्रक्रिया करत आहे", "ऑडिओ सत्र", "सत्यापित स्रोत",
+        "आत्मविश्वास", "कळवले नाही", "काहीही नाही", "विनंती केली", "फॉलबॅक",
+        "सामान्यीकरण", "तुल्यकारक", "लिमिटर", "व्हर्च्युअलायझर", "Preamp"
+    )
+    "gu" -> TechnicalAudioInfoCopy(
+        "તકનીકી ઑડિઓ માહિતી", "લાઇવ પ્લેબેક ફોર્મેટ, સ્ત્રોત અને સિગ્નલ પાથ",
+        "હમણાં વાગી રહ્યું છે", "સ્ત્રોત", "આઉટપુટ અને ડીએસપી",
+        "કોડેક", "બિટરેટ", "નમૂના દર", "ચેનલો", "MIME", "કન્ટેનર", "પ્રદાતા",
+        "ડિલિવરી", "ગુણવત્તા", "બીટ ઊંડાઈ", "પ્રવાહ", "લાઉડનેસ", "આઉટપુટ", "રૂટ",
+        "અવાજનું સ્તર", "એન્જીન", "પાઇપલાઇન", "પ્રોસેસિંગ", "ઓડિયો સત્ર", "ચકાસાયેલ સ્ત્રોત",
+        "આત્મવિશ્વાસ", "જાણ કરી નથી", "કોઈ નહિ", "વિનંતી કરી", "ફોલબેક",
+        "સામાન્યીકરણ", "બરાબરી", "લિમિટર", "વર્ચ્યુઅલાઈઝર", "પ્રીમ્પ"
+    )
+    "pt-BR" -> TechnicalAudioInfoCopy(
+        "Informações técnicas de áudio", "Formato de reprodução ao vivo, fonte e caminho do sinal",
+        "AGORA JOGANDO", "FONTE", "SAÍDA E DSP",
+        "Codec", "Taxa de bits", "Taxa de amostragem", "Canais", "MIME", "Recipiente", "Provedor",
+        "Entrega", "Qualidade", "Profundidade de bits", "Transmitir", "Volume", "Saída", "Rota",
+        "Volume", "Motor", "Gasoduto", "Processamento", "Sessão de áudio", "Fonte verificada",
+        "Confiança", "Não relatado", "Nenhum", "Solicitado", "Alternativa",
+        "Normalização", "Equalizador", "Limitador", "Virtualizador", "Pré-amplificador"
     )
     else -> TechnicalAudioInfoCopy(
         "Technical audio info", "Live playback format, source and signal path",

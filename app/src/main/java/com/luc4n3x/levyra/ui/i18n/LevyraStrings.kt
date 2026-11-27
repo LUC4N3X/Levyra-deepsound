@@ -546,7 +546,7 @@ class LevyraStrings private constructor(
     val similarToFollowed: String get() = value("similarToFollowed")
     val theme: String get() = value("theme")
     val themeSubtitle: String get() = value("themeSubtitle")
-    val appFont: String get() = when (translationKey(code)) {
+    val appFont: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Carattere dell'app"
         "es" -> "Fuente de la app"
         "fr" -> "Police de l’application"
@@ -572,9 +572,15 @@ class LevyraStrings private constructor(
         "th" -> "แบบอักษรของแอป"
         "fil" -> "Font ng app"
         "he" -> "גופן האפליקציה"
+        "ur" -> "ایپ فونٹ"
+        "ta" -> "பயன்பாட்டு எழுத்துரு"
+        "te" -> "యాప్ ఫాంట్"
+        "mr" -> "ॲप फॉन्ट"
+        "gu" -> "એપ્લિકેશન ફોન્ટ"
+        "pt-BR" -> "Fonte do aplicativo"
         else -> "App font"
     }
-    val appFontSubtitle: String get() = when (translationKey(code)) {
+    val appFontSubtitle: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Scegli il font usato in tutta Levyra"
         "es" -> "Elige la tipografía usada en toda Levyra"
         "fr" -> "Choisissez la police utilisée dans Levyra"
@@ -600,6 +606,12 @@ class LevyraStrings private constructor(
         "th" -> "เลือกแบบอักษรที่ใช้ทั่วทั้ง Levyra"
         "fil" -> "Piliin ang font na gagamitin sa buong Levyra"
         "he" -> "בחרו את הגופן שישמש בכל Levyra"
+        "ur" -> "Levyra میں استعمال ہونے والے ٹائپ فیس کا انتخاب کریں۔"
+        "ta" -> "Levyra முழுவதும் பயன்படுத்தப்படும் எழுத்துருவைத் தேர்ந்தெடுக்கவும்"
+        "te" -> "Levyra అంతటా ఉపయోగించిన టైప్‌ఫేస్‌ని ఎంచుకోండి"
+        "mr" -> "Levyra वर वापरलेला टाइपफेस निवडा"
+        "gu" -> "Levyra માં વપરાયેલ ટાઇપફેસ પસંદ કરો"
+        "pt-BR" -> "Escolha o tipo de letra usado em Levyra"
         else -> "Choose the typeface used across Levyra"
     }
     val personalOrbitTitle: String get() = value("personalOrbitTitle")
@@ -623,7 +635,7 @@ class LevyraStrings private constructor(
     val audioSectionEnhancement: String get() = enhancementSectionTitle(code)
     val enhancedAudioTitle: String get() = "Levyra Enhanced Audio"
     val enhancedAudioSubtitle: String get() = enhancedAudioSubtitle(code)
-    val audioEfficiencyTitle: String get() = when (translationKey(code)) {
+    val audioEfficiencyTitle: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Efficienza audio"
         "es" -> "Eficiencia de audio"
         "fr" -> "Efficacité audio"
@@ -664,9 +676,15 @@ class LevyraStrings private constructor(
         "sr" -> "Енергетска ефикасност звука"
         "zh-Hant" -> "音訊節能"
         "fa" -> "بهره‌وری صدا"
+        "ur" -> "آڈیو کی کارکردگی"
+        "ta" -> "ஆடியோ திறன்"
+        "te" -> "ఆడియో సామర్థ్యం"
+        "mr" -> "ऑडिओ कार्यक्षमता"
+        "gu" -> "ઓડિયો કાર્યક્ષમતા"
+        "pt-BR" -> "Eficiência de áudio"
         else -> "Audio efficiency"
     }
-    val audioEfficiencySubtitle: String get() = when (translationKey(code)) {
+    val audioEfficiencySubtitle: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Usa l'offload audio hardware quando il dispositivo e le impostazioni audio attuali lo supportano."
         "es" -> "Usa la descarga de audio por hardware cuando tu dispositivo y los ajustes de audio actuales lo admiten."
         "fr" -> "Utilise le déchargement audio matériel lorsque votre appareil et les réglages audio actuels le permettent."
@@ -707,9 +725,15 @@ class LevyraStrings private constructor(
         "sr" -> "Користи хардверску обраду звука када уређај и тренутна подешавања звука то подржавају."
         "zh-Hant" -> "在裝置與目前音訊設定支援時，使用硬體音訊卸載以節省電量。"
         "fa" -> "وقتی دستگاه و تنظیمات فعلی صدا پشتیبانی کنند، از پردازش سخت‌افزاری صدا استفاده می‌کند."
+        "ur" -> "جب آپ کا آلہ اور موجودہ آڈیو سیٹنگ اس کو سپورٹ کرتی ہے تو ہارڈ ویئر آڈیو آف لوڈ کا استعمال کریں۔"
+        "ta" -> "உங்கள் சாதனம் மற்றும் தற்போதைய ஆடியோ அமைப்புகள் ஆதரிக்கும் போது வன்பொருள் ஆடியோ ஆஃப்லோடைப் பயன்படுத்தவும்."
+        "te" -> "మీ పరికరం మరియు ప్రస్తుత ఆడియో సెట్టింగ్‌లు మద్దతిస్తున్నప్పుడు హార్డ్‌వేర్ ఆడియో ఆఫ్‌లోడ్‌ని ఉపయోగించండి."
+        "mr" -> "जेव्हा तुमचे डिव्हाइस आणि वर्तमान ऑडिओ सेटिंग्ज त्यास समर्थन देतात तेव्हा हार्डवेअर ऑडिओ ऑफलोड वापरा."
+        "gu" -> "જ્યારે તમારું ઉપકરણ અને વર્તમાન ઑડિયો સેટિંગ્સ તેને સપોર્ટ કરે ત્યારે હાર્ડવેર ઑડિયો ઑફલોડનો ઉપયોગ કરો."
+        "pt-BR" -> "Use o descarregamento de áudio de hardware quando seu dispositivo e as configurações de áudio atuais suportarem."
         else -> "Use hardware audio offload when your device and current audio settings support it."
     }
-    val audioEfficiencyAutomatic: String get() = when (translationKey(code)) {
+    val audioEfficiencyAutomatic: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Automatico"
         "es" -> "Automático"
         "fr" -> "Automatique"
@@ -750,9 +774,15 @@ class LevyraStrings private constructor(
         "sr" -> "Аутоматски"
         "zh-Hant" -> "自動"
         "fa" -> "خودکار"
+        "ur" -> "خودکار"
+        "ta" -> "தானியங்கி"
+        "te" -> "ఆటోమేటిక్"
+        "mr" -> "स्वयंचलित"
+        "gu" -> "આપોઆપ"
+        "pt-BR" -> "Automático"
         else -> "Automatic"
     }
-    val audioEfficiencyOff: String get() = when (translationKey(code)) {
+    val audioEfficiencyOff: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Disattivato"
         "es" -> "Desactivado"
         "fr" -> "Désactivé"
@@ -793,6 +823,12 @@ class LevyraStrings private constructor(
         "sr" -> "Искључено"
         "zh-Hant" -> "關閉"
         "fa" -> "خاموش"
+        "ur" -> "آف"
+        "ta" -> "ஆஃப்"
+        "te" -> "ఆఫ్"
+        "mr" -> "बंद"
+        "gu" -> "બંધ"
+        "pt-BR" -> "Desligado"
         else -> "Off"
     }
     val audioSectionPlayback: String get() = value("audioSectionPlayback")
@@ -825,7 +861,7 @@ class LevyraStrings private constructor(
     val bassBoost: String get() = value("bassBoost")
     val virtualizer: String get() = value("virtualizer")
     val preamp: String get() = "Preamp"
-    val truePeakLimiter: String get() = when (translationKey(code)) {
+    val truePeakLimiter: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Limiter true-peak"
         "es" -> "Limitador true-peak"
         "fr" -> "Limiteur true-peak"
@@ -851,9 +887,15 @@ class LevyraStrings private constructor(
         "th" -> "ตัวจำกัดทรูพีก"
         "fil" -> "Limiter ng true-peak"
         "he" -> "מגביל שיא אמיתי"
+        "ur" -> "حقیقی چوٹی محدود کرنے والا"
+        "ta" -> "உண்மை உச்ச வரம்பு"
+        "te" -> "ట్రూ-పీక్ లిమిటర్"
+        "mr" -> "ट्रू-पीक लिमिटर"
+        "gu" -> "ટ્રુ-પીક લિમિટર"
+        "pt-BR" -> "Limitador de pico verdadeiro"
         else -> "True-peak limiter"
     }
-    val truePeakLimiterSubtitle: String get() = when (translationKey(code)) {
+    val truePeakLimiterSubtitle: String get() = when (translationKey(code, regional = true)) {
         "it" -> "Impedisce distorsione e clipping quando equalizzatore o boost alzano il volume: i picchi restano sotto −1.0 dBTP."
         "es" -> "Evita la distorsión y el recorte cuando el ecualizador o el refuerzo suben el volumen: los picos quedan por debajo de −1.0 dBTP."
         "fr" -> "Évite la distorsion et l'écrêtage quand l'égaliseur ou le boost montent le volume : les crêtes restent sous −1.0 dBTP."
@@ -894,6 +936,12 @@ class LevyraStrings private constructor(
         "sr" -> "Спречава изобличење и клиповање када еквилајзер или појачање подигну ниво: врхови остају испод −1.0 dBTP."
         "zh-Hant" -> "在等化器或增強提高音量時防止失真與削波：峰值保持在 −1.0 dBTP 以下。"
         "fa" -> "وقتی اکولایزر یا تقویت سطح صدا را بالا می‌برد، از اعوجاج و بریدگی جلوگیری می‌کند: قله‌ها زیر −1.0 dBTP می‌مانند."
+        "ur" -> "مسخ کرنے اور تراشنے سے روکتا ہے جب ایکویلائزر یا بوسٹ لیول کو بڑھاتا ہے: چوٹیاں −1.0 dBTP سے نیچے رہتی ہیں۔"
+        "ta" -> "சமநிலைப்படுத்தி அல்லது பூஸ்ட் அளவை உயர்த்தும் போது சிதைவு மற்றும் கிளிப்பிங் தடுக்கிறது: உச்சநிலைகள் −1.0 dBTP க்கு கீழே இருக்கும்."
+        "te" -> "ఈక్వలైజర్ లేదా బూస్ట్ స్థాయిని పెంచినప్పుడు వక్రీకరణ మరియు క్లిప్పింగ్‌ను నిరోధిస్తుంది: శిఖరాలు −1.0 dBTP కంటే తక్కువగా ఉంటాయి."
+        "mr" -> "तुल्यबळ किंवा बूस्ट पातळी वाढवते तेव्हा विकृती आणि क्लिपिंग प्रतिबंधित करते: शिखरे −1.0 dBTP च्या खाली राहतात."
+        "gu" -> "જ્યારે બરાબરી અથવા બૂસ્ટ સ્તર વધારે છે ત્યારે વિકૃતિ અને ક્લિપિંગ અટકાવે છે: શિખરો −1.0 dBTP ની નીચે રહે છે."
+        "pt-BR" -> "Evita distorção e corte quando o equalizador ou reforço aumenta o nível: os picos permanecem abaixo de -1,0 dBTP."
         else -> "Prevents distortion and clipping when the equalizer or boost raises the level: peaks stay below −1.0 dBTP."
     }
     val crossfade: String get() = value("crossfade")
@@ -1324,7 +1372,7 @@ class LevyraStrings private constructor(
     val readAll: String get() = value("readAll")
     val singlesAndEps: String get() = value("singlesAndEps")
     val compilations: String
-        get() = when (translationKey(code)) {
+        get() = when (translationKey(code, regional = true)) {
             "it" -> "Raccolte"
             "es" -> "Recopilaciones"
             "fr" -> "Compilations"
@@ -1350,6 +1398,12 @@ class LevyraStrings private constructor(
             "th" -> "อัลบั้มรวมเพลง"
             "fil" -> "Mga compilation"
             "he" -> "אוספים"
+            "ur" -> "تالیفات"
+            "ta" -> "தொகுப்புகள்"
+            "te" -> "సంకలనాలు"
+            "mr" -> "संकलन"
+            "gu" -> "સંકલન"
+            "pt-BR" -> "Compilações"
             else -> "Compilations"
         }
     val tapHeartToAdd: String get() = value("tapHeartToAdd")
@@ -1648,7 +1702,7 @@ class LevyraStrings private constructor(
     fun formatSleepTimerMinutes(minutes: Int): String {
         val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(minutes.coerceAtLeast(0))
-        val normalizedCode = LevyraLanguageCatalog.translationCode(code)
+        val normalizedCode = translationKey(code, regional = true)
         val unit = when (normalizedCode) {
             "de" -> "Min."
             "el" -> "λεπ."
@@ -1664,6 +1718,11 @@ class LevyraStrings private constructor(
             "vi" -> "phút"
             "th" -> "นาที"
             "he" -> "דק׳"
+            "ur" -> "منٹ"
+            "ta" -> "நிமிடம்"
+            "te" -> "నిమి"
+            "mr" -> "मि"
+            "gu" -> "મિનિટ"
             else -> "min"
         }
         val separator = if (normalizedCode in setOf("zh", "ja", "ko")) "" else " "
@@ -1739,7 +1798,7 @@ class LevyraStrings private constructor(
     fun formatReplayPeriod(days: Int): String {
         val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(days.coerceAtLeast(0))
-        val unit = when (LevyraLanguageCatalog.translationCode(code)) {
+        val unit = when (translationKey(code, regional = true)) {
             "it" -> "gg"
             "es" -> "d"
             "fr" -> "j"
@@ -1764,6 +1823,12 @@ class LevyraStrings private constructor(
             "th" -> "วัน"
             "fil" -> "araw"
             "he" -> "ימים"
+            "ur" -> "دن"
+            "ta" -> "நாட்கள்"
+            "te" -> "రోజులు"
+            "mr" -> "दिवस"
+            "gu" -> "દિવસો"
+            "pt-BR" -> "dias"
             else -> "days"
         }
         val compact = LevyraLanguageCatalog.translationCode(code) in setOf("zh", "ja", "ko")
@@ -1781,7 +1846,7 @@ class LevyraStrings private constructor(
         val formattedValue = NumberFormat
             .getIntegerInstance(Locale.forLanguageTag(code))
             .format(value)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "it" -> if (value == 1) "$formattedValue brano" else "$formattedValue brani"
             "es" -> if (value == 1) "$formattedValue canción" else "$formattedValue canciones"
             "fr" -> if (value == 1) "$formattedValue titre" else "$formattedValue titres"
@@ -1831,6 +1896,12 @@ class LevyraStrings private constructor(
             "he" -> if (value == 1) "שיר אחד" else "$formattedValue שירים"
             "fi" -> if (value == 1) "$formattedValue kappale" else "$formattedValue kappaletta"
             "et" -> "$formattedValue lugu"
+            "ur" -> if (value == 1) "$formattedValue گانا" else "$formattedValue گانے"
+            "ta" -> if (value == 1) "$formattedValue பாடல்" else "$formattedValue பாடல்கள்"
+            "te" -> if (value == 1) "$formattedValue పాట" else "$formattedValue పాటలు"
+            "mr" -> if (value == 1) "$formattedValue गाणे" else "$formattedValue गाणी"
+            "gu" -> if (value == 1) "$formattedValue ગીત" else "$formattedValue ગીતો"
+            "pt-BR" -> if (value == 1) "$formattedValue faixa" else "$formattedValue faixas"
             else -> if (value == 1) "$formattedValue track" else "$formattedValue tracks"
         }
     }
@@ -1863,7 +1934,7 @@ class LevyraStrings private constructor(
 
     fun formatDownloadProgress(progress: Int): String {
         val value = progress.coerceIn(0, 100)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "es" -> "Descargando $value%"
             "fr" -> "Téléchargement $value%"
             "pt" -> regional("A transferir $value%")
@@ -1889,13 +1960,19 @@ class LevyraStrings private constructor(
             "he" -> "מוריד $value%"
             "fi" -> "Ladataan $value%"
             "et" -> "Allalaadimine $value%"
+            "ur" -> "$value% ڈاؤن لوڈ کریں"
+            "ta" -> "பதிவிறக்கம் $value%"
+            "te" -> "డౌన్‌లోడ్ $value%"
+            "mr" -> "$value% डाउनलोड करा"
+            "gu" -> "$value% ડાઉનલોડ કરો"
+            "pt-BR" -> "Baixar $value%"
             else -> "Download $value%"
         }
     }
 
     fun formatDownloadedTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "it" -> if (value == 1) "1 brano scaricato" else "$value brani scaricati"
             "es" -> if (value == 1) "1 canción descargada" else "$value canciones descargadas"
             "fr" -> if (value == 1) "1 titre téléchargé" else "$value titres téléchargés"
@@ -1929,6 +2006,12 @@ class LevyraStrings private constructor(
             "he" -> if (value == 1) "שיר אחד הורד" else "הורדו $value שירים"
             "fi" -> if (value == 1) "1 kappale ladattu" else "$value kappaletta ladattu"
             "et" -> if (value == 1) "1 lugu alla laaditud" else "$value lugu alla laaditud"
+            "ur" -> if (value == 1) "1 گانا ڈاؤن لوڈ ہوا" else "$value گانے ڈاؤن لوڈ ہوئے"
+            "ta" -> if (value == 1) "1 பாடல் பதிவிறக்கப்பட்டது" else "$value பாடல்கள் பதிவிறக்கப்பட்டன"
+            "te" -> if (value == 1) "1 పాట డౌన్‌లోడ్ అయింది" else "$value పాటలు డౌన్‌లోడ్ అయ్యాయి"
+            "mr" -> if (value == 1) "1 गाणे डाउनलोड झाले" else "$value गाणी डाउनलोड झाली"
+            "gu" -> if (value == 1) "1 ગીત ડાઉનલોડ થયું" else "$value ગીતો ડાઉનલોડ થયાં"
+            "pt-BR" -> if (value == 1) "1 faixa baixada" else "$value faixas baixadas"
             else -> if (value == 1) "1 track downloaded" else "$value tracks downloaded"
         }
     }
@@ -2000,7 +2083,7 @@ class LevyraStrings private constructor(
 
     fun formatSavedTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "it" -> if (value == 1) "1 brano salvato" else "$value brani salvati"
             "es" -> if (value == 1) "1 canción guardada" else "$value canciones guardadas"
             "fr" -> if (value == 1) "1 titre enregistré" else "$value titres enregistrés"
@@ -2034,6 +2117,12 @@ class LevyraStrings private constructor(
             "he" -> if (value == 1) "שיר אחד נשמר" else "נשמרו $value שירים"
             "fi" -> if (value == 1) "1 kappale tallennettu" else "$value kappaletta tallennettu"
             "et" -> if (value == 1) "1 lugu salvestatud" else "$value lugu salvestatud"
+            "ur" -> if (value == 1) "1 گانا محفوظ ہوا" else "$value گانے محفوظ ہوئے"
+            "ta" -> if (value == 1) "1 பாடல் சேமிக்கப்பட்டது" else "$value பாடல்கள் சேமிக்கப்பட்டன"
+            "te" -> if (value == 1) "1 పాట సేవ్ అయింది" else "$value పాటలు సేవ్ అయ్యాయి"
+            "mr" -> if (value == 1) "1 गाणे जतन झाले" else "$value गाणी जतन झाली"
+            "gu" -> if (value == 1) "1 ગીત સાચવાયું" else "$value ગીતો સાચવાયાં"
+            "pt-BR" -> if (value == 1) "1 faixa salva" else "$value faixas salvas"
             else -> if (value == 1) "1 track saved" else "$value tracks saved"
         }
     }
@@ -2041,7 +2130,7 @@ class LevyraStrings private constructor(
 
     fun formatSearchResults(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "it" -> if (value == 1) "$value risultato" else "$value risultati"
             "es" -> if (value == 1) "$value resultado" else "$value resultados"
             "fr" -> if (value == 1) "$value résultat" else "$value résultats"
@@ -2091,6 +2180,12 @@ class LevyraStrings private constructor(
             "he" -> if (value == 1) "תוצאה אחת" else "$value תוצאות"
             "fi" -> if (value == 1) "$value tulos" else "$value tulosta"
             "et" -> if (value == 1) "$value tulemus" else "$value tulemust"
+            "ur" -> if (value == 1) "$value نتیجہ" else "$value نتائج"
+            "ta" -> if (value == 1) "$value முடிவு" else "$value முடிவுகள்"
+            "te" -> if (value == 1) "$value ఫలితం" else "$value ఫలితాలు"
+            "mr" -> if (value == 1) "$value निकाल" else "$value निकाल"
+            "gu" -> if (value == 1) "$value પરિણામ" else "$value પરિણામો"
+            "pt-BR" -> if (value == 1) "$value resultado" else "$value resultados"
             else -> if (value == 1) "$value result" else "$value results"
         }
     }
@@ -2101,7 +2196,7 @@ class LevyraStrings private constructor(
         if (name.isBlank()) return dayPart
         val directionalName = directionalValue(name)
         return when (translationKey(code)) {
-            "ar" -> "$dayPart، $directionalName"
+            "ar", "ur" -> "$dayPart، $directionalName"
             "he" -> "$dayPart, $directionalName"
             "zh" -> "$dayPart，$directionalName"
             "ja" -> "$directionalName、$dayPart"
@@ -2119,7 +2214,7 @@ class LevyraStrings private constructor(
 
     fun greetingDayPart(hour: Int): String {
         val normalizedHour = hour.coerceIn(0, 23)
-        return when (translationKey(code)) {
+        return when (translationKey(code, regional = true)) {
             "it" -> when (normalizedHour) { in 5..11 -> "Buongiorno"; in 12..17 -> "Buon pomeriggio"; in 18..22 -> "Buonasera"; else -> "Buonanotte" }
             "es" -> when (normalizedHour) { in 5..11 -> "Buenos días"; in 12..17 -> "Buenas tardes"; in 18..22 -> "Buenas noches"; else -> "Buenas noches" }
             "fr" -> when (normalizedHour) { in 5..11 -> "Bonjour"; in 12..17 -> "Bon après-midi"; in 18..22 -> "Bonsoir"; else -> "Bonne nuit" }
@@ -2147,6 +2242,12 @@ class LevyraStrings private constructor(
             "he" -> when (normalizedHour) { in 5..11 -> "בוקר טוב"; in 12..17 -> "צהריים טובים"; in 18..22 -> "ערב טוב"; else -> "לילה טוב" }
             "fi" -> when (normalizedHour) { in 5..11 -> "Hyvää huomenta"; in 12..17 -> "Hyvää iltapäivää"; in 18..22 -> "Hyvää iltaa"; else -> "Hyvää yötä" }
             "et" -> when (normalizedHour) { in 5..11 -> "Tere hommikust"; in 12..17 -> "Tere päevast"; in 18..22 -> "Tere õhtust"; else -> "Head ööd" }
+            "ur" -> when (normalizedHour) { in 5..11 -> "صبح بخیر"; in 12..17 -> "سہ پہر بخیر"; in 18..22 -> "شام بخیر"; else -> "شب بخیر" }
+            "ta" -> when (normalizedHour) { in 5..11 -> "காலை வணக்கம்"; in 12..17 -> "மதிய வணக்கம்"; in 18..22 -> "மாலை வணக்கம்"; else -> "இரவு வணக்கம்" }
+            "te" -> when (normalizedHour) { in 5..11 -> "శుభోదయం"; in 12..17 -> "శుభ మధ్యాహ్నం"; in 18..22 -> "శుభ సాయంత్రం"; else -> "శుభరాత్రి" }
+            "mr" -> when (normalizedHour) { in 5..11 -> "शुभ सकाळ"; in 12..17 -> "शुभ दुपार"; in 18..22 -> "शुभ संध्याकाळ"; else -> "शुभ रात्री" }
+            "gu" -> when (normalizedHour) { in 5..11 -> "શુભ સવાર"; in 12..17 -> "શુભ બપોર"; in 18..22 -> "શુભ સાંજ"; else -> "શુભ રાત્રિ" }
+            "pt-BR" -> when (normalizedHour) { in 5..11 -> "Bom dia"; in 12..17 -> "Boa tarde"; in 18..22 -> "Boa noite"; else -> "Boa noite" }
             else -> when (normalizedHour) { in 5..11 -> "Good morning"; in 12..17 -> "Good afternoon"; in 18..22 -> "Good evening"; else -> "Good night" }
         }
     }
@@ -2162,7 +2263,7 @@ class LevyraStrings private constructor(
             "CANCELLED", "CANCELED" -> "cancelled"
             else -> normalized.lowercase().replaceFirstChar { it.titlecase() }
         }
-        val translations = when (translationKey(code)) {
+        val translations = when (translationKey(code, regional = true)) {
             "it" -> mapOf("queued" to "In coda", "downloading" to "Download in corso", "paused" to "In pausa", "failed" to "Non riuscito", "completed" to "Completato", "cancelled" to "Annullato")
             "es" -> mapOf("queued" to "En cola", "downloading" to "Descargando", "paused" to "En pausa", "failed" to "Fallido", "completed" to "Completado", "cancelled" to "Cancelado")
             "fr" -> mapOf("queued" to "En attente", "downloading" to "Téléchargement", "paused" to "En pause", "failed" to "Échec", "completed" to "Terminé", "cancelled" to "Annulé")
@@ -2190,6 +2291,12 @@ class LevyraStrings private constructor(
             "he" -> mapOf("queued" to "בתור", "downloading" to "מוריד", "paused" to "מושהה", "failed" to "נכשל", "completed" to "הושלם", "cancelled" to "בוטל")
             "fi" -> mapOf("queued" to "Jonossa", "downloading" to "Ladataan", "paused" to "Tauotettu", "failed" to "Epäonnistui", "completed" to "Valmis", "cancelled" to "Peruutettu")
             "et" -> mapOf("queued" to "Järjekorras", "downloading" to "Allalaadimine", "paused" to "Peatatud", "failed" to "Ebaõnnestus", "completed" to "Valmis", "cancelled" to "Tühistatud")
+            "ur" -> mapOf("queued" to "قطار میں لگ گیا۔", "downloading" to "ڈاؤن لوڈ ہو رہا ہے۔", "paused" to "روک دیا گیا", "failed" to "ناکام", "completed" to "مکمل", "cancelled" to "منسوخ")
+            "ta" -> mapOf("queued" to "வரிசையில் நிற்கிறது", "downloading" to "பதிவிறக்குகிறது", "paused" to "இடைநிறுத்தப்பட்டது", "failed" to "தோல்வியடைந்தது", "completed" to "முடிக்கப்பட்டது", "cancelled" to "ரத்து செய்யப்பட்டது")
+            "te" -> mapOf("queued" to "క్యూలో నిలిచారు", "downloading" to "డౌన్‌లోడ్ చేస్తోంది", "paused" to "పాజ్ చేయబడింది", "failed" to "విఫలమైంది", "completed" to "పూర్తయింది", "cancelled" to "రద్దు చేయబడింది")
+            "mr" -> mapOf("queued" to "रांगेत", "downloading" to "डाउनलोड करत आहे", "paused" to "विराम दिला", "failed" to "अयशस्वी", "completed" to "पूर्ण झाले", "cancelled" to "रद्द केले")
+            "gu" -> mapOf("queued" to "કતારબદ્ધ", "downloading" to "ડાઉનલોડ કરી રહ્યું છે", "paused" to "થોભાવ્યું", "failed" to "નિષ્ફળ", "completed" to "પૂર્ણ થયું", "cancelled" to "રદ કરેલ")
+            "pt-BR" -> mapOf("queued" to "Na fila", "downloading" to "Baixando", "paused" to "Pausado", "failed" to "Falha", "completed" to "Concluído", "cancelled" to "Cancelado")
             else -> mapOf("queued" to "Queued", "downloading" to "Downloading", "paused" to "Paused", "failed" to "Failed", "completed" to "Completed", "cancelled" to "Cancelled")
         }
         return translations[key] ?: key
@@ -2457,7 +2564,12 @@ class LevyraStrings private constructor(
             "hr" to { enEntries() + newLocaleCoreOverrides("hr") + hrLocalizationEntries() },
             "sk" to { enEntries() + newLocaleCoreOverrides("sk") + skLocalizationEntries() },
             "ms" to { enEntries() + newLocaleCoreOverrides("ms") + msLocalizationEntries() },
-            "fa" to { enEntries() + newLocaleCoreOverrides("fa") + faLocalizationEntries() }
+            "fa" to { enEntries() + newLocaleCoreOverrides("fa") + faLocalizationEntries() },
+            "ur" to { urLocalizationEntries() },
+            "ta" to { taLocalizationEntries() },
+            "te" to { teLocalizationEntries() },
+            "mr" to { mrLocalizationEntries() },
+            "gu" to { guLocalizationEntries() }
         )
 
         private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
@@ -2499,6 +2611,9 @@ class LevyraStrings private constructor(
                 ).forEach(::putAll)
             }
             localizedEntries.putAll(smartOfflineLocalizationEntries(code, localizedEntries))
+            if (isBrazilianPortuguese(code)) {
+                localizedEntries.putAll(LevyraBrazilianPortuguese.entryOverrides)
+            }
             require(localizedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - localizedEntries.keys}, extra=${localizedEntries.keys - allRequiredKeys}"
             }
@@ -2506,11 +2621,9 @@ class LevyraStrings private constructor(
         }
 
         private val brazilianPortuguese: LevyraStrings by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            LevyraStrings(
+            bundle(
                 LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE,
-                LevyraBrazilianPortuguese.adaptEntries(requireNotNull(bundleFor("pt")).entries) +
-                    playerVisualLocalizationEntries(LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE) +
-                    playerDeckLocalizationEntries(LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE)
+                brazilianPortugueseEntries()
             )
         }
 
@@ -2519,9 +2632,9 @@ class LevyraStrings private constructor(
             else -> bundleFor(normalized) ?: requireNotNull(bundleFor("en"))
         }
 
-        fun all(): List<LevyraStrings> = LevyraLanguageCatalog.languages.map { forCode(it.code) }
+        fun all(): List<LevyraStrings> = LevyraLanguageCatalog.selectableLanguages.map { forCode(it.code) }
 
-        fun supportedCodes(): Set<String> = entrySources.keys
+        fun supportedCodes(): Set<String> = entrySources.keys + LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE
 
         private fun enEntries(): Map<String, String> = mapOf(
             "welcomeBadge" to "Welcome",

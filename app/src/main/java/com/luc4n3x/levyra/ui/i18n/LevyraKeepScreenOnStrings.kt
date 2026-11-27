@@ -51,7 +51,13 @@ private val keepScreenOnBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to keepScreenOn("Giữ màn hình luôn bật", "Ngăn màn hình tự động tắt trong khi phát nhạc."),
     "th" to keepScreenOn("เปิดหน้าจอค้างไว้", "ป้องกันไม่ให้หน้าจอดับเองโดยอัตโนมัติระหว่างเล่นเพลง"),
     "fil" to keepScreenOn("Panatilihing bukas ang screen", "Pinipigilan ang awtomatikong pagpatay ng screen habang nagpe-play ng musika."),
-    "he" to keepScreenOn("השארת המסך דולק", "מונע כיבוי אוטומטי של המסך בזמן ניגון מוזיקה.")
+    "he" to keepScreenOn("השארת המסך דולק", "מונע כיבוי אוטומטי של המסך בזמן ניגון מוזיקה."),
+    "ur" to keepScreenOn("اسکرین آن رکھیں", "میوزک پلے بیک کے دوران اسکرین کو خود بخود آف ہونے سے روکتا ہے۔"),
+    "ta" to keepScreenOn("திரையை இயக்கவும்", "மியூசிக் பிளேபேக்கின் போது திரை தானாகவே அணைக்கப்படுவதைத் தடுக்கிறது."),
+    "te" to keepScreenOn("స్క్రీన్ ఆన్‌లో ఉంచండి", "మ్యూజిక్ ప్లేబ్యాక్ సమయంలో స్క్రీన్ ఆటోమేటిక్‌గా ఆఫ్ కాకుండా నిరోధిస్తుంది."),
+    "mr" to keepScreenOn("स्क्रीन चालू ठेवा", "संगीत प्लेबॅक दरम्यान स्क्रीन स्वयंचलितपणे बंद होण्यापासून प्रतिबंधित करते."),
+    "gu" to keepScreenOn("સ્ક્રીન ચાલુ રાખો", "સંગીત પ્લેબેક દરમિયાન સ્ક્રીનને આપમેળે બંધ થવાથી અટકાવે છે."),
+    "pt-BR" to keepScreenOn("Manter a tela ligada", "Impede que a tela se desligue automaticamente durante a reprodução de música.")
 )
 
 internal fun keepScreenOnLocalizationEntries(code: String): Map<String, String> =

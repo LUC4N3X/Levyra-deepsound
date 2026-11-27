@@ -9,12 +9,12 @@ class LevyraCityChartsStringsTest {
     private val dailyTop100Codes = listOf(
         "en", "it", "es", "fr", "de", "pt", "pt-BR", "nl", "pl", "ro", "el", "sv", "da", "cs", "sk",
         "hr", "sr", "sq", "bg", "hu", "fi", "et", "nb", "ca", "uk", "ru", "kk", "tr", "ar", "fa",
-        "zh", "zh-Hant", "ja", "ko", "hi", "bn", "id", "ms", "vi", "th", "fil", "he"
+        "zh", "zh-Hant", "ja", "ko", "hi", "bn", "ur", "ta", "te", "mr", "gu", "id", "ms", "vi", "th", "fil", "he"
     )
 
     @Test
     fun codeListMatchesDailyTop100() {
-        assertEquals(42, dailyTop100Codes.size)
+        assertEquals(47, dailyTop100Codes.size)
         assertEquals(dailyTop100LocalizationCodes(), dailyTop100Codes.toSet())
     }
 

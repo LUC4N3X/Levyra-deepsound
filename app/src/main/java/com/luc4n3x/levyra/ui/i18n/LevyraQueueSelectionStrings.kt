@@ -47,7 +47,13 @@ private val queueSelectionBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to queueSelection("Piliin lahat", "Alisin sa queue", "Piliin ang track", "Alisin sa pagkakapili"),
     "he" to queueSelection("בחירת הכול", "הסרה מהתור", "בחירת רצועה", "ביטול בחירת רצועה"),
     "fi" to queueSelection("Valitse kaikki", "Poista jonosta", "Valitse kappale", "Poista kappaleen valinta"),
-    "et" to queueSelection("Vali kõik", "Eemalda järjekorrast", "Vali lugu", "Tühista loo valik")
+    "et" to queueSelection("Vali kõik", "Eemalda järjekorrast", "Vali lugu", "Tühista loo valik"),
+    "ur" to queueSelection("سبھی کو منتخب کریں۔", "قطار سے ہٹا دیں۔", "ٹریک منتخب کریں۔", "ٹریک کو غیر منتخب کریں۔"),
+    "ta" to queueSelection("அனைத்தையும் தேர்ந்தெடுக்கவும்", "வரிசையில் இருந்து அகற்று", "தடத்தைத் தேர்ந்தெடுக்கவும்", "தடத்தைத் தேர்வுநீக்கவும்"),
+    "te" to queueSelection("అన్నింటినీ ఎంచుకోండి", "క్యూ నుండి తీసివేయి", "ట్రాక్ ఎంచుకోండి", "ట్రాక్ ఎంపికను తీసివేయండి"),
+    "mr" to queueSelection("सर्व निवडा", "रांगेतून काढा", "ट्रॅक निवडा", "ट्रॅकची निवड रद्द करा"),
+    "gu" to queueSelection("બધા પસંદ કરો", "કતારમાંથી દૂર કરો", "ટ્રેક પસંદ કરો", "ટ્રેક નાપસંદ કરો"),
+    "pt-BR" to queueSelection("Selecionar tudo", "Remover da fila", "Selecione a faixa", "Desmarcar faixa")
 )
 
 internal fun queueSelectionLocalizationEntries(code: String): Map<String, String> =

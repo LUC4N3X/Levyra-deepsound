@@ -12,7 +12,7 @@ data class PlaylistImportCopy(
     val cancel: String
 )
 
-fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (translationKey(code)) {
+fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (translationKey(code, regional = true)) {
     "it" -> PlaylistImportCopy(
         "Importa playlist",
         "Da servizi musicali supportati e backup compatibili",
@@ -256,6 +256,60 @@ fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (translationKe
         "Imporditud lood vastendatakse Levyra kataloogiga usaldusväärse taasesituse tagamiseks.",
         "Tühista"
     )
+    "ur" -> PlaylistImportCopy(
+        "پلے لسٹ درآمد کریں۔",
+        "تعاون یافتہ میوزک سروسز اور ہم آہنگ بیک اپس سے",
+        "درآمد کریں۔",
+        "سپورٹ شدہ میوزک سروس یا مطابقت پذیر بیک اپ کے مواد سے پلے لسٹ کا لنک پیسٹ کریں۔ Levyra ٹریکس کی شناخت کرے گا اور آپ کی لائبریری میں پلے لسٹ بنائے گا۔",
+        "ایک لنک یا بیک اپ مواد چسپاں کریں…",
+        "قابل اعتماد پلے بیک کے لیے درآمد شدہ ٹریکز Levyra کے کیٹلاگ سے مماثل ہیں۔",
+        "منسوخ کریں۔"
+    )
+    "ta" -> PlaylistImportCopy(
+        "பிளேலிஸ்ட்டை இறக்குமதி செய்யவும்",
+        "ஆதரிக்கப்படும் இசை சேவைகள் மற்றும் இணக்கமான காப்புப்பிரதிகளிலிருந்து",
+        "இறக்குமதி",
+        "ஆதரிக்கப்படும் இசைச் சேவையிலிருந்து அல்லது இணக்கமான காப்புப்பிரதியின் உள்ளடக்கங்களிலிருந்து பிளேலிஸ்ட் இணைப்பை ஒட்டவும். Levyra டிராக்குகளை அடையாளம் கண்டு உங்கள் நூலகத்தில் பிளேலிஸ்ட்டை உருவாக்கும்.",
+        "இணைப்பு அல்லது காப்புப் பிரதி உள்ளடக்கத்தை ஒட்டவும்...",
+        "நம்பகமான பிளேபேக்கிற்காக, இறக்குமதி செய்யப்பட்ட டிராக்குகள் Levyra இன் அட்டவணையுடன் பொருந்துகின்றன.",
+        "ரத்து செய்"
+    )
+    "te" -> PlaylistImportCopy(
+        "ప్లేజాబితాని దిగుమతి చేయండి",
+        "మద్దతు ఉన్న సంగీత సేవలు మరియు అనుకూల బ్యాకప్‌ల నుండి",
+        "దిగుమతి",
+        "మద్దతు ఉన్న సంగీత సేవ నుండి ప్లేజాబితా లింక్‌ను లేదా అనుకూల బ్యాకప్‌లోని కంటెంట్‌లను అతికించండి. Levyra ట్రాక్‌లను గుర్తిస్తుంది మరియు మీ లైబ్రరీలో ప్లేజాబితాను సృష్టిస్తుంది.",
+        "లింక్ లేదా బ్యాకప్ కంటెంట్‌ను అతికించండి...",
+        "దిగుమతి చేసుకున్న ట్రాక్‌లు నమ్మదగిన ప్లేబ్యాక్ కోసం Levyra కేటలాగ్‌కి సరిపోలాయి.",
+        "రద్దు చేయి"
+    )
+    "mr" -> PlaylistImportCopy(
+        "प्लेलिस्ट आयात करा",
+        "समर्थित संगीत सेवा आणि सुसंगत बॅकअप पासून",
+        "आयात करा",
+        "समर्थित संगीत सेवेतील प्लेलिस्ट लिंक किंवा सुसंगत बॅकअपमधील सामग्री पेस्ट करा. Levyra ट्रॅक ओळखेल आणि तुमच्या लायब्ररीमध्ये प्लेलिस्ट तयार करेल.",
+        "लिंक किंवा बॅकअप सामग्री पेस्ट करा...",
+        "विश्वसनीय प्लेबॅकसाठी आयात केलेले ट्रॅक Levyra च्या कॅटलॉगशी जुळले आहेत.",
+        "रद्द करा"
+    )
+    "gu" -> PlaylistImportCopy(
+        "પ્લેલિસ્ટ આયાત કરો",
+        "સમર્થિત સંગીત સેવાઓ અને સુસંગત બેકઅપ્સમાંથી",
+        "આયાત કરો",
+        "સમર્થિત સંગીત સેવા અથવા સુસંગત બેકઅપની સામગ્રીમાંથી પ્લેલિસ્ટ લિંક પેસ્ટ કરો. Levyra ટ્રૅક્સને ઓળખશે અને તમારી લાઇબ્રેરીમાં પ્લેલિસ્ટ બનાવશે.",
+        "લિંક અથવા બેકઅપ સામગ્રી પેસ્ટ કરો...",
+        "વિશ્વસનીય પ્લેબેક માટે આયાત કરેલા ટ્રેક Levyra ના કેટલોગ સાથે મેળ ખાય છે.",
+        "રદ કરો"
+    )
+    "pt-BR" -> PlaylistImportCopy(
+        "Importar lista de reprodução",
+        "De serviços de música suportados e backups compatíveis",
+        "Importar",
+        "Cole um link de lista de reprodução de um serviço de música compatível ou o conteúdo de um backup compatível. Levyra identificará as faixas e criará uma playlist em sua biblioteca.",
+        "Cole um link ou faça backup do conteúdo…",
+        "As faixas importadas correspondem ao catálogo do Levyra para uma reprodução confiável.",
+        "Cancelar"
+    )
     else -> PlaylistImportCopy(
         "Import playlist",
         "From supported music services and compatible backups",
@@ -294,7 +348,7 @@ private data class NewAudioPresetLabels(
     val deviceTune: String
 )
 
-private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = when (translationKey(code)) {
+private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = when (translationKey(code, regional = true)) {
     "it" -> NewAudioPresetLabels("Rock", "Pop", "Elettronica", "Jazz", "Acustica", "Classica", "Profilo dispositivo")
     "es" -> NewAudioPresetLabels("Rock", "Pop", "Electrónica", "Jazz", "Acústica", "Clásica", "Ajuste de dispositivo")
     "fr" -> NewAudioPresetLabels("Rock", "Pop", "Électronique", "Jazz", "Acoustique", "Classique", "Réglage appareil")
@@ -322,6 +376,12 @@ private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = 
     "he" -> NewAudioPresetLabels("רוק", "פופ", "אלקטרוני", "ג׳אז", "אקוסטי", "קלאסי", "כיוון למכשיר")
     "fi" -> NewAudioPresetLabels("Rock", "Pop", "Elektroninen", "Jazz", "Akustinen", "Klassinen", "Laitteen viritys")
     "et" -> NewAudioPresetLabels("Rock", "Pop", "Elektrooniline", "Jazz", "Akustiline", "Klassikaline", "Seadme häälestus")
+    "ur" -> NewAudioPresetLabels("چٹان", "پاپ", "الیکٹرانک", "جاز", "صوتی", "کلاسیکل", "ڈیوائس ٹیون")
+    "ta" -> NewAudioPresetLabels("பாறை", "பாப்", "மின்னணு", "ஜாஸ்", "ஒலியியல்", "செம்மொழி", "சாதன ட்யூன்")
+    "te" -> NewAudioPresetLabels("రాక్", "పాప్", "ఎలక్ట్రానిక్", "జాజ్", "అకౌస్టిక్", "క్లాసికల్", "పరికర ట్యూన్")
+    "mr" -> NewAudioPresetLabels("खडक", "पॉप", "इलेक्ट्रॉनिक", "जाझ", "ध्वनिक", "शास्त्रीय", "डिव्हाइस ट्यून")
+    "gu" -> NewAudioPresetLabels("રોક", "પૉપ", "ઈલેક્ટ્રોનિક", "જાઝ", "એકોસ્ટિક", "ક્લાસિકલ", "ઉપકરણ ટ્યુન")
+    "pt-BR" -> NewAudioPresetLabels("Rocha", "Pop", "Eletrônica", "Jazz", "Acústico", "Clássico", "Sintonia do dispositivo")
     else -> NewAudioPresetLabels("Rock", "Pop", "Electronic", "Jazz", "Acoustic", "Classical", "Device tune")
 }.forBrazil(code) { brazilian() }
 

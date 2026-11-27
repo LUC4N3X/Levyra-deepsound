@@ -71,7 +71,31 @@ internal object LevyraLiveRadioCatalog {
         "vi" to listOf("Phổ biến", "Âm nhạc", "Pop", "Rock", "Hip-Hop", "Điện tử", "Dance", "Chill", "Jazz", "Cổ điển", "Tin tức", "Trò chuyện", "Thể thao", "Địa phương", "Toàn thế giới"),
         "th" to listOf("ยอดนิยม", "เพลง", "ป๊อป", "ร็อก", "ฮิปฮอป", "อิเล็กทรอนิกส์", "แดนซ์", "ชิล", "แจ๊ส", "คลาสสิก", "ข่าว", "พูดคุย", "กีฬา", "ท้องถิ่น", "ทั่วโลก"),
         "fil" to listOf("Sikat", "Musika", "Pop", "Rock", "Hip-Hop", "Elektronika", "Dance", "Chill", "Jazz", "Klasikal", "Balita", "Usapan", "Isports", "Lokal", "Buong mundo"),
-        "he" to listOf("פופולרי", "מוזיקה", "פופ", "רוק", "היפ-הופ", "אלקטרוני", "דאנס", "צ'יל", "ג'אז", "קלאסי", "חדשות", "שיחות", "ספורט", "מקומי", "כל העולם")
+        "he" to listOf("פופולרי", "מוזיקה", "פופ", "רוק", "היפ-הופ", "אלקטרוני", "דאנס", "צ'יל", "ג'אז", "קלאסי", "חדשות", "שיחות", "ספורט", "מקומי", "כל העולם"),
+        "ur" to listOf(
+                "مقبول", "موسیقی", "پاپ", "چٹان", "ہپ ہاپ", "الیکٹرانک", "رقص", "سکون", "جاز",
+                "کلاسیکل", "خبریں", "بات کرنا", "کھیل", "مقامی", "دنیا بھر میں"
+        ),
+        "ta" to listOf(
+                "பிரபலமானது", "இசை", "பாப்", "பாறை", "ஹிப்-ஹாப்", "மின்னணு", "நடனம்", "நிதானம்", "ஜாஸ்",
+                "செம்மொழி", "செய்தி", "பேசு", "விளையாட்டு", "உள்ளூர்", "உலகம் முழுவதும்"
+        ),
+        "te" to listOf(
+                "జనాదరణ పొందినది", "సంగీతం", "పాప్", "రాక్", "హిప్-హాప్", "ఎలక్ట్రానిక్", "నృత్యం", "ప్రశాంతం", "జాజ్",
+                "క్లాసికల్", "వార్తలు", "మాట్లాడండి", "క్రీడ", "స్థానిక", "ప్రపంచవ్యాప్తంగా"
+        ),
+        "mr" to listOf(
+                "लोकप्रिय", "संगीत", "पॉप", "खडक", "हिप-हॉप", "इलेक्ट्रॉनिक", "डान्स", "निवांत", "जाझ",
+                "शास्त्रीय", "बातम्या", "बोला", "खेळ", "स्थानिक", "जगभरात"
+        ),
+        "gu" to listOf(
+                "લોકપ્રિય", "સંગીત", "પૉપ", "રોક", "હિપ-હોપ", "ઈલેક્ટ્રોનિક", "ડાન્સ", "હળવાશ", "જાઝ",
+                "ક્લાસિકલ", "સમાચાર", "વાત", "રમતગમત", "સ્થાનિક", "વિશ્વવ્યાપી"
+        ),
+        "pt-BR" to listOf(
+                "Populares", "Música", "Pop", "Rocha", "Hip Hop", "Eletrônica", "Dança", "Relaxe", "Jazz",
+                "Clássico", "Notícias", "Conversar", "Esporte", "Locais", "Em todo o mundo"
+        )
     )
 
     private val unavailableValues = mapOf(
@@ -104,7 +128,13 @@ internal object LevyraLiveRadioCatalog {
         "hi" to "लाइव स्ट्रीम उपलब्ध नहीं है", "id" to "Streaming langsung tidak tersedia",
         "ms" to "Strim langsung tidak tersedia",
         "vi" to "Luồng trực tiếp không khả dụng", "th" to "สตรีมสดไม่พร้อมใช้งาน",
-        "fil" to "Hindi available ang live stream", "he" to "השידור החי אינו זמין"
+        "fil" to "Hindi available ang live stream", "he" to "השידור החי אינו זמין",
+        "ur" to "لائیو سلسلہ دستیاب نہیں ہے۔",
+        "ta" to "நேரடி ஸ்ட்ரீம் கிடைக்கவில்லை",
+        "te" to "ప్రత్యక్ష ప్రసారం అందుబాటులో లేదు",
+        "mr" to "थेट प्रवाह अनुपलब्ध",
+        "gu" to "લાઇવ સ્ટ્રીમ અનુપલબ્ધ છે",
+        "pt-BR" to "Transmissão ao vivo indisponível"
     )
 
     private val reconnectingValues = mapOf(
@@ -133,7 +163,13 @@ internal object LevyraLiveRadioCatalog {
         "hi" to "फिर से कनेक्ट हो रहा है…", "id" to "Menyambungkan ulang…",
         "ms" to "Menyambung semula…",
         "vi" to "Đang kết nối lại…", "th" to "กำลังเชื่อมต่อใหม่…",
-        "fil" to "Muling kumokonekta…", "he" to "מתחבר מחדש…"
+        "fil" to "Muling kumokonekta…", "he" to "מתחבר מחדש…",
+        "ur" to "دوبارہ منسلک ہو رہا ہے…",
+        "ta" to "மீண்டும் இணைக்கிறது…",
+        "te" to "మళ్లీ కనెక్ట్ చేస్తోంది...",
+        "mr" to "पुन्हा कनेक्ट करत आहे...",
+        "gu" to "ફરીથી કનેક્ટ કરી રહ્યું છે...",
+        "pt-BR" to "Reconectando…"
     )
 
     private val advertisementValues = mapOf(
@@ -159,7 +195,13 @@ internal object LevyraLiveRadioCatalog {
         "hi" to "विज्ञापन", "id" to "Iklan",
         "ms" to "Iklan", "vi" to "Quảng cáo",
         "th" to "โฆษณา", "fil" to "Patalastas",
-        "he" to "פרסומת"
+        "he" to "פרסומת",
+        "ur" to "اشتہار",
+        "ta" to "விளம்பரம்",
+        "te" to "ప్రకటన",
+        "mr" to "जाहिरात",
+        "gu" to "જાહેરાત",
+        "pt-BR" to "Anúncio"
     )
 
     private val values = mapOf(
@@ -203,13 +245,19 @@ internal object LevyraLiveRadioCatalog {
         "vi" to radio("Các đài phát trực tiếp trên khắp thế giới", "Đài trực tiếp", "Phổ biến tại %s", "Toàn thế giới", "Danh mục", "Quốc gia", "Ngôn ngữ", "Tìm theo tên, quốc gia, thẻ hoặc ngôn ngữ", "Không có đài trực tiếp phù hợp", "Hiển thị đài đã lưu trong khi kết nối lại", "Cần Internet để nghe radio trực tiếp", "Tải thêm", englishCategories),
         "th" to radio("สถานีสดจากทั่วโลก", "สถานีสด", "ยอดนิยมใน %s", "ทั่วโลก", "หมวดหมู่", "ประเทศ", "ภาษา", "ค้นหาตามชื่อ ประเทศ แท็ก หรือภาษา", "ไม่พบสถานีสดที่ตรงกัน", "แสดงสถานีที่บันทึกไว้ระหว่างเชื่อมต่อใหม่", "ต้องใช้อินเทอร์เน็ตสำหรับวิทยุสด", "โหลดเพิ่ม", englishCategories),
         "fil" to radio("Mga live station mula sa buong mundo", "Mga live station", "Sikat sa %s", "Buong mundo", "Mga kategorya", "Mga bansa", "Mga wika", "Maghanap ayon sa pangalan, bansa, tag, o wika", "Walang katugmang live station", "Ipinapakita ang mga naka-save na station habang kumokonekta", "Kailangan ng Internet para sa live radio", "Mag-load pa", englishCategories),
-        "he" to radio("תחנות חיות מכל העולם", "תחנות חיות", "פופולרי ב%s", "בכל העולם", "קטגוריות", "מדינות", "שפות", "חיפוש לפי שם, מדינה, תגית או שפה", "לא נמצאו תחנות חיות", "מציג תחנות שמורות בזמן החיבור", "נדרש אינטרנט לרדיו חי", "טען עוד", englishCategories)
+        "he" to radio("תחנות חיות מכל העולם", "תחנות חיות", "פופולרי ב%s", "בכל העולם", "קטגוריות", "מדינות", "שפות", "חיפוש לפי שם, מדינה, תגית או שפה", "לא נמצאו תחנות חיות", "מציג תחנות שמורות בזמן החיבור", "נדרש אינטרנט לרדיו חי", "טען עוד", englishCategories),
+        "ur" to radio("دنیا بھر سے لائیو اسٹیشنز", "لائیو اسٹیشنز", "%s میں مقبول", "دنیا بھر میں", "زمرے", "ممالک", "زبانیں", "نام، ملک، ٹیگ یا زبان کے لحاظ سے تلاش کریں۔", "کوئی مماثل لائیو اسٹیشن نہیں ہیں۔", "کیٹلاگ کے دوبارہ منسلک ہونے کے دوران محفوظ کردہ اسٹیشن دکھا رہا ہے۔", "لائیو ریڈیو چلانے کے لیے انٹرنیٹ کنکشن درکار ہے۔", "مزید لوڈ کریں۔", englishCategories),
+        "ta" to radio("உலகம் முழுவதிலுமிருந்து நேரடி நிலையங்கள்", "நேரடி நிலையங்கள்", "%s இல் பிரபலமானது", "உலகம் முழுவதும்", "வகைகள்", "நாடுகள்", "மொழிகள்", "பெயர், நாடு, குறிச்சொல் அல்லது மொழி மூலம் தேடவும்", "பொருத்தமான நேரலை நிலையங்கள் இல்லை", "பட்டியல் மீண்டும் இணைக்கப்படும்போது சேமிக்கப்பட்ட நிலையங்களைக் காட்டுகிறது", "நேரடி வானொலியை இயக்க இணைய இணைப்பு தேவை", "மேலும் ஏற்றவும்", englishCategories),
+        "te" to radio("ప్రపంచం నలుమూలల నుండి ప్రత్యక్ష స్టేషన్లు", "ప్రత్యక్ష స్టేషన్లు", "%sలో జనాదరణ పొందినది", "ప్రపంచవ్యాప్తంగా", "వర్గాలు", "దేశాలు", "భాషలు", "పేరు, దేశం, ట్యాగ్ లేదా భాష ద్వారా శోధించండి", "సరిపోలే లైవ్ స్టేషన్‌లు లేవు", "కేటలాగ్ మళ్లీ కనెక్ట్ అవుతున్నప్పుడు సేవ్ చేయబడిన స్టేషన్‌లను చూపుతోంది", "ప్రత్యక్ష రేడియోను ప్లే చేయడానికి ఇంటర్నెట్ కనెక్షన్ అవసరం", "మరింత లోడ్ చేయండి", englishCategories),
+        "mr" to radio("जगभरातील थेट स्टेशन", "थेट स्टेशन", "%s मध्ये लोकप्रिय", "जगभरात", "श्रेण्या", "देश", "भाषा", "नाव, देश, टॅग किंवा भाषेनुसार शोधा", "कोणतेही जुळणारे थेट स्टेशन नाहीत", "कॅटलॉग पुन्हा कनेक्ट करताना सेव्ह केलेली स्टेशन्स दाखवत आहे", "थेट रेडिओ प्ले करण्यासाठी इंटरनेट कनेक्शन आवश्यक आहे", "अधिक लोड करा", englishCategories),
+        "gu" to radio("વિશ્વભરના લાઇવ સ્ટેશનો", "જીવંત સ્ટેશનો", "%s માં લોકપ્રિય", "વિશ્વવ્યાપી", "શ્રેણીઓ", "દેશો", "ભાષાઓ", "નામ, દેશ, ટેગ અથવા ભાષા દ્વારા શોધો", "કોઈ મેળ ખાતા લાઇવ સ્ટેશન નથી", "જ્યારે કેટલોગ ફરીથી કનેક્ટ થાય ત્યારે સાચવેલા સ્ટેશનો બતાવી રહ્યું છે", "લાઇવ રેડિયો ચલાવવા માટે ઇન્ટરનેટ કનેક્શન જરૂરી છે", "વધુ લોડ કરો", englishCategories),
+        "pt-BR" to radio("Estações ao vivo de todo o mundo", "Estações ao vivo", "Popular em %s", "Em todo o mundo", "Categorias", "Países", "Idiomas", "Pesquise por nome, país, tag ou idioma", "Nenhuma estação ao vivo correspondente", "Mostrando estações salvas enquanto o catálogo se reconecta", "É necessária uma conexão com a Internet para reproduzir rádio ao vivo", "Carregar mais", englishCategories)
     ).mapValues { (code, strings) ->
         strings.copy(categoryLabels = localizedValueOrEnglish(localizedCategories, code))
     }
 
     init {
-        val languageCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val languageCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         check(values.keys == languageCodes)
         check(localizedCategories.keys == languageCodes)
         check(unavailableValues.keys == languageCodes)

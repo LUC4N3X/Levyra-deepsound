@@ -10,7 +10,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun queueSpaceAndLocalLibraryCoverEveryCatalogLanguage() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
         assertEquals(codes.toSet(), queueSpaceLocalizationCodes())
         assertEquals(codes.toSet(), localLibraryLocalizationCodes())
         val englishQueue = queueSpaceLocalizationEntries("en")
@@ -29,7 +29,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun localTagEditorCoversEveryCatalogLanguageWithoutEnglishFallback() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
         assertEquals(codes.toSet(), localTagLocalizationCodes())
         val english = localTagLocalizationEntries("en")
         codes.forEach { code ->
@@ -46,7 +46,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun visualPerformanceCoversEveryCatalogLanguageWithoutEnglishFallback() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
         assertEquals(codes.toSet(), visualPerformanceLocalizationCodes())
         val english = visualPerformanceLocalizationEntries("en")
         codes.forEach { code ->
@@ -68,7 +68,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun immersiveAndMusicVideoSettingsCoverEveryCatalogLanguage() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(codes, immersiveModeLocalizationCodes())
         assertEquals(codes, musicVideoPreferenceLocalizationCodes())
         val englishImmersive = immersiveModeLocalizationEntries("en")
@@ -88,7 +88,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun liquidGlassCoversEveryCatalogLanguageWithoutEnglishFallback() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
         assertEquals(codes.toSet(), liquidGlassLocalizationCodes())
         val english = liquidGlassLocalizationEntries("en")
         codes.forEach { code ->
@@ -108,7 +108,7 @@ class LevyraNewFeatureLocalizationTest {
 
     @Test
     fun placeholdersStaySafeAcrossLanguages() {
-        LevyraLanguageCatalog.languages.map { it.code }.forEach { code ->
+        LevyraLanguageCatalog.selectableLanguages.map { it.code }.forEach { code ->
             val strings = LevyraStrings.forCode(code)
             val switched = strings.formatQueueSpaceSwitched("Gym")
             val summary = strings.formatLocalScanSummary(3, 2, 1)

@@ -42,7 +42,12 @@ private val enhancementSectionTitles = mapOf(
     "vi" to "Khôi phục và cải thiện",
     "th" to "การกู้คืนและปรับปรุง",
     "fil" to "Pagbabalik at pagpapahusay",
-    "he" to "שחזור ושיפור"
+    "he" to "שחזור ושיפור",
+    "ur" to "بحالی اور اضافہ",
+    "ta" to "மறுசீரமைப்பு மற்றும் மேம்படுத்தல்",
+    "te" to "పునరుద్ధరణ & మెరుగుదల",
+    "mr" to "जीर्णोद्धार आणि सुधारणा",
+    "gu" to "પુનઃસ્થાપન અને ઉન્નતીકરણ"
 )
 
 private val enhancedAudioSubtitles = mapOf(
@@ -87,7 +92,12 @@ private val enhancedAudioSubtitles = mapOf(
     "vi" to "Khôi phục chi tiết bị mất khi nén có tổn hao và giữ nguyên luồng gốc khi việc cải thiện không có lợi.",
     "th" to "กู้คืนรายละเอียดที่หายไประหว่างการบีบอัดแบบสูญเสีย และคงสตรีมต้นฉบับไว้เมื่อการปรับปรุงไม่ช่วย",
     "fil" to "Ibinabalik ang detalyeng nawala sa lossy compression at hindi ginagalaw ang orihinal na stream kapag walang pakinabang ang pagpapahusay.",
-    "he" to "משחזר פרטים שאבדו בדחיסה מאבדת ומשאיר את הזרם המקורי ללא שינוי כשהשיפור לא מועיל."
+    "he" to "משחזר פרטים שאבדו בדחיסה מאבדת ומשאיר את הזרם המקורי ללא שינוי כשהשיפור לא מועיל.",
+    "ur" to "نقصان دہ کمپریشن کے دوران کھوئی ہوئی تفصیل کو بحال کرتا ہے جبکہ اصل دھارے کو اچھوتا رکھتے ہوئے جب اضافہ فائدہ مند نہیں ہوتا ہے۔",
+    "ta" to "மேம்படுத்தல் பலனளிக்காதபோது அசல் ஸ்ட்ரீமைத் தொடாமல் வைத்திருக்கும் போது, இழப்பு சுருக்கத்தின் போது இழந்த விவரங்களை மீட்டெடுக்கிறது.",
+    "te" to "మెరుగుదల ప్రయోజనకరంగా లేనప్పుడు ఒరిజినల్ స్ట్రీమ్‌ను తాకకుండా ఉంచేటప్పుడు లాస్సీ కంప్రెషన్ సమయంలో కోల్పోయిన వివరాలను పునరుద్ధరిస్తుంది.",
+    "mr" to "संवर्धन फायदेशीर नसताना मूळ प्रवाहाला अस्पर्श ठेवताना हानीकारक कॉम्प्रेशन दरम्यान गमावलेले तपशील पुनर्संचयित करते.",
+    "gu" to "જ્યારે ઉન્નતીકરણ ફાયદાકારક ન હોય ત્યારે મૂળ પ્રવાહને અસ્પૃશ્ય રાખીને નુકસાનકારક કમ્પ્રેશન દરમિયાન ખોવાયેલી વિગતોને પુનઃસ્થાપિત કરે છે."
 )
 
 internal fun enhancementSectionTitle(code: String): String = localizedValueOrEnglish(enhancementSectionTitles, code)

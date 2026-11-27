@@ -41,7 +41,13 @@ private val settingsFooterLegalInformationLabels = mapOf(
     "vi" to "Thông tin pháp lý",
     "th" to "ข้อมูลทางกฎหมาย",
     "fil" to "Legal na impormasyon",
-    "he" to "מידע משפטי"
+    "he" to "מידע משפטי",
+    "ur" to "قانونی معلومات",
+    "ta" to "சட்ட தகவல்",
+    "te" to "చట్టపరమైన సమాచారం",
+    "mr" to "कायदेशीर माहिती",
+    "gu" to "કાનૂની માહિતી",
+    "pt-BR" to "Informações legais"
 ).also { labels ->
     require(labels.keys == supportedLocalizationCodes()) {
         "Invalid settings footer localization coverage: missing=${supportedLocalizationCodes() - labels.keys}, extra=${labels.keys - supportedLocalizationCodes()}"
@@ -75,7 +81,13 @@ private val settingsFooterExitApplicationLabels = mapOf(
         "hi" to "ऐप से बाहर निकलें", "id" to "Keluar dari aplikasi",
         "ms" to "Keluar aplikasi", "vi" to "Thoát ứng dụng",
         "th" to "ออกจากแอป", "fil" to "Lumabas sa app",
-        "he" to "יציאה מהאפליקציה"
+        "he" to "יציאה מהאפליקציה",
+        "ur" to "درخواست سے باہر نکلیں۔",
+        "ta" to "பயன்பாட்டிலிருந்து வெளியேறு",
+        "te" to "అప్లికేషన్ నుండి నిష్క్రమించండి",
+        "mr" to "अर्जातून बाहेर पडा",
+        "gu" to "એપ્લિકેશનમાંથી બહાર નીકળો",
+        "pt-BR" to "Sair do aplicativo"
 )
 
 internal fun settingsFooterExitApplication(code: String): String =

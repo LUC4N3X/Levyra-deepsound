@@ -205,6 +205,36 @@ private val playbackTileBundles: Map<String, Map<String, String>> = mapOf(
         "playbackTileLabel" to "播放",
         "playbackPaused" to "已暫停",
         "playbackTileIdle" to "沒有正在播放的內容"
+    ),
+    "ur" to mapOf(
+        "playbackTileLabel" to "پلے بیک",
+        "playbackPaused" to "روک دیا گیا",
+        "playbackTileIdle" to "ابھی کوئی گانا نہیں چل رہا"
+    ),
+    "ta" to mapOf(
+        "playbackTileLabel" to "பாடல் இயக்கம்",
+        "playbackPaused" to "இடைநிறுத்தப்பட்டது",
+        "playbackTileIdle" to "எந்தப் பாடலும் இயங்கவில்லை"
+    ),
+    "te" to mapOf(
+        "playbackTileLabel" to "ప్లేబ్యాక్",
+        "playbackPaused" to "పాజ్ చేయబడింది",
+        "playbackTileIdle" to "పాట ఏదీ ప్లే కావడం లేదు"
+    ),
+    "mr" to mapOf(
+        "playbackTileLabel" to "प्लेबॅक",
+        "playbackPaused" to "विराम दिला",
+        "playbackTileIdle" to "कोणतेही गाणे वाजत नाही"
+    ),
+    "gu" to mapOf(
+        "playbackTileLabel" to "પ્લેબેક",
+        "playbackPaused" to "થોભાવ્યું",
+        "playbackTileIdle" to "કોઈ ગીત વાગતું નથી"
+    ),
+    "pt-BR" to mapOf(
+        "playbackTileLabel" to "Reprodução",
+        "playbackPaused" to "Pausado",
+        "playbackTileIdle" to "Nenhuma faixa tocando"
     )
 )
 

@@ -48,7 +48,12 @@ private val savedPlaylistCopies = mapOf(
     "vi" to SavedPlaylistCopy("Lưu vào thư viện", "Xóa khỏi thư viện", "Danh sách phát đã lưu"),
     "th" to SavedPlaylistCopy("บันทึกลงคลังเพลง", "นำออกจากคลังเพลง", "เพลย์ลิสต์ที่บันทึกไว้"),
     "fil" to SavedPlaylistCopy("I-save sa library", "Alisin sa library", "Mga naka-save na playlist"),
-    "he" to SavedPlaylistCopy("שמירה בספרייה", "הסרה מהספרייה", "פלייליסטים שמורים")
+    "he" to SavedPlaylistCopy("שמירה בספרייה", "הסרה מהספרייה", "פלייליסטים שמורים"),
+    "ur" to SavedPlaylistCopy("لائبریری میں محفوظ کریں۔", "لائبریری سے ہٹا دیں۔", "محفوظ کردہ پلے لسٹس"),
+    "ta" to SavedPlaylistCopy("நூலகத்தில் சேமிக்கவும்", "நூலகத்திலிருந்து அகற்று", "சேமிக்கப்பட்ட பிளேலிஸ்ட்கள்"),
+    "te" to SavedPlaylistCopy("లైబ్రరీకి సేవ్ చేయండి", "లైబ్రరీ నుండి తీసివేయండి", "సేవ్ చేయబడిన ప్లేజాబితాలు"),
+    "mr" to SavedPlaylistCopy("लायब्ररीमध्ये जतन करा", "लायब्ररीतून काढा", "जतन केलेल्या प्लेलिस्ट"),
+    "gu" to SavedPlaylistCopy("પુસ્તકાલયમાં સાચવો", "લાઇબ્રેરીમાંથી દૂર કરો", "સાચવેલી પ્લેલિસ્ટ્સ")
 )
 
 internal fun savedPlaylistCopy(code: String): SavedPlaylistCopy = localizedValueOrEnglish(savedPlaylistCopies, code)

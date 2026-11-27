@@ -53,7 +53,13 @@ private val appUpdateBundles: Map<String, Map<String, String>> = mapOf(
     "vi" to appUpdate("LEVYRA đã được cập nhật", "Đã có LEVYRA {version}", "Không thể kiểm tra bản cập nhật"),
     "th" to appUpdate("LEVYRA เป็นเวอร์ชันล่าสุดแล้ว", "LEVYRA {version} พร้อมใช้งานแล้ว", "ตรวจหาอัปเดตไม่สำเร็จ"),
     "fil" to appUpdate("Updated na ang LEVYRA", "Available na ang LEVYRA {version}", "Hindi ma-check ang mga update"),
-    "he" to appUpdate("LEVYRA מעודכנת", "LEVYRA {version} זמינה", "לא ניתן היה לבדוק אם יש עדכונים")
+    "he" to appUpdate("LEVYRA מעודכנת", "LEVYRA {version} זמינה", "לא ניתן היה לבדוק אם יש עדכונים"),
+    "ur" to appUpdate("LEVYRA تازہ ترین ہے۔", "LEVYRA {version} دستیاب ہے۔", "اپ ڈیٹس کو چیک نہیں کیا جا سکا"),
+    "ta" to appUpdate("LEVYRA புதுப்பித்த நிலையில் உள்ளது", "LEVYRA {version} கிடைக்கிறது", "புதுப்பிப்புகளைச் சரிபார்க்க முடியவில்லை"),
+    "te" to appUpdate("LEVYRA తాజాగా ఉంది", "LEVYRA {version} అందుబాటులో ఉంది", "అప్‌డేట్‌ల కోసం తనిఖీ చేయడం సాధ్యపడలేదు"),
+    "mr" to appUpdate("LEVYRA अद्ययावत आहे", "LEVYRA {version} उपलब्ध आहे", "अद्यतनांसाठी तपासू शकलो नाही"),
+    "gu" to appUpdate("LEVYRA અદ્યતન છે", "LEVYRA {version} ઉપલબ્ધ છે", "અપડેટ્સ માટે તપાસ કરી શકાઈ નથી"),
+    "pt-BR" to appUpdate("LEVYRA está atualizado", "LEVYRA {version} está disponível", "Não foi possível verificar se há atualizações")
 )
 
 internal fun appUpdateLocalizationEntries(code: String): Map<String, String> =

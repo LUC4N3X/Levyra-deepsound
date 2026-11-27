@@ -49,7 +49,12 @@ private val newsReaderCopies = mapOf(
     "ms" to NewsReaderCopy("Baca di {source}", "Teks penuh berita ini belum tersedia di sini.", "Tutup", "Oleh {author}", "{count} min bacaan"),
     "vi" to NewsReaderCopy("Đọc trên {source}", "Toàn văn bản tin này chưa có ở đây.", "Đóng", "Bởi {author}", "{count} phút đọc"),
     "th" to NewsReaderCopy("อ่านบน {source}", "ข้อความฉบับเต็มของข่าวนี้ยังไม่พร้อมใช้งานที่นี่", "ปิด", "โดย {author}", "อ่าน {count} นาที"),
-    "he" to NewsReaderCopy("לקריאה ב-{source}", "הטקסט המלא של הידיעה הזו עדיין לא זמין כאן.", "סגירה", "מאת {author}", "{count} דק׳ קריאה")
+    "he" to NewsReaderCopy("לקריאה ב-{source}", "הטקסט המלא של הידיעה הזו עדיין לא זמין כאן.", "סגירה", "מאת {author}", "{count} דק׳ קריאה"),
+    "ur" to NewsReaderCopy("{source} پر پڑھیں", "اس کہانی کا مکمل متن ابھی تک یہاں دستیاب نہیں ہے۔", "بند", "{author} کے ذریعے", "{count} منٹ پڑھا گیا۔"),
+    "ta" to NewsReaderCopy("{source} இல் படிக்கவும்", "இந்தக் கதையின் முழு உரை இன்னும் இங்கு கிடைக்கவில்லை.", "மூடு", "{author} மூலம்", "{count} நிமிடம் படித்தது"),
+    "te" to NewsReaderCopy("{source}లో చదవండి", "ఈ కథనం యొక్క పూర్తి పాఠం ఇంకా ఇక్కడ అందుబాటులో లేదు.", "మూసివేయి", "{author} ద్వారా", "{count} నిమి చదవబడింది"),
+    "mr" to NewsReaderCopy("{source} वर वाचा", "या कथेचा पूर्ण मजकूर अद्याप येथे उपलब्ध नाही.", "बंद करा", "{author} द्वारे", "{count} मिनिट वाचले"),
+    "gu" to NewsReaderCopy("{source} પર વાંચો", "આ વાર્તાનો સંપૂર્ણ લખાણ હજી અહીં ઉપલબ્ધ નથી.", "બંધ કરો", "{author} દ્વારા", "{count} મિનિટ વાંચ્યું")
 )
 
 internal fun newsReaderCopy(code: String): NewsReaderCopy = localizedValueOrEnglish(newsReaderCopies, code)

@@ -9,7 +9,7 @@ import org.junit.Test
 class SettingsSearchLocalizationTest {
     @Test
     fun everyCatalogLanguageShipsSettingsSearchCopy() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(codes, settingsSearchLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.code, strings.settingsSearchPlaceholder.isNotBlank())

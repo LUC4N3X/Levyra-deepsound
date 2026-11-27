@@ -255,6 +255,42 @@ private val advancedPrefetchCopies = mapOf(
         "מוריד זמנית את הרצועות הבאות למטמון כדי שההאזנה תימשך גם בחיבור לא יציב. עשוי לצרוך יותר נתונים ושטח אחסון.",
         "כבוי",
         "רצועות: {count}"
+    ),
+    "ur" to AdvancedPrefetchCopy(
+        "اعلی درجے کی پری لوڈنگ",
+        "عارضی طور پر آنے والے ٹریکس کو کیشے میں ڈاؤن لوڈ کرتا ہے تاکہ غیر مستحکم کنکشن پر سننا جاری رہے۔ مزید ڈیٹا اور اسٹوریج استعمال کر سکتا ہے۔",
+        "آف",
+        "{count} ٹریکس"
+    ),
+    "ta" to AdvancedPrefetchCopy(
+        "மேம்பட்ட முன் ஏற்றுதல்",
+        "தற்காலிகமாக வரவிருக்கும் டிராக்குகளை தற்காலிக சேமிப்பில் பதிவிறக்குகிறது, அதனால் நிலையற்ற இணைப்பில் கேட்பது தொடர்கிறது. அதிக தரவு மற்றும் சேமிப்பகத்தைப் பயன்படுத்தலாம்.",
+        "ஆஃப்",
+        "{count} தடங்கள்"
+    ),
+    "te" to AdvancedPrefetchCopy(
+        "అధునాతన ప్రీలోడింగ్",
+        "కాష్‌కి రాబోయే ట్రాక్‌లను తాత్కాలికంగా డౌన్‌లోడ్ చేస్తుంది కాబట్టి అస్థిర కనెక్షన్‌లో వినడం కొనసాగుతుంది. మరింత డేటా మరియు నిల్వను ఉపయోగించవచ్చు.",
+        "ఆఫ్",
+        "{count} ట్రాక్‌లు"
+    ),
+    "mr" to AdvancedPrefetchCopy(
+        "प्रगत प्रीलोडिंग",
+        "तात्पुरते कॅशेवर आगामी ट्रॅक डाउनलोड करते त्यामुळे ऐकणे अस्थिर कनेक्शनवर सुरू राहते. अधिक डेटा आणि स्टोरेज वापरू शकते.",
+        "बंद",
+        "{count} ट्रॅक"
+    ),
+    "gu" to AdvancedPrefetchCopy(
+        "અદ્યતન પ્રીલોડિંગ",
+        "અસ્થાયી રૂપે આગામી ટ્રૅક્સને કૅશમાં ડાઉનલોડ કરે છે જેથી અસ્થિર કનેક્શન પર સાંભળવાનું ચાલુ રહે. વધુ ડેટા અને સ્ટોરેજનો ઉપયોગ કરી શકે છે.",
+        "બંધ",
+        "{count} ટ્રેક"
+    ),
+    "pt-BR" to AdvancedPrefetchCopy(
+        "Pré-carregamento avançado",
+        "Baixa temporariamente as próximas faixas para o cache para que a audição continue em uma conexão instável. Pode usar mais dados e armazenamento.",
+        "Desligado",
+        "Faixas {count}"
     )
 )
 
@@ -432,6 +468,30 @@ private val advancedPrefetchMobileDataCopies = mapOf(
     "he" to AdvancedPrefetchMobileDataCopy(
         "שימוש בנתונים סלולריים",
         "טעינה מראש של הרצועות הבאות גם ברשת סלולרית. עשוי לצרוך נתונים רבים."
+    ),
+    "ur" to AdvancedPrefetchMobileDataCopy(
+        "موبائل ڈیٹا استعمال کریں۔",
+        "موبائل ڈیٹا پر آنے والے ٹریکس کو بھی پری لوڈ کریں۔ یہ بہت زیادہ ڈیٹا استعمال کر سکتا ہے۔"
+    ),
+    "ta" to AdvancedPrefetchMobileDataCopy(
+        "மொபைல் டேட்டாவைப் பயன்படுத்தவும்",
+        "மொபைல் டேட்டாவில் வரவிருக்கும் டிராக்குகளையும் முன்பே ஏற்றவும். இது நிறைய தரவுகளைப் பயன்படுத்தலாம்."
+    ),
+    "te" to AdvancedPrefetchMobileDataCopy(
+        "మొబైల్ డేటాను ఉపయోగించండి",
+        "మొబైల్ డేటాలో రాబోయే ట్రాక్‌లను కూడా ప్రీలోడ్ చేయండి. ఇది చాలా డేటాను ఉపయోగించవచ్చు."
+    ),
+    "mr" to AdvancedPrefetchMobileDataCopy(
+        "मोबाईल डेटा वापरा",
+        "तसेच मोबाइल डेटावर आगामी ट्रॅक प्रीलोड करा. हे खूप डेटा वापरू शकते."
+    ),
+    "gu" to AdvancedPrefetchMobileDataCopy(
+        "મોબાઇલ ડેટાનો ઉપયોગ કરો",
+        "મોબાઇલ ડેટા પર આગામી ટ્રેક પણ પ્રીલોડ કરો. આ ઘણા બધા ડેટાનો ઉપયોગ કરી શકે છે."
+    ),
+    "pt-BR" to AdvancedPrefetchMobileDataCopy(
+        "Usar dados móveis",
+        "Pré-carregue também as próximas faixas em dados móveis. Isso pode usar muitos dados."
     )
 )
 

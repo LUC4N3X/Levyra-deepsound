@@ -134,7 +134,7 @@ class LastFmGenreDiscoveryTest {
     fun everySelectableLanguageShipsDiscoveryCopy() {
         val selectable = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertTrue((selectable - genreDiscoveryLocalizationCodes()).toString(), genreDiscoveryLocalizationCodes().containsAll(selectable))
-        assertEquals(42, genreDiscoveryLocalizationCodes().size)
+        assertEquals(selectable, genreDiscoveryLocalizationCodes())
         val english = genreDiscoveryCopy("en")
         selectable.forEach { code ->
             val copy = genreDiscoveryCopy(code)

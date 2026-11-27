@@ -9,7 +9,7 @@ import org.junit.Test
 class PlaybackBufferLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteBufferCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, playbackBufferLocalizationCodes())
         val english = playbackBufferCopy("en")
         supported.forEach { code ->

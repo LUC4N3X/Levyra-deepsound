@@ -34,7 +34,7 @@ enum class AppLanguage(
     SPANISH("es", "🇪🇸", "Español", "Spanish", "ES"),
     FRENCH("fr", "🇫🇷", "Français", "French", "FR"),
     GERMAN("de", "🇩🇪", "Deutsch", "German", "DE"),
-    PORTUGUESE("pt", "🇵🇹", "Português", "Portuguese", "PT"),
+    PORTUGUESE("pt", "🇵🇹", "Português (Portugal)", "Portuguese (Portugal)", "PT"),
     DUTCH("nl", "🇳🇱", "Nederlands", "Dutch", "NL"),
     POLISH("pl", "🇵🇱", "Polski", "Polish", "PL"),
     ROMANIAN("ro", "🇷🇴", "Română", "Romanian", "RO"),
@@ -70,7 +70,12 @@ enum class AppLanguage(
     CROATIAN("hr", "🇭🇷", "Hrvatski", "Croatian", "HR"),
     SLOVAK("sk", "🇸🇰", "Slovenčina", "Slovak", "SK"),
     MALAY("ms", "🇲🇾", "Bahasa Melayu", "Malay", "MY"),
-    PERSIAN("fa", "🇮🇷", "فارسی", "Persian", "IR", true);
+    PERSIAN("fa", "🇮🇷", "فارسی", "Persian", "IR", true),
+    URDU("ur", "🇵🇰", "اردو", "Urdu", "PK", true),
+    TAMIL("ta", "🇮🇳", "தமிழ்", "Tamil", "IN"),
+    TELUGU("te", "🇮🇳", "తెలుగు", "Telugu", "IN"),
+    MARATHI("mr", "🇮🇳", "मराठी", "Marathi", "IN"),
+    GUJARATI("gu", "🇮🇳", "ગુજરાતી", "Gujarati", "IN");
 
     val displayLabel: String get() = "$flag $nativeName"
 

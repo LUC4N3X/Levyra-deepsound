@@ -59,6 +59,7 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.domain.southAsianMusic
 
 @Composable
 fun SearchScreen(
@@ -294,15 +295,18 @@ private fun SearchLanding(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
-    val discovery = discoveryForCountry(country)
+    val regionalMusic = southAsianMusic[strings.languageCode]?.takeIf { it.country.equals(country, ignoreCase = true) }
+        ?: southAsianMusic.getValue("ur").takeIf { it.country.equals(country, ignoreCase = true) }
+    val discovery = regionalMusic?.let { SearchDiscovery(it.quickSearches, it.artists, it.localTitle) }
+        ?: discoveryForCountry(country)
     val region = chartRegionName(country, strings.languageCode)
     val moods = listOf(
         MoodSuggestion("🔥", strings.searchMoodTrending, discovery.quick.getOrElse(4) { "top hits" }),
         MoodSuggestion("🏋️", strings.searchMoodWorkout, discovery.quick.getOrElse(7) { "gym workout music" }),
         MoodSuggestion("🌙", strings.searchMoodNightDrive, discovery.quick.getOrElse(6) { "night drive" }),
-        MoodSuggestion("☁️", strings.searchMoodChill, "chill music ${discovery.countryKeyword}"),
-        MoodSuggestion("🎉", strings.searchMoodParty, "party hits ${discovery.countryKeyword}"),
-        MoodSuggestion("💜", strings.searchMoodSad, "sad songs ${discovery.countryKeyword}")
+        MoodSuggestion("☁️", strings.searchMoodChill, regionalMusic?.chill ?: "chill music ${discovery.countryKeyword}"),
+        MoodSuggestion("🎉", strings.searchMoodParty, regionalMusic?.party ?: "party hits ${discovery.countryKeyword}"),
+        MoodSuggestion("💜", strings.searchMoodSad, regionalMusic?.sad ?: "sad songs ${discovery.countryKeyword}")
     )
 
     LazyColumn(
@@ -784,6 +788,7 @@ private fun chartRegionName(country: String, languageCode: String): String {
         "JP" -> "🇯🇵 日本"
         "KR" -> "🇰🇷 대한민국"
         "IN" -> "🇮🇳 India"
+        "PK" -> "🇵🇰 پاکستان"
         "ID" -> "🇮🇩 Indonesia"
         "VN" -> "🇻🇳 Việt Nam"
         "TH" -> "🇹🇭 ประเทศไทย"

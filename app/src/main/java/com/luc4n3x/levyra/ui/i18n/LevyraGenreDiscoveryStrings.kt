@@ -52,7 +52,12 @@ private val genreDiscoveryCopies = mapOf(
     "sr" to GenreDiscoveryCopy("Жанр укратко", "Прочитај више", "Прикажи мање", "Текст: Last.fm, CC BY-SA", "Извођачи за откривање", "Најомиљенији албуми", "Уреднички избор: Apple Music"),
     "sk" to GenreDiscoveryCopy("Žáner v skratke", "Čítať ďalej", "Zobraziť menej", "Text: Last.fm, CC BY-SA", "Interpreti na objavenie", "Najobľúbenejšie albumy", "Výber redakcie: Apple Music"),
     "et" to GenreDiscoveryCopy("Žanr lühidalt", "Loe edasi", "Näita vähem", "Tekst: Last.fm, CC BY-SA", "Avastamist väärt artistid", "Kõige armastatumad albumid", "Toimetuse valikud: Apple Music"),
-    "sq" to GenreDiscoveryCopy("Zhanri shkurt", "Lexo më shumë", "Shfaq më pak", "Teksti: Last.fm, CC BY-SA", "Artistë për të zbuluar", "Albumet më të dashura", "Përzgjedhje editoriale: Apple Music")
+    "sq" to GenreDiscoveryCopy("Zhanri shkurt", "Lexo më shumë", "Shfaq më pak", "Teksti: Last.fm, CC BY-SA", "Artistë për të zbuluar", "Albumet më të dashura", "Përzgjedhje editoriale: Apple Music"),
+    "ur" to GenreDiscoveryCopy("مختصر میں سٹائل", "مزید پڑھیں", "کم دکھائیں۔", "متن: Last.fm, CC BY-SA", "دریافت کرنے والے فنکار", "البمز شائقین پسند کرتے ہیں۔", "ادارتی انتخاب: Apple Music"),
+    "ta" to GenreDiscoveryCopy("சுருக்கமாக வகை", "மேலும் படிக்கவும்", "குறைவாகக் காட்டு", "உரை: Last.fm, CC BY-SA", "கண்டுபிடிக்க கலைஞர்கள்", "ரசிகர்கள் விரும்பும் ஆல்பங்கள்", "தலையங்கத் தேர்வுகள்: Apple Music"),
+    "te" to GenreDiscoveryCopy("క్లుప్తంగా శైలి", "మరింత చదవండి", "తక్కువ చూపించు", "వచనం: Last.fm, CC BY-SA", "కనుగొనడానికి కళాకారులు", "అభిమానులు ఇష్టపడే ఆల్బమ్‌లు", "సంపాదకీయ ఎంపికలు: Apple Music"),
+    "mr" to GenreDiscoveryCopy("थोडक्यात शैली", "अधिक वाचा", "कमी दाखवा", "मजकूर: Last.fm, CC BY-SA", "शोधण्यासाठी कलाकार", "चाहत्यांना आवडणारे अल्बम", "संपादकीय निवडी: Apple Music"),
+    "gu" to GenreDiscoveryCopy("સંક્ષિપ્તમાં શૈલી", "વધુ વાંચો", "ઓછું બતાવો", "ટેક્સ્ટ: Last.fm, CC BY-SA", "શોધવા માટે કલાકારો", "આલ્બમ ચાહકોને ગમે છે", "સંપાદકીય પસંદગીઓ: Apple Music")
 )
 
 internal fun genreDiscoveryCopy(code: String): GenreDiscoveryCopy = localizedValueOrEnglish(genreDiscoveryCopies, code)

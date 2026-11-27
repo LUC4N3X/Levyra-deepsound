@@ -90,6 +90,24 @@ Hetken kappaleet
 @@et
 Maailmas
 Hetke lood
+@@ur
+دنیا بھر میں
+اس وقت مقبول گانے
+@@ta
+உலகம் முழுவதும்
+இப்போது பிரபலமான பாடல்கள்
+@@te
+ప్రపంచవ్యాప్తంగా
+ప్రస్తుతం జనాదరణ పొందిన పాటలు
+@@mr
+जगभरात
+सध्या लोकप्रिय गाणी
+@@gu
+વિશ્વવ્યાપી
+હાલનાં લોકપ્રિય ગીતો
+@@pt-BR
+Em todo o mundo
+Faixas do momento
 """.trimIndent()
 
 internal val freshCurrentsEntries = buildMap {

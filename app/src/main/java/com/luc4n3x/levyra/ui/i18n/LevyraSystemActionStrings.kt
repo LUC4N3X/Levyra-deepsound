@@ -48,7 +48,13 @@ private val systemActionBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to systemActionStrings("Sleep timer", "Pagkatapos ng kanta", "Kanselahin ang timer", "Nakansela ang timer", "Natitira", "Nakikinig…", "Sinusuri…", "I-tap para makinig"),
     "he" to systemActionStrings("טיימר שינה", "סוף השיר", "בטל טיימר", "הטיימר בוטל", "נותר", "מאזין…", "מנתח…", "הקש כדי להאזין"),
     "fi" to systemActionStrings("Uniajastin", "Kappaleen loppu", "Peruuta ajastin", "Ajastin peruutettu", "Jäljellä", "Kuunnellaan…", "Analysoidaan…", "Napauta kuunnellaksesi"),
-    "et" to systemActionStrings("Unetaimer", "Loo lõpp", "Tühista taimer", "Taimer tühistatud", "Jäänud", "Kuulan…", "Analüüsin…", "Puuduta kuulamiseks")
+    "et" to systemActionStrings("Unetaimer", "Loo lõpp", "Tühista taimer", "Taimer tühistatud", "Jäänud", "Kuulan…", "Analüüsin…", "Puuduta kuulamiseks"),
+    "ur" to systemActionStrings("نیند کا ٹائمر", "ٹریک کا اختتام", "ٹائمر منسوخ کریں۔", "ٹائمر منسوخ کر دیا گیا۔", "باقی", "سن رہا ہے…", "تجزیہ کیا جا رہا ہے…", "سننے کے لیے تھپتھپائیں۔"),
+    "ta" to systemActionStrings("ஸ்லீப் டைமர்", "பாதையின் முடிவு", "டைமரை ரத்துசெய்", "டைமர் ரத்துசெய்யப்பட்டது", "மீதமுள்ளவை", "கேட்கிறது…", "பகுப்பாய்வு செய்கிறது…", "கேட்க தட்டவும்"),
+    "te" to systemActionStrings("స్లీప్ టైమర్", "ట్రాక్ ముగింపు", "టైమర్‌ని రద్దు చేయండి", "టైమర్ రద్దు చేయబడింది", "మిగిలింది", "వింటున్నారు...", "విశ్లేషిస్తోంది...", "వినడానికి నొక్కండి"),
+    "mr" to systemActionStrings("स्लीप टाइमर", "ट्रॅकचा शेवट", "टाइमर रद्द करा", "टायमर रद्द केला", "बाकी", "ऐकत आहे...", "विश्लेषण करत आहे...", "ऐकण्यासाठी टॅप करा"),
+    "gu" to systemActionStrings("સ્લીપ ટાઈમર", "ટ્રેકનો અંત", "ટાઈમર રદ કરો", "ટાઈમર રદ કર્યું", "બાકી", "સાંભળી રહ્યું છે...", "વિશ્લેષણ કરી રહ્યું છે...", "સાંભળવા માટે ટૅપ કરો"),
+    "pt-BR" to systemActionStrings("Temporizador", "Fim da pista", "Cancelar cronômetro", "Temporizador cancelado", "Restante", "Ouvindo…", "Analisando…", "Toque para ouvir")
 )
 
 internal fun systemActionLocalizationEntries(code: String): Map<String, String> = localizedBundleOrEnglish(systemActionBundles, code)

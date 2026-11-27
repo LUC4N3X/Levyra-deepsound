@@ -9,7 +9,7 @@ import org.junit.Test
 class QobuzSkinLocalizationTest {
     private val codes = listOf(
         "en", "it", "es", "fr", "de", "pt", "pt-BR", "nl", "pl", "ro", "el", "sv", "da", "cs", "uk", "ru", "nb",
-        "ca", "kk", "tr", "ar", "fa", "zh", "zh-Hant", "ja", "ko", "hi", "bn", "id", "ms", "vi", "th", "fil",
+        "ca", "kk", "tr", "ar", "fa", "zh", "zh-Hant", "ja", "ko", "hi", "bn", "ur", "ta", "te", "mr", "gu", "id", "ms", "vi", "th", "fil",
         "he", "hu", "fi", "bg", "hr", "sr", "sk", "et", "sq"
     )
 
@@ -46,8 +46,8 @@ class QobuzSkinLocalizationTest {
 
     @Test
     fun everyAppLanguageIsCovered() {
-        assertEquals(42, codes.toSet().size)
-        assertEquals(LevyraLanguageCatalog.languages.map { it.code }.toSet() + "pt-BR", codes.toSet())
+        assertEquals(47, codes.toSet().size)
+        assertEquals(LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet() + "pt-BR", codes.toSet())
         assertEquals(76, fields.size)
     }
 

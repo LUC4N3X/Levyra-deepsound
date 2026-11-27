@@ -72,7 +72,12 @@ private val radioFavoriteGroupWords = mapOf(
     "vi" to RadioFavoriteGroupWords("Quốc gia", "Thể loại", "Khác", "Quốc gia không xác định"),
     "th" to RadioFavoriteGroupWords("ประเทศ", "แนวเพลง", "อื่นๆ", "ไม่ทราบประเทศ"),
     "fil" to RadioFavoriteGroupWords("Bansa", "Genre", "Iba pa", "Hindi kilalang bansa"),
-    "he" to RadioFavoriteGroupWords("מדינה", "ז'אנר", "אחר", "מדינה לא ידועה")
+    "he" to RadioFavoriteGroupWords("מדינה", "ז'אנר", "אחר", "מדינה לא ידועה"),
+    "ur" to RadioFavoriteGroupWords("ملک", "نوع", "دیگر", "نامعلوم ملک"),
+    "ta" to RadioFavoriteGroupWords("நாடு", "வகை", "மற்றவை", "தெரியாத நாடு"),
+    "te" to RadioFavoriteGroupWords("దేశం", "శైలి", "ఇతర", "తెలియని దేశం"),
+    "mr" to RadioFavoriteGroupWords("देश", "शैली", "इतर", "अज्ञात देश"),
+    "gu" to RadioFavoriteGroupWords("દેશ", "શૈલી", "અન્ય", "અજાણ્યો દેશ")
 )
 
 internal fun radioFavoriteSortCopy(code: String): RadioFavoriteSortCopy {

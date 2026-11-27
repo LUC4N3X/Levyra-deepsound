@@ -109,7 +109,7 @@ class LevyraCustomThemesTest {
 
     @Test
     fun themeLibraryCopyCoversEveryLanguage() {
-        val expected = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val expected = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(expected, themeLibraryLocalizationCodes())
         assertEquals(expected, themeLibraryCompleteLocalizationCodes())
     }

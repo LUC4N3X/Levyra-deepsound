@@ -8,8 +8,8 @@ import org.junit.Test
 class SpectrumLocalizationTest {
     @Test
     fun everyCatalogLanguageHasCompleteSpectrumCopy() {
-        val catalog = LevyraLanguageCatalog.languages.map { it.code }.toSet()
-        assertEquals(catalog - spectrumCompleteLocalizationCodes(), emptySet<String>())
+        val catalog = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
+        assertEquals(catalog, spectrumCompleteLocalizationCodes())
         assertEquals(spectrumLocalizationCodes(), spectrumCompleteLocalizationCodes())
     }
 

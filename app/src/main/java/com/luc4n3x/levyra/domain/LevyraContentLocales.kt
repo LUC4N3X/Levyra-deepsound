@@ -23,7 +23,9 @@ data class LevyraContentLocale(
 object LevyraContentLocales {
 
     fun quickSearches(code: String): List<String> {
-        return when (forLanguage(code).contentLanguageCode) {
+        val language = forLanguage(code).contentLanguageCode
+        southAsianMusic[language]?.let { return it.quickSearches }
+        return when (language) {
             "it" -> listOf("Sfera Ebbasta", "Lazza", "Geolier", "Marracash", "top hits Italia", "rap italiano", "night drive", "gym bass")
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "éxitos España", "reggaeton latino", "conducir de noche", "gym bass")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "top hits France", "rap français", "conduite de nuit", "gym bass")
@@ -69,7 +71,9 @@ object LevyraContentLocales {
     }
 
     fun artistSuggestions(code: String): List<String> {
-        return when (forLanguage(code).contentLanguageCode) {
+        val language = forLanguage(code).contentLanguageCode
+        southAsianMusic[language]?.let { return it.artists }
+        return when (language) {
             "it" -> listOf("Sfera Ebbasta", "Lazza", "Geolier", "Marracash", "Ultimo", "Annalisa", "Tedua", "Ghali", "Madame", "Capo Plaza")
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "Feid", "Karol G", "Rauw Alejandro", "Myke Towers", "Mora", "Bizarrap")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "Tiakola", "SDM", "Zola", "Dadju", "SCH", "Jul")
@@ -126,7 +130,9 @@ object LevyraContentLocales {
     }
 
     fun artistSuggestionsTitle(code: String): String {
-        return when (forLanguage(code).languageCode) {
+        val language = forLanguage(code).languageCode
+        southAsianMusic[language]?.let { return it.artistsTitle }
+        return when (language) {
             "it" -> "Esplora artisti"
             "es" -> "Explora artistas"
             "fr" -> "Explore les artistes"
@@ -171,7 +177,9 @@ object LevyraContentLocales {
     }
 
     fun searchSuggestionsTitle(code: String): String {
-        return when (forLanguage(code).languageCode) {
+        val language = forLanguage(code).languageCode
+        southAsianMusic[language]?.let { return it.suggestionsTitle }
+        return when (language) {
             "it" -> "Suggerimenti"
             "es" -> "Sugerencias"
             "fr" -> "Suggestions"
@@ -252,7 +260,9 @@ object LevyraContentLocales {
     }
 
     fun catalogLocale(code: String): LevyraContentLocale {
-        return when (LevyraLanguageCatalog.normalize(code)) {
+        val language = LevyraLanguageCatalog.normalize(code)
+        southAsianMusic[language]?.let { return southAsianContentLocale(language, it) }
+        return when (language) {
             "it" -> locale(
                 languageCode = "it",
                 hl = "it",
@@ -1009,6 +1019,45 @@ object LevyraContentLocales {
                 )
             )
         }
+    }
+
+    private fun southAsianContentLocale(language: String, music: SouthAsianMusic): LevyraContentLocale {
+        val country = music.country.lowercase(Locale.ROOT)
+        return locale(
+            languageCode = language,
+            hl = language,
+            gl = music.country,
+            chartRegionId = country,
+            chartCountry = country,
+            quick = music.quickTitle,
+            local = music.localTitle,
+            energy = music.energyTitle,
+            homeQueries = listOf(music.hits, music.pop, music.rap, music.chill),
+            tasteQueries = mapOf(
+                "hits" to music.hits,
+                "rap" to music.rap,
+                "italiana" to music.localTitle,
+                "pop" to music.pop,
+                "gym" to music.workout,
+                "chill" to music.chill,
+                "focus" to music.focus,
+                "sad" to music.sad,
+                "party" to music.party,
+                "rock" to "${music.localTitle} rock",
+                "electro" to "${music.localTitle} electronic",
+                "rnb" to "${music.localTitle} R&B"
+            ),
+            moodQueries = mapOf(
+                "hits" to music.hits,
+                "gym" to music.workout,
+                "chill" to music.chill,
+                "focus" to music.focus,
+                "italia" to music.localTitle,
+                "party" to music.party,
+                "drive" to music.drive,
+                "sad" to music.sad
+            )
+        )
     }
 
     private fun compact(

@@ -9,7 +9,7 @@ class PreferLocalAudioCopyTest {
 
     @Test
     fun copyCoversEveryCatalogLanguage() {
-        val catalog = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalog = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalog, preferLocalAudioLocalizationCodes())
         catalog.forEach { code ->
             val copy = preferLocalAudioCopy(code)

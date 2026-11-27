@@ -8,13 +8,13 @@ import org.junit.Test
 
 class HomeSoundtrackLocalizationTest {
 
-    private val codes = LevyraLanguageCatalog.languages.map { it.code }
+    private val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }
 
     @Test
     fun everySupportedLanguageHasATranslatedSoundtrackBundle() {
         val english = homeSoundtrackLocalizationEntries("en")
         assertEquals(homeSoundtrackKeys, english.keys)
-        assertEquals(41, codes.size)
+        assertEquals(47, codes.size)
         codes.forEach { code ->
             val entries = homeSoundtrackLocalizationEntries(code)
             assertEquals("Missing soundtrack keys for $code", homeSoundtrackKeys, entries.keys)

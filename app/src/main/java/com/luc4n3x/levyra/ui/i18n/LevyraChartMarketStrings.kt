@@ -182,6 +182,30 @@ private val chartMarketBundles: Map<String, Map<String, String>> = mapOf(
     "he" to chartMarket(
         "{count} הגדולים · {country}", "שינוי מדינה", "בחירת מצעד", "חיפוש מדינה",
         "מוצעות", "האזור שלך", "כל המדינות", "אין מדינות שתואמות ל„{query}”"
+    ),
+    "ur" to chartMarket(
+        "ٹاپ {count} {country}", "ملک بدلو", "ایک چارٹ منتخب کریں۔", "ملک تلاش کریں۔",
+        "تجویز کردہ", "آپ کا علاقہ", "تمام ممالک", "\"{query}\" سے کوئی ملک نہیں ملتا"
+    ),
+    "ta" to chartMarket(
+        "மேல் {count} {country}", "நாட்டை மாற்றவும்", "விளக்கப்படத்தைத் தேர்ந்தெடுக்கவும்", "நாடு தேடு",
+        "பரிந்துரைக்கப்பட்டது", "உங்கள் பகுதி", "அனைத்து நாடுகளும்", "\"{query}\" உடன் எந்த நாடுகளும் பொருந்தவில்லை"
+    ),
+    "te" to chartMarket(
+        "టాప్ {count} {country}", "దేశాన్ని మార్చండి", "చార్ట్‌ని ఎంచుకోండి", "దేశం శోధించండి",
+        "సూచించారు", "మీ ప్రాంతం", "అన్ని దేశాలు", "\"{query}\"కి ఏ దేశాలు సరిపోలలేదు"
+    ),
+    "mr" to chartMarket(
+        "शीर्ष {count} {country}", "देश बदला", "एक चार्ट निवडा", "देश शोधा",
+        "सुचवले", "तुमचा प्रदेश", "सर्व देश", "कोणताही देश “{query}” शी जुळत नाही"
+    ),
+    "gu" to chartMarket(
+        "ટોચના {count} {country}", "દેશ બદલો", "એક ચાર્ટ પસંદ કરો", "દેશ શોધો",
+        "સૂચવ્યું", "તમારો પ્રદેશ", "બધા દેશો", "\"{query}\" સાથે મેળ ખાતો કોઈ દેશ નથી"
+    ),
+    "pt-BR" to chartMarket(
+        "Topo {count} {country}", "Alterar país", "Escolha um gráfico", "Pesquisar país",
+        "Sugerido", "Sua região", "Todos os países", "Nenhum país corresponde a “{query}”"
     )
 )
 

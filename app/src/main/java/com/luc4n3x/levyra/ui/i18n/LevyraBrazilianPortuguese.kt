@@ -303,7 +303,7 @@ internal object LevyraBrazilianPortuguese {
         "êxito" to "sucesso"
     )
 
-    private val keyOverrides = mapOf(
+    val entryOverrides = mapOf(
         "localWaveQuery" to "novas músicas brasileiras 2026",
         "localWaveName" to "Brasil Wave",
         "ambientModeSubtitle" to "Tela compatível com OLED para ouvir com calma",
@@ -349,10 +349,7 @@ internal object LevyraBrazilianPortuguese {
 
     fun adaptDynamic(text: String): String = replacePhrases(text)
 
-    fun adaptEntries(entries: Map<String, String>): Map<String, String> =
-        entries.mapValues { (_, value) -> adapt(value) } + keyOverrides
-
-    fun keyOverrideNames(): Set<String> = keyOverrides.keys
+    fun keyOverrideNames(): Set<String> = entryOverrides.keys
 
     @Suppress("UNCHECKED_CAST")
     fun <T> adaptValue(value: T): T = when (value) {

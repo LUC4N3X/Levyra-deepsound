@@ -44,11 +44,17 @@ internal object LevyraDownloadRemovalStrings {
         "vi" to "Xóa bài hát này khỏi mục tải xuống?",
         "th" to "ลบเพลงนี้ออกจากรายการดาวน์โหลดใช่ไหม",
         "fil" to "Alisin ang kantang ito sa mga download?",
-        "he" to "להסיר את השיר הזה מההורדות?"
+        "he" to "להסיר את השיר הזה מההורדות?",
+        "ur" to "اس گانے کو اپنے ڈاؤن لوڈز سے ہٹائیں؟",
+        "ta" to "உங்கள் பதிவிறக்கங்களிலிருந்து இந்தப் பாடலை அகற்றவா?",
+        "te" to "మీ డౌన్‌లోడ్‌ల నుండి ఈ పాటను తీసివేయాలా?",
+        "mr" to "हे गाणे तुमच्या डाउनलोडमधून काढून टाकायचे?",
+        "gu" to "તમારા ડાઉનલોડમાંથી આ ગીત દૂર કરીએ?",
+        "pt-BR" to "Remover esta música dos seus downloads?"
     )
 
     init {
-        check(prompts.keys == LevyraLanguageCatalog.languages.map { it.code }.toSet())
+        check(prompts.keys == LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet())
     }
 
     fun prompt(code: String): String = localizedValueOrEnglish(prompts, code)

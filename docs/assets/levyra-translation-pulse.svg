@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="384" viewBox="0 0 1100 384" role="img" aria-label="Levyra localization coverage: 100% across 42 languages">
-  <title>Levyra localization coverage: 100% across 42 languages</title>
-  <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português (Portugal): 100%, Português (Brasil): 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="384" viewBox="0 0 1100 384" role="img" aria-label="Levyra localization coverage: 100% across 47 languages">
+  <title>Levyra localization coverage: 100% across 47 languages</title>
+  <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português (Portugal): 100%, Português (Brasil): 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, اردو: 100%, தமிழ்: 100%, తెలుగు: 100%, मराठी: 100%, ગુજરાતી: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; }
     .eyebrow { fill: #295498; font-size: 12.5px; font-weight: 720; letter-spacing: 1.7px; }
@@ -16,7 +16,7 @@
   </style>
   <path d="M 80.00 16.00 H 246.00 A 96 96 0 0 1 342.00 112.00 V 284.00 A 64 64 0 0 1 278.00 348.00 H 112.00 A 96 96 0 0 1 16.00 252.00 V 80.00 A 64 64 0 0 1 80.00 16.00 Z" fill="#ECF3FF"/>
   <text x="54" y="68" class="eyebrow">LOCAL EVERYWHERE</text>
-  <text x="50" y="170" class="hero">42</text>
+  <text x="50" y="170" class="hero">47</text>
   <text x="54" y="206" class="hero-label">languages</text>
   <text x="54" y="242" class="meta">Five writing systems</text>
   <text x="54" y="264" class="meta">1,271+ app strings</text>
@@ -37,11 +37,11 @@
   <text x="830" y="205" fill="#4A337A" class="tile-examples">简体中文 · 繁體中文 · 日本語 · 한국어</text>
   <path d="M 407.00 246.00 H 637.00 A 51 51 0 0 1 688.00 297.00 V 297.00 A 51 51 0 0 1 637.00 348.00 H 407.00 A 51 51 0 0 1 356.00 297.00 V 297.00 A 51 51 0 0 1 407.00 246.00 Z" fill="#C5ECF8"/>
   <text x="390" y="288" fill="#0F3B4B" class="tile-label">ARABIC + HEBREW</text>
-  <text x="654" y="292" text-anchor="end" fill="#0F3B4B" class="tile-count">3</text>
-  <text x="390" y="319" fill="#1E5568" class="tile-examples">العربية · فارسی · עברית</text>
+  <text x="654" y="292" text-anchor="end" fill="#0F3B4B" class="tile-count">4</text>
+  <text x="390" y="319" fill="#1E5568" class="tile-examples">العربية · فارسی · اردو</text>
   <path d="M 734.00 246.00 H 1033.00 A 51 51 0 0 1 1084.00 297.00 V 297.00 A 51 51 0 0 1 1033.00 348.00 H 734.00 A 34 34 0 0 1 700.00 314.00 V 280.00 A 34 34 0 0 1 734.00 246.00 Z" fill="#F1D6EC"/>
   <text x="734" y="288" fill="#4A1C43" class="tile-label">INDIC + THAI</text>
-  <text x="1050" y="292" text-anchor="end" fill="#4A1C43" class="tile-count">3</text>
-  <text x="734" y="319" fill="#682E5F" class="tile-examples">हिन्दी · বাংলা · ไทย</text>
+  <text x="1050" y="292" text-anchor="end" fill="#4A1C43" class="tile-count">7</text>
+  <text x="734" y="319" fill="#682E5F" class="tile-examples">हिन्दी · বাংলা · தமிழ்</text>
   <text x="720" y="373" text-anchor="middle" class="footer">COMMUNITY TRANSLATIONS · EVERY CONTRIBUTION COUNTS</text>
 </svg>

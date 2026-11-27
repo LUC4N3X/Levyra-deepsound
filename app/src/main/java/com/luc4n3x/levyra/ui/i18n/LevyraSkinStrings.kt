@@ -45,14 +45,19 @@ internal object LevyraSkinStrings {
         "vi" to SkinCopy("Giao diện", "Giao diện gốc của Levyra với cài đặt cá nhân của bạn.", "Đen AMOLED, xám than và hổ phách."),
         "th" to SkinCopy("สกิน", "อินเทอร์เฟซดั้งเดิมของ Levyra พร้อมการตั้งค่าส่วนตัวของคุณ", "ดำ AMOLED กราไฟต์ และอำพัน"),
         "fil" to SkinCopy("Hitsura", "Ang orihinal na interface ng Levyra kasama ang personal mong mga setting.", "AMOLED na itim, graphite at amber."),
-        "he" to SkinCopy("עיצוב", "הממשק המקורי של Levyra עם ההגדרות האישיות שלך.", "שחור AMOLED, גרפיט וענבר.")
+        "he" to SkinCopy("עיצוב", "הממשק המקורי של Levyra עם ההגדרות האישיות שלך.", "שחור AMOLED, גרפיט וענבר."),
+        "ur" to SkinCopy("انداز", "Levyra کا اصل انٹرفیس، آپ کی ذاتی ترتیبات کے ساتھ۔", "AMOLED سیاہ، گریفائٹ اور امبر۔"),
+        "ta" to SkinCopy("தோற்றம்", "Levyra இன் அசல் இடைமுகம், உங்கள் தனிப்பட்ட அமைப்புகளுடன்.", "AMOLED கருப்பு, கிராஃபைட் மற்றும் அம்பர்."),
+        "te" to SkinCopy("రూపం", "Levyra యొక్క అసలైన ఇంటర్‌ఫేస్, మీ వ్యక్తిగత సెట్టింగ్‌లతో.", "AMOLED నలుపు, గ్రాఫైట్ మరియు అంబర్."),
+        "mr" to SkinCopy("रूप", "Levyra चा मूळ इंटरफेस, तुमच्या वैयक्तिक सेटिंग्जसह.", "AMOLED काळा, ग्रेफाइट आणि एम्बर."),
+        "gu" to SkinCopy("દેખાવ", "Levyra નું મૂળ ઈન્ટરફેસ, તમારી વ્યક્તિગત સેટિંગ્સ સાથે.", "AMOLED બ્લેક, ગ્રેફાઇટ અને એમ્બર."),
+        "pt-BR" to SkinCopy("Estilo", "Interface original do Levyra, com suas configurações pessoais.", "AMOLED preto, grafite e âmbar.")
     )
 
     fun forCode(code: String): SkinCopy = localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 
     fun managedForCode(code: String, skin: String = "Nocturne 78"): String =
         localizedValueOrEnglish(managed, code)
-            .forBrazil(code) { LevyraBrazilianPortuguese.adapt(this) }
             .replace("Nocturne 78", skin)
 
     private val managed = mapOf(
@@ -96,7 +101,13 @@ internal object LevyraSkinStrings {
         "vi" to "Nocturne 78 quản lý giao diện. Chuyển sang Levyra Default để thay đổi. Các lựa chọn trước đó được giữ lại.",
         "th" to "Nocturne 78 จัดการรูปลักษณ์ สลับเป็น Levyra Default เพื่อเปลี่ยนแปลง การตั้งค่าเดิมของคุณจะถูกเก็บไว้",
         "fil" to "Nocturne 78 ang namamahala sa hitsura. Lumipat sa Levyra Default para baguhin ito. Naka-save ang mga dati mong pinili.",
-        "he" to "המראה מנוהל על ידי Nocturne 78. לשינוי, עבור אל Levyra Default. הבחירות הקודמות שלך נשמרות."
+        "he" to "המראה מנוהל על ידי Nocturne 78. לשינוי, עבור אל Levyra Default. הבחירות הקודמות שלך נשמרות.",
+        "ur" to "نوکٹرن 78 ظاہری شکل کا انتظام کرتا ہے۔ اسے تبدیل کرنے کے لیے Levyra ڈیفالٹ پر جائیں۔ آپ کے سابقہ ​​انتخاب محفوظ ہو گئے ہیں۔",
+        "ta" to "நோக்டர்ன் 78 தோற்றத்தை நிர்வகிக்கிறது. அதை மாற்ற, Levyra இயல்புநிலைக்கு மாறவும். உங்கள் முந்தைய தேர்வுகள் சேமிக்கப்பட்டன.",
+        "te" to "నాక్టర్న్ 78 ప్రదర్శనను నిర్వహిస్తుంది. దీన్ని మార్చడానికి Levyra డిఫాల్ట్‌కి మారండి. మీ మునుపటి ఎంపికలు సేవ్ చేయబడ్డాయి.",
+        "mr" to "Nocturne 78 देखावा व्यवस्थापित करते. ते बदलण्यासाठी Levyra डीफॉल्टवर स्विच करा. तुमच्या मागील निवडी जतन केल्या आहेत.",
+        "gu" to "નિશાચર 78 દેખાવનું સંચાલન કરે છે. તેને બદલવા માટે Levyra ડિફોલ્ટ પર સ્વિચ કરો. તમારી અગાઉની પસંદગીઓ સાચવવામાં આવી છે.",
+        "pt-BR" to "Nocturne 78 controla o aspecto. Mude para Levyra Default para personalizá-lo. As escolhas anteriores ficam salvas."
     )
 }
 

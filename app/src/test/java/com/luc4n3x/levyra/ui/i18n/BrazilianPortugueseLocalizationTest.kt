@@ -210,10 +210,7 @@ class BrazilianPortugueseLocalizationTest {
         assertFalse(europeanTerms.containsMatchIn(LevyraQobuzSkinStrings.forCode("pt-BR").toString()))
         assertNotEquals(discoveryCopy("en").swipeHint, discoveryCopy("pt-BR").swipeHint)
         assertNotEquals(radioLibraryCopy("en").toString(), "")
-        assertEquals(
-            LevyraPersonalCollectionCatalog.forCode("pt").code,
-            LevyraPersonalCollectionCatalog.forCode("pt-BR").code
-        )
+        assertEquals("pt-BR", LevyraPersonalCollectionCatalog.forCode("pt-BR").code)
         assertNotEquals(LevyraLiveRadioCatalog.forCode("en").exploreSubtitle, LevyraLiveRadioCatalog.forCode("pt-BR").exploreSubtitle)
         assertNotEquals(musicRegionCopy("en").title, musicRegionCopy("pt-BR").title)
         assertEquals("Região musical", musicRegionCopy("pt-BR").title)

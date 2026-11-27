@@ -423,6 +423,66 @@ internal object LevyraAppleMusicStrings {
             explicit = "בוטה",
             songs = { count -> if (count == 1) "שיר אחד" else "${count} שירים" },
             collectionUnavailable = "לא ניתן היה לטעון את הרשימה הזו."
+        ),
+        "ur" to AppleMusicSkinCopy(
+            editorialUnavailable = "ادارتی شیلف ابھی دستیاب نہیں ہیں۔",
+            editorialRetry = "دوبارہ کوشش کریں۔",
+            editorialOffline = "آخری محفوظ کردہ ادارتی شیلف دکھا رہا ہے۔",
+            updated = "تازہ کاری",
+            more = "مزید",
+            explicit = "واضح",
+            songs = { count -> if (count == 1) "1 گانا" else "${count} گانے" },
+            collectionUnavailable = "یہ فہرست لوڈ نہیں ہو سکی۔"
+        ),
+        "ta" to AppleMusicSkinCopy(
+            editorialUnavailable = "தலையங்க அலமாரிகள் இப்போது கிடைக்கவில்லை.",
+            editorialRetry = "மீண்டும் முயற்சிக்கவும்",
+            editorialOffline = "கடைசியாக சேமித்த தலையங்க அலமாரிகளைக் காட்டுகிறது.",
+            updated = "புதுப்பிக்கப்பட்டது",
+            more = "மேலும்",
+            explicit = "வெளிப்படையானது",
+            songs = { count -> if (count == 1) "1 பாடல்" else "${count} பாடல்கள்" },
+            collectionUnavailable = "இந்தப் பட்டியலை ஏற்ற முடியவில்லை."
+        ),
+        "te" to AppleMusicSkinCopy(
+            editorialUnavailable = "ఎడిటోరియల్ షెల్ఫ్‌లు ప్రస్తుతం అందుబాటులో లేవు.",
+            editorialRetry = "మళ్లీ ప్రయత్నించండి",
+            editorialOffline = "చివరిగా సేవ్ చేయబడిన ఎడిటోరియల్ షెల్ఫ్‌లను చూపుతోంది.",
+            updated = "నవీకరించబడింది",
+            more = "మరిన్ని",
+            explicit = "స్పష్టమైన",
+            songs = { count -> if (count == 1) "1 పాట" else "${count} పాటలు" },
+            collectionUnavailable = "ఈ జాబితాను లోడ్ చేయడం సాధ్యపడలేదు."
+        ),
+        "mr" to AppleMusicSkinCopy(
+            editorialUnavailable = "संपादकीय शेल्फ् 'चे अव रुप सध्या उपलब्ध नाहीत.",
+            editorialRetry = "पुन्हा प्रयत्न करा",
+            editorialOffline = "शेवटचे जतन केलेले संपादकीय शेल्फ् 'चे अव रुप दाखवत आहे.",
+            updated = "अपडेट केले",
+            more = "अधिक",
+            explicit = "स्पष्ट",
+            songs = { count -> if (count == 1) "1 गाणे" else "${count} गाणी" },
+            collectionUnavailable = "ही यादी लोड करता आली नाही."
+        ),
+        "gu" to AppleMusicSkinCopy(
+            editorialUnavailable = "સંપાદકીય શેલ્ફ અત્યારે ઉપલબ્ધ નથી.",
+            editorialRetry = "ફરી પ્રયાસ કરો",
+            editorialOffline = "છેલ્લે સાચવેલ સંપાદકીય છાજલીઓ બતાવી રહ્યું છે.",
+            updated = "અપડેટ કરેલ",
+            more = "વધુ",
+            explicit = "સ્પષ્ટ",
+            songs = { count -> if (count == 1) "1 ગીત" else "${count} ગીતો" },
+            collectionUnavailable = "આ સૂચિ લોડ કરી શકાઈ નથી."
+        ),
+        "pt-BR" to AppleMusicSkinCopy(
+            editorialUnavailable = "As estantes editoriais não estão disponíveis no momento.",
+            editorialRetry = "Tente novamente",
+            editorialOffline = "Mostrando as últimas estantes editoriais salvas.",
+            updated = "Atualizado",
+            more = "Mais",
+            explicit = "Explícito",
+            songs = { count -> if (count == 1) "1 música" else "Músicas ${count}" },
+            collectionUnavailable = "Esta lista não pôde ser carregada."
         )
     )
 

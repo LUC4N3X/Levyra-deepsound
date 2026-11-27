@@ -47,7 +47,12 @@ private val cityChartsCopies = mapOf(
     "vi" to CityChartsCopy("Bảng xếp hạng thành phố", "Mỗi thành phố đang nghe gì lúc này"),
     "th" to CityChartsCopy("ชาร์ตเมือง", "ตอนนี้แต่ละเมืองกำลังฟังอะไร"),
     "fil" to CityChartsCopy("Mga chart ng lungsod", "Ang pinakikinggan ng bawat lungsod ngayon"),
-    "he" to CityChartsCopy("מצעדי ערים", "מה כל עיר שומעת כרגע")
+    "he" to CityChartsCopy("מצעדי ערים", "מה כל עיר שומעת כרגע"),
+    "ur" to CityChartsCopy("سٹی چارٹس", "اس وقت ہر شہر میں سب سے زیادہ سنے جانے والے گانے"),
+    "ta" to CityChartsCopy("நகர வரைபடங்கள்", "ஒவ்வொரு நகரத்திலும் இப்போது அதிகம் கேட்கப்படும் பாடல்கள்"),
+    "te" to CityChartsCopy("నగర పటాలు", "ప్రస్తుతం ప్రతి నగరంలో ఎక్కువగా వింటున్న పాటలు"),
+    "mr" to CityChartsCopy("शहर चार्ट", "सध्या प्रत्येक शहरात सर्वाधिक ऐकली जाणारी गाणी"),
+    "gu" to CityChartsCopy("શહેર ચાર્ટ્સ", "દરેક શહેરમાં હમણાં સૌથી વધુ સાંભળાતાં ગીતો")
 )
 
 internal fun cityChartsCopy(code: String): CityChartsCopy = localizedValueOrEnglish(cityChartsCopies, code)

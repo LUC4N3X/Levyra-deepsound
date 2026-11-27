@@ -41,7 +41,13 @@ private val moreByArtistTemplates = mapOf(
     "vi" to "Thêm từ %s",
     "th" to "เพิ่มเติมจาก %s",
     "fil" to "Higit pa mula kay %s",
-    "he" to "עוד מאת %s"
+    "he" to "עוד מאת %s",
+    "ur" to "مزید بذریعہ %s",
+    "ta" to "%s இன் மேலும்",
+    "te" to "%s ద్వారా మరిన్ని",
+    "mr" to "%s द्वारे अधिक",
+    "gu" to "%s દ્વારા વધુ",
+    "pt-BR" to "Mais de %s"
 )
 
 fun LevyraStrings.moreByArtist(artist: String): String = moreByArtist(code, artist)

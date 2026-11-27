@@ -91,7 +91,7 @@ class YoutubeMusicLibraryShelfTest {
 
     @Test
     fun `every supported language ships the home library copy`() {
-        assertEquals(LevyraLanguageCatalog.languages.map { it.code }.toSet(), youtubeMusicHomeLocalizationCodes())
+        assertEquals(LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet(), youtubeMusicHomeLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             val copy = youtubeMusicHomeCopy(strings.code)
             val values = listOf(copy.title, copy.source, copy.createdByYou, copy.refresh, copy.loadFailed, copy.retry, copy.sessionExpired, copy.reconnect)

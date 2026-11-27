@@ -34,7 +34,7 @@ data class LevyraSystemPlayerCopy(
     val noOutputs: String
 )
 
-fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (translationKey(code)) {
+fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (translationKey(code, regional = true)) {
     "it" -> LevyraSystemPlayerCopy(
         "Uscita audio", "Il percorso audio reale usato da Levyra", "IN RIPRODUZIONE SU", "Scegli uscita",
         "Gestito da Android", "Altoparlante", "Bluetooth", "Cablata", "Esterna", "Qualità stream",
@@ -106,6 +106,60 @@ fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (translation
         "Kaitstud värskendus", "Ametlik GitHubi APK · pakett ja allkirjastuse identiteet kinnitatud enne paigaldamist",
         "SAADAOLEVAD VÄLJUNDID", "Väljundi vahetamine…", "Väljundit ei saanud vahetada", "Sagedused", "Kanalid",
         "Ava süsteemivalik", "Väljundeid pole saadaval"
+    )
+    "ur" -> LevyraSystemPlayerCopy(
+        "آڈیو آؤٹ پٹ", "اصلی آڈیو پاتھ Levyra استعمال کر رہا ہے۔", "چل رہا ہے۔", "آؤٹ پٹ کا انتخاب کریں۔",
+        "Android کے زیر انتظام", "سپیکر", "Bluetooth", "وائرڈ", "بیرونی", "سلسلہ کا معیار",
+        "ڈی ایس پی ایکٹو", "ڈی ایس پی غیر فعال", "منتخب کریں کہ موسیقی کب بند ہونی چاہیے۔", "پر ختم ہوتا ہے۔", "ٹائمر ایکٹو",
+        "+15 منٹ", "منٹ", "ختم دھندلا فعال", "اپ ڈیٹ تیار ہے۔", "سے", "کو", "کلیدی تبدیلیاں",
+        "محفوظ اپ ڈیٹ", "آفیشل GitHub APK · پیکیج اور دستخطی شناخت کی تصدیق انسٹال کرنے سے پہلے",
+        "دستیاب آؤٹ پٹ", "آؤٹ پٹ سوئچ کر رہا ہے…", "آؤٹ پٹ کو تبدیل نہیں کیا جا سکا", "نمونے کے نرخ", "چینلز",
+        "سسٹم آؤٹ پٹ چنندہ کھولیں۔", "کوئی آؤٹ پٹ دستیاب نہیں ہے۔"
+    )
+    "ta" -> LevyraSystemPlayerCopy(
+        "ஆடியோ வெளியீடு", "உண்மையான ஆடியோ பாதை Levyra பயன்படுத்துகிறது", "விளையாடுகிறது", "வெளியீட்டைத் தேர்ந்தெடுக்கவும்",
+        "Android ஆல் நிர்வகிக்கப்படுகிறது", "பேச்சாளர்", "Bluetooth", "வயர்டு", "வெளி", "ஸ்ட்ரீம் தரம்",
+        "டிஎஸ்பி செயலில்", "டிஎஸ்பி செயலற்றவர்", "இசை எப்போது நிறுத்தப்பட வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும்", "மணிக்கு முடிவடைகிறது", "டைமர் ஆக்டிவ்",
+        "+15 நிமிடம்", "நிமிடம்", "முடிவு மங்கல் செயலில்", "புதுப்பிப்பு தயார்", "இருந்து", "செய்ய", "முக்கிய மாற்றங்கள்",
+        "பாதுகாக்கப்பட்ட புதுப்பிப்பு", "அதிகாரப்பூர்வ GitHub APK · தொகுப்பு மற்றும் கையொப்பமிடுதல் அடையாளம் நிறுவும் முன் சரிபார்க்கப்பட்டது",
+        "கிடைக்கும் வெளியீடுகள்", "வெளியீட்டை மாற்றுகிறது…", "வெளியீட்டை மாற்ற முடியவில்லை", "மாதிரி விகிதங்கள்", "சேனல்கள்",
+        "சிஸ்டம் அவுட்புட் பிக்கரைத் திறக்கவும்", "வெளியீடுகள் இல்லை"
+    )
+    "te" -> LevyraSystemPlayerCopy(
+        "ఆడియో అవుట్‌పుట్", "Levyra నిజమైన ఆడియో పాత్‌ని ఉపయోగిస్తున్నారు", "ప్లే అవుతోంది", "అవుట్‌పుట్‌ని ఎంచుకోండి",
+        "Android ద్వారా నిర్వహించబడుతుంది", "స్పీకర్", "Bluetooth", "వైర్డు", "బాహ్య", "స్ట్రీమ్ నాణ్యత",
+        "డీఎస్పీ యాక్టివ్", "DSP నిష్క్రియ", "సంగీతం ఎప్పుడు ఆగిపోవాలో ఎంచుకోండి", "వద్ద ముగుస్తుంది", "టైమర్ యాక్టివ్",
+        "+15 నిమి", "నిమి", "ఎండ్ ఫేడ్ యాక్టివ్", "అప్‌డేట్ సిద్ధంగా ఉంది", "నుండి", "కు", "కీలక మార్పులు",
+        "రక్షిత నవీకరణ", "అధికారిక GitHub APK · ఇన్‌స్టాల్ చేయడానికి ముందు ప్యాకేజీ మరియు సంతకం గుర్తింపు ధృవీకరించబడ్డాయి",
+        "అందుబాటులో ఉన్న అవుట్‌పుట్‌లు", "అవుట్‌పుట్ మారుతోంది…", "అవుట్‌పుట్‌ని మార్చడం సాధ్యపడలేదు", "నమూనా రేట్లు", "ఛానెల్‌లు",
+        "సిస్టమ్ అవుట్‌పుట్ పికర్‌ని తెరవండి", "అవుట్‌పుట్‌లు అందుబాటులో లేవు"
+    )
+    "mr" -> LevyraSystemPlayerCopy(
+        "ऑडिओ आउटपुट", "वास्तविक ऑडिओ पथ Levyra वापरत आहे", "खेळत आहे", "आउटपुट निवडा",
+        "Android द्वारे व्यवस्थापित", "वक्ता", "Bluetooth", "वायर्ड", "बाह्य", "प्रवाह गुणवत्ता",
+        "डीएसपी सक्रिय", "डीएसपी निष्क्रिय", "संगीत कधी थांबले पाहिजे ते निवडा", "वाजता संपेल", "टाइमर सक्रिय",
+        "+१५ मि", "मि", "समाप्त फिकट सक्रिय", "अपडेट तयार आहे", "पासून", "ला", "मुख्य बदल",
+        "संरक्षित अद्यतन", "अधिकृत GitHub APK · पॅकेज आणि स्वाक्षरी ओळख स्थापित करण्यापूर्वी सत्यापित",
+        "उपलब्ध आउटपुट", "आउटपुट स्विच करत आहे...", "आउटपुट बदलू शकलो नाही", "नमुना दर", "चॅनेल",
+        "सिस्टम आउटपुट पिकर उघडा", "कोणतेही आउटपुट उपलब्ध नाहीत"
+    )
+    "gu" -> LevyraSystemPlayerCopy(
+        "ઓડિયો આઉટપુટ", "વાસ્તવિક ઑડિઓ પાથ Levyra નો ઉપયોગ કરી રહ્યો છે", "ચાલી રહ્યું છે", "આઉટપુટ પસંદ કરો",
+        "Android દ્વારા સંચાલિત", "વક્તા", "Bluetooth", "વાયર્ડ", "બાહ્ય", "સ્ટ્રીમ ગુણવત્તા",
+        "ડીએસપી સક્રિય", "ડીએસપી નિષ્ક્રિય", "સંગીત ક્યારે બંધ થવું જોઈએ તે પસંદ કરો", "વાગ્યે સમાપ્ત થાય છે", "ટાઈમર સક્રિય",
+        "+15 મિનિટ", "મિનિટ", "સમાપ્ત ફેડ સક્રિય", "અપડેટ તૈયાર છે", "થી", "થી", "મુખ્ય ફેરફારો",
+        "સંરક્ષિત અપડેટ", "અધિકૃત GitHub APK · પેકેજ અને હસ્તાક્ષર ઓળખ સ્થાપિત કરતા પહેલા ચકાસાયેલ છે",
+        "ઉપલબ્ધ આઉટપુટ", "આઉટપુટ સ્વિચ કરી રહ્યું છે...", "આઉટપુટ બદલી શકાયું નથી", "નમૂના દરો", "ચેનલો",
+        "સિસ્ટમ આઉટપુટ પીકર ખોલો", "કોઈ આઉટપુટ ઉપલબ્ધ નથી"
+    )
+    "pt-BR" -> LevyraSystemPlayerCopy(
+        "Saída de áudio", "O caminho de áudio real que Levyra está usando", "JOGANDO", "Escolha a saída",
+        "Gerenciado por Android", "Palestrante", "Bluetooth", "Com fio", "Externo", "Qualidade de transmissão",
+        "DSP ativo", "DSP inativo", "Escolha quando a música deve parar", "Termina em", "TEMPORIZADOR ATIVO",
+        "+15 minutos", "min", "Fim fade ativo", "Atualização pronta", "De", "Para", "Principais mudanças",
+        "Atualização protegida", "APK GitHub oficial · pacote e identidade de assinatura verificada antes da instalação",
+        "SAÍDAS DISPONÍVEIS", "Trocando saída…", "Não foi possível alterar a saída", "Taxas de amostragem", "Canais",
+        "Seletor de saída do sistema aberto", "Nenhuma saída disponível"
     )
     else -> LevyraSystemPlayerCopy(
         "Audio output", "The real audio path Levyra is using", "PLAYING ON", "Choose output",

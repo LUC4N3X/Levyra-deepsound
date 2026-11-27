@@ -11,8 +11,8 @@ import java.io.File
 class UpdateReleaseLocalizationTest {
     @Test
     fun everySupportedLanguageShipsUpdateScreenCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
-        assertEquals(41, catalogCodes.size)
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
+        assertEquals(47, catalogCodes.size)
         assertEquals(catalogCodes, updateReleaseLocalizationCodes())
         assertEquals(catalogCodes, update2512HighlightLocalizationCodes())
 
@@ -77,7 +77,7 @@ class UpdateReleaseLocalizationTest {
     fun releaseNotesShipHighlightsForEveryLanguage() {
         val notes = listOf(File("../docs/RELEASE_NOTES.md"), File("docs/RELEASE_NOTES.md")).first(File::exists).readText()
         val highlights = releaseNoteHighlights(notes)
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
 
         assertEquals(catalogCodes, highlights.keys)
         catalogCodes.forEach { code ->

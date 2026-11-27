@@ -14,9 +14,9 @@ class LikeAllLocalizationTest {
             listOf(copy.action, copy.alreadyLiked, copy.failed).forEach { text ->
                 assertFalse(strings.code, text.isBlank())
             }
-            assertTrue(strings.code, copy.liked(7).contains("7"))
+            assertTrue(strings.code, copy.liked(7).any { it.digitToIntOrNull() == 7 })
             assertFalse(strings.code, copy.liked(7).contains("{count}"))
-            assertTrue(strings.code, copy.liked(1).contains("1"))
+            assertTrue(strings.code, copy.liked(1).any { it.digitToIntOrNull() == 1 })
             assertFalse(strings.code, copy.liked(1).contains("{count}"))
         }
     }

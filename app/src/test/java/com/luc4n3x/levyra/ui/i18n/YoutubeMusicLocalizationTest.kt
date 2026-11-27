@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YoutubeMusicLocalizationTest {
-    private val catalog = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+    private val catalog = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
 
     @Test
     fun everyCatalogLanguageHasCompleteLinkCopy() {
@@ -46,7 +46,7 @@ class YoutubeMusicLocalizationTest {
     }
 
     @Test
-    fun brazilianPortugueseIsAdapted() {
+    fun brazilianPortugueseUsesDedicatedWording() {
         val brazil = LevyraStrings.forCode(LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE).youtubeMusicLinkCopy
         assertEquals("A câmera não está disponível", brazil[YoutubeMusicLinkText.CameraUnavailable])
         assertEquals("Aguardando o celular", brazil[YoutubeMusicLinkText.Waiting])

@@ -44,7 +44,12 @@ private val exploreForYouCopies = mapOf(
     "vi" to ExploreForYouCopy("Dành cho bạn", "Các mix tạo từ thói quen nghe của bạn"),
     "th" to ExploreForYouCopy("สำหรับคุณ", "มิกซ์ที่สร้างจากการฟังของคุณ"),
     "fil" to ExploreForYouCopy("Para sa iyo", "Mga mix mula sa pinakikinggan mo"),
-    "he" to ExploreForYouCopy("בשבילך", "מיקסים שנוצרו מההאזנות שלך")
+    "he" to ExploreForYouCopy("בשבילך", "מיקסים שנוצרו מההאזנות שלך"),
+    "ur" to ExploreForYouCopy("آپ کے لیے", "آپ کے سننے سے بنائے گئے مکسز"),
+    "ta" to ExploreForYouCopy("உங்களுக்காக", "நீங்கள் கேட்டதில் இருந்து தயாரிக்கப்பட்ட கலவைகள்"),
+    "te" to ExploreForYouCopy("మీ కోసం", "మీ వినడం నుండి మిక్స్‌లు తయారు చేయబడ్డాయి"),
+    "mr" to ExploreForYouCopy("तुमच्यासाठी", "तुमच्या ऐकण्यापासून बनवलेले मिश्रण"),
+    "gu" to ExploreForYouCopy("તમારા માટે", "તમારા શ્રવણમાંથી બનાવેલ મિશ્રણ")
 )
 
 internal fun exploreForYouCopy(code: String): ExploreForYouCopy = localizedValueOrEnglish(exploreForYouCopies, code)

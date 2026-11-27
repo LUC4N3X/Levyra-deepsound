@@ -53,7 +53,13 @@ internal object LevyraAppleMusicSearchStrings {
         "vi" to AppleSearchCopy("Nghệ sĩ, bài hát, album và hơn thế", "trong Levyra", "Kết quả hàng đầu", "Bài hát", "Nghệ sĩ", "Album", "Danh sách phát", "Video âm nhạc"),
         "th" to AppleSearchCopy("ศิลปิน เพลง อัลบั้ม และอื่นๆ", "ใน Levyra", "ผลลัพธ์ยอดนิยม", "เพลง", "ศิลปิน", "อัลบั้ม", "เพลย์ลิสต์", "มิวสิควิดีโอ"),
         "fil" to AppleSearchCopy("Mga artist, kanta, album at iba pa", "sa Levyra", "Mga nangungunang resulta", "Kanta", "Artist", "Album", "Playlist", "Music video"),
-        "he" to AppleSearchCopy("אמנים, שירים, אלבומים ועוד", "ב-Levyra", "התוצאות המובילות", "שיר", "אמן", "אלבום", "פלייליסט", "קליפ")
+        "he" to AppleSearchCopy("אמנים, שירים, אלבומים ועוד", "ב-Levyra", "התוצאות המובילות", "שיר", "אמן", "אלבום", "פלייליסט", "קליפ"),
+        "ur" to AppleSearchCopy("فنکار، گانے، البمز اور بہت کچھ", "Levyra میں", "سرفہرست نتائج", "گانا", "فنکار", "البم", "پلے لسٹ", "میوزک ویڈیو"),
+        "ta" to AppleSearchCopy("கலைஞர்கள், பாடல்கள், ஆல்பங்கள் மற்றும் பல", "Levyra இல்", "சிறந்த முடிவுகள்", "பாடல்", "கலைஞர்", "ஆல்பம்", "பிளேலிஸ்ட்", "இசை வீடியோ"),
+        "te" to AppleSearchCopy("కళాకారులు, పాటలు, ఆల్బమ్‌లు మరియు మరిన్ని", "Levyraలో", "అగ్ర ఫలితాలు", "పాట", "కళాకారుడు", "ఆల్బమ్", "ప్లేజాబితా", "మ్యూజిక్ వీడియో"),
+        "mr" to AppleSearchCopy("कलाकार, गाणी, अल्बम आणि बरेच काही", "Levyra मध्ये", "शीर्ष परिणाम", "गाणे", "कलाकार", "अल्बम", "प्लेलिस्ट", "संगीत व्हिडिओ"),
+        "gu" to AppleSearchCopy("કલાકારો, ગીતો, આલ્બમ્સ અને વધુ", "Levyra માં", "ટોચના પરિણામો", "ગીત", "કલાકાર", "આલ્બમ", "પ્લેલિસ્ટ", "સંગીત વિડિઓ"),
+        "pt-BR" to AppleSearchCopy("Artistas, músicas, álbuns e muito mais", "em Levyra", "Principais resultados", "Canção", "Artista", "Álbum", "Playlist", "Vídeo musical")
     )
 
     fun forCode(code: String): AppleSearchCopy = localizedValueOrEnglish(copies, code)

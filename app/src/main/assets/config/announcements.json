@@ -378,6 +378,60 @@
           "dismiss": "Mungkin nanti",
           "settingsTitle": "Sokong Levyra di GitHub",
           "settingsSubtitle": "Beri bintang dan bantu lebih ramai orang menemui projek ini."
+        },
+        "ur": {
+          "badge": "100% اوپن سورس",
+          "title": "Levyra کی طرح؟",
+          "body": "Levyra مفت اور اوپن سورس ہے۔ GitHub پر ایک ستارہ صرف چند سیکنڈ کا وقت لیتا ہے اور حقیقی طور پر پروجیکٹ کو بڑھنے میں مدد کرتا ہے۔",
+          "action": "⭐ ستارہ Levyra",
+          "dismiss": "شاید بعد میں",
+          "settingsTitle": "GitHub پر Levyra کو سپورٹ کریں۔",
+          "settingsSubtitle": "مزید لوگوں کو پروجیکٹ دریافت کرنے میں مدد کرنے کے لیے ایک ستارہ چھوڑیں۔"
+        },
+        "ta": {
+          "badge": "100% திறந்த மூல",
+          "title": "Levyra போன்றதா?",
+          "body": "Levyra இலவசம் மற்றும் திறந்த மூலமாகும். GitHub இல் உள்ள ஒரு நட்சத்திரம் சில வினாடிகள் மட்டுமே எடுக்கும் மற்றும் திட்ட வளர்ச்சிக்கு உண்மையாக உதவுகிறது.",
+          "action": "⭐ நட்சத்திரம் Levyra",
+          "dismiss": "பின்னர் இருக்கலாம்",
+          "settingsTitle": "GitHub இல் Levyra ஐ ஆதரிக்கவும்",
+          "settingsSubtitle": "திட்டத்தைக் கண்டறிய அதிகமானவர்களுக்கு உதவ நட்சத்திரத்தை விடுங்கள்."
+        },
+        "te": {
+          "badge": "100% ఓపెన్ సోర్స్",
+          "title": "Levyra లాగా?",
+          "body": "Levyra ఉచితం మరియు ఓపెన్ సోర్స్. GitHubలోని నక్షత్రం కేవలం కొన్ని సెకన్లు మాత్రమే పడుతుంది మరియు ప్రాజెక్ట్ ఎదుగుదలలో నిజంగా సహాయపడుతుంది.",
+          "action": "⭐ స్టార్ Levyra",
+          "dismiss": "బహుశా తర్వాత",
+          "settingsTitle": "GitHubలో Levyraకి మద్దతు ఇవ్వండి",
+          "settingsSubtitle": "ప్రాజెక్ట్‌ను కనుగొనడంలో ఎక్కువ మంది వ్యక్తులకు సహాయపడటానికి నక్షత్రాన్ని వదిలివేయండి."
+        },
+        "mr": {
+          "badge": "100% मुक्त स्रोत",
+          "title": "Levyra आवडले?",
+          "body": "Levyra विनामूल्य आणि मुक्त स्रोत आहे. GitHub वरील तारा फक्त काही सेकंद घेतो आणि प्रकल्प वाढण्यास खरोखर मदत करतो.",
+          "action": "⭐ स्टार Levyra",
+          "dismiss": "कदाचित नंतर",
+          "settingsTitle": "GitHub वर Levyra चे समर्थन करा",
+          "settingsSubtitle": "अधिक लोकांना प्रकल्प शोधण्यात मदत करण्यासाठी एक तारा सोडा."
+        },
+        "gu": {
+          "badge": "100% ઓપન સોર્સ",
+          "title": "Levyra ગમે છે?",
+          "body": "Levyra મફત અને ઓપન સોર્સ છે. GitHub પરનો સ્ટાર માત્ર થોડીક સેકન્ડ લે છે અને પ્રોજેક્ટને આગળ વધારવામાં ખરેખર મદદ કરે છે.",
+          "action": "⭐ સ્ટાર Levyra",
+          "dismiss": "કદાચ પછીથી",
+          "settingsTitle": "GitHub પર Levyra ને સપોર્ટ કરો",
+          "settingsSubtitle": "વધુ લોકોને પ્રોજેક્ટ શોધવામાં મદદ કરવા માટે એક સ્ટાર છોડો."
+        },
+        "pt-BR": {
+          "badge": "CÓDIGO 100% ABERTO",
+          "title": "Gosta de Levyra?",
+          "body": "Levyra é gratuito e de código aberto. Uma estrela no GitHub leva apenas alguns segundos e realmente ajuda o projeto a crescer.",
+          "action": "⭐ Estrela Levyra",
+          "dismiss": "Talvez mais tarde",
+          "settingsTitle": "Suporte Levyra em GitHub",
+          "settingsSubtitle": "Deixe uma estrela para ajudar mais pessoas a descobrirem o projeto."
         }
       }
     }

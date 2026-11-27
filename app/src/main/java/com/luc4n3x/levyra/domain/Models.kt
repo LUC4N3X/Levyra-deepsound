@@ -127,6 +127,7 @@ object ChartsCatalog {
         ChartRegion("jp", "日本", "🇯🇵", "jp"),
         ChartRegion("kr", "대한민국", "🇰🇷", "kr"),
         ChartRegion("in", "भारत", "🇮🇳", "in"),
+        ChartRegion("pk", "پاکستان", "🇵🇰", "pk"),
         ChartRegion("id", "Indonesia", "🇮🇩", "id"),
         ChartRegion("vn", "Việt Nam", "🇻🇳", "vn"),
         ChartRegion("th", "ประเทศไทย", "🇹🇭", "th"),

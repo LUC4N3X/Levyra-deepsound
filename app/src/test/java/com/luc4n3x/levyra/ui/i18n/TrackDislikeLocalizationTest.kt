@@ -8,7 +8,7 @@ import org.junit.Test
 class TrackDislikeLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, trackDislikeLocalizationCodes())
         supported.forEach { code ->
             val copy = trackDislikeCopy(code)

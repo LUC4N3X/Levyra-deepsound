@@ -9,7 +9,7 @@ import org.junit.Test
 class VisualCraftLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, visualCraftLocalizationCodes())
         assertTrue(visualCraftIncompleteLocalizationCodes().toString(), visualCraftIncompleteLocalizationCodes().isEmpty())
     }

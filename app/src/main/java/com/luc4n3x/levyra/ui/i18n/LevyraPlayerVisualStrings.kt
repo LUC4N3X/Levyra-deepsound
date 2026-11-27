@@ -96,7 +96,12 @@ private val playerVisualBundles: Map<String, Map<String, String>> = mapOf(
     "fa" to playerVisual("حالت بصری", "نحوه نمایش کاور و Canvas متحرک را انتخاب کنید", "Turntable", "Cinema", "Apple", "پس‌زمینه پخش‌کننده", "سبک پس‌زمینه پشت پخش‌کننده", "انطباقی", "محو", "تاریک", "سیاه خالص", "ورود به حالت فراگیر", "خروج از حالت فراگیر"),
     "zh-Hant" to playerVisual("視覺模式", "選擇封面與動態 Canvas 的呈現方式", "Turntable", "Cinema", "Apple", "播放器背景", "播放器背後的背景樣式", "自適應", "模糊", "深色", "純黑", "進入沉浸模式", "退出沉浸模式"),
     "bn" to playerVisual("ভিজ্যুয়াল মোড", "অ্যালবাম আর্ট এবং গতিশীল Canvas কীভাবে প্রদর্শিত হবে তা চয়ন করুন", "Turntable", "Cinema", "Apple", "প্লেয়ার ব্যাকগ্রাউন্ড", "প্লেয়ারের পেছনের ব্যাকগ্রাউন্ড শৈলী", "অভিযোজিত", "ব্লার", "অন্ধকার", "খাঁটি কালো", "ইমার্সিভ মোডে প্রবেশ", "ইমার্সিভ মোড ত্যাগ"),
-    "ms" to playerVisual("Mod visual", "Pilih cara paparan seni album dan Canvas bergerak", "Turntable", "Cinema", "Apple", "Latar belakang pemain", "Gaya latar belakang di belakang pemain", "Adaptif", "Kabur", "Gelap", "Hitam tulen", "Masuk mod imersif", "Keluar dari mod imersif")
+    "ms" to playerVisual("Mod visual", "Pilih cara paparan seni album dan Canvas bergerak", "Turntable", "Cinema", "Apple", "Latar belakang pemain", "Gaya latar belakang di belakang pemain", "Adaptif", "Kabur", "Gelap", "Hitam tulen", "Masuk mod imersif", "Keluar dari mod imersif"),
+    "ur" to playerVisual("بصری موڈ", "منتخب کریں کہ آرٹ ورک اور موشن کینوس کیسے ظاہر ہوتے ہیں۔", "ٹرنٹیبل", "سنیما", "ایپل", "پلیئر کا پس منظر", "کھلاڑی کے پیچھے پس منظر کا انداز", "موافقت پذیر", "دھندلا", "اندھیرا", "خالص سیاہ", "عمیق درج کریں۔", "عمیق باہر نکلیں۔"),
+    "ta" to playerVisual("காட்சி முறை", "கலைப்படைப்பு மற்றும் மோஷன் கேன்வாஸ் எவ்வாறு தோன்றும் என்பதைத் தேர்வுசெய்யவும்", "திருப்பக்கூடியது", "சினிமா", "ஆப்பிள்", "பிளேயர் பின்னணி", "பிளேயர் பின்னால் பின்னணி பாணி", "தழுவல்", "தெளிவின்மை", "இருள்", "தூய கருப்பு", "மூழ்கி உள்ளிடவும்", "மூழ்கி வெளியேறு"),
+    "te" to playerVisual("విజువల్ మోడ్", "ఆర్ట్‌వర్క్ మరియు మోషన్ కాన్వాస్ ఎలా కనిపిస్తాయో ఎంచుకోండి", "తిరుగులేని", "సినిమా", "ఆపిల్", "ప్లేయర్ నేపథ్యం", "ప్లేయర్ వెనుక నేపథ్య శైలి", "అనుకూలమైనది", "బ్లర్", "చీకటి", "స్వచ్ఛమైన నలుపు", "లీనమయ్యేలా నమోదు చేయండి", "లీనమై నిష్క్రమించండి"),
+    "mr" to playerVisual("व्हिज्युअल मोड", "आर्टवर्क आणि मोशन कॅनव्हास कसे दिसतात ते निवडा", "टर्नटेबल", "सिनेमा", "सफरचंद", "प्लेअर पार्श्वभूमी", "खेळाडूच्या मागे पार्श्वभूमी शैली", "अनुकूल", "अस्पष्ट", "गडद", "शुद्ध काळा", "विसर्जित प्रविष्ट करा", "तल्लीन होऊन बाहेर पडा"),
+    "gu" to playerVisual("વિઝ્યુઅલ મોડ", "આર્ટવર્ક અને મોશન કેનવાસ કેવી રીતે દેખાય તે પસંદ કરો", "ટર્નટેબલ", "સિનેમા", "એપલ", "પ્લેયર પૃષ્ઠભૂમિ", "ખેલાડીની પાછળની પૃષ્ઠભૂમિ શૈલી", "અનુકૂલનશીલ", "અસ્પષ્ટતા", "શ્યામ", "શુદ્ધ કાળો", "ઇમર્સિવ દાખલ કરો", "ઇમર્સિવ બહાર નીકળો")
 )
 
 private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = mapOf(
@@ -141,7 +146,12 @@ private val playerBackgroundExtraLabels: Map<String, Pair<String, String>> = map
     "fa" to ("شفق قطبی" to "گرادیان"),
     "zh-Hant" to ("極光" to "漸變"),
     "bn" to ("অরোরা" to "গ্রেডিয়েন্ট"),
-    "ms" to ("Aurora" to "Gradien")
+    "ms" to ("Aurora" to "Gradien"),
+    "ur" to ("Aurora" to "میلان"),
+    "ta" to ("Aurora" to "சாய்வு"),
+    "te" to ("Aurora" to "ప్రవణత"),
+    "mr" to ("Aurora" to "ग्रेडियंट"),
+    "gu" to ("Aurora" to "ઢાળ")
 )
 
 private class ReactiveAuraLabels(
@@ -193,7 +203,12 @@ private val reactiveAuraLabels: Map<String, ReactiveAuraLabels> = mapOf(
     "fa" to ReactiveAuraLabels("آرام", "پالس", "شدت", "توصیه‌شده"),
     "zh-Hant" to ReactiveAuraLabels("平靜", "脈動", "強度", "推薦"),
     "bn" to ReactiveAuraLabels("শান্ত", "পালস", "তীব্রতা", "প্রস্তাবিত"),
-    "ms" to ReactiveAuraLabels("Tenang", "Puls", "Keamatan", "Disyorkan")
+    "ms" to ReactiveAuraLabels("Tenang", "Puls", "Keamatan", "Disyorkan"),
+    "ur" to ReactiveAuraLabels("پرسکون", "نبض", "شدت", "تجویز کردہ"),
+    "ta" to ReactiveAuraLabels("அமைதி", "துடிப்பு", "தீவிரம்", "பரிந்துரைக்கப்படுகிறது"),
+    "te" to ReactiveAuraLabels("ప్రశాంతత", "పల్స్", "తీవ్రత", "సిఫార్సు చేయబడింది"),
+    "mr" to ReactiveAuraLabels("शांत", "नाडी", "तीव्रता", "शिफारस केली"),
+    "gu" to ReactiveAuraLabels("શાંત", "પલ્સ", "તીવ્રતા", "ભલામણ કરેલ")
 )
 
 private const val ReactiveAuraName = "Reactive Aura"

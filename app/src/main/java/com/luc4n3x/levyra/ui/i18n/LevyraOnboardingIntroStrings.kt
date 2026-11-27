@@ -45,7 +45,12 @@ internal object LevyraOnboardingIntroStrings {
         "ms" to OnboardingIntroDiscoveryCopy("Mengikut cita rasa anda", "Temui artis, keluaran baharu dan muzik yang sesuai dengan anda."),
         "vi" to OnboardingIntroDiscoveryCopy("Đúng gu của bạn", "Khám phá nghệ sĩ, bản phát hành mới và âm nhạc hợp với bạn."),
         "th" to OnboardingIntroDiscoveryCopy("ตรงใจคุณ", "ค้นพบศิลปิน ผลงานใหม่ และเพลงที่เข้ากับคุณ"),
-        "fil" to OnboardingIntroDiscoveryCopy("Para sa panlasa mo", "Tumuklas ng mga artist, bagong release at musikang bagay sa iyo.")
+        "fil" to OnboardingIntroDiscoveryCopy("Para sa panlasa mo", "Tumuklas ng mga artist, bagong release at musikang bagay sa iyo."),
+        "ur" to OnboardingIntroDiscoveryCopy("آپ کی پسند کی موسیقی", "اپنی پسند کے فنکار، نئی ریلیزز اور گانے دریافت کریں۔"),
+        "ta" to OnboardingIntroDiscoveryCopy("உங்கள் ரசனைக்கு ஏற்ப", "உங்களுக்குப் பிடிக்கும் கலைஞர்கள், புதிய வெளியீடுகள், பாடல்களைக் கண்டறியுங்கள்."),
+        "te" to OnboardingIntroDiscoveryCopy("మీ అభిరుచికి తగిన సంగీతం", "మీకు నచ్చే కళాకారులను, కొత్త విడుదలలను, పాటలను కనుగొనండి."),
+        "mr" to OnboardingIntroDiscoveryCopy("तुमच्या आवडीचं संगीत", "तुम्हाला आवडतील असे कलाकार, नवीन रिलीज आणि गाणी शोधा."),
+        "gu" to OnboardingIntroDiscoveryCopy("તમારી પસંદનું સંગીત", "તમને ગમે એવા કલાકારો, નવાં પ્રકાશનો અને ગીતો શોધો.")
     )
 
     fun forCode(code: String): OnboardingIntroDiscoveryCopy = localizedValueOrEnglish(copies, code)

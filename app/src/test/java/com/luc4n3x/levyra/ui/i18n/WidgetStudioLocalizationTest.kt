@@ -9,7 +9,7 @@ import org.junit.Test
 class WidgetStudioLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteWidgetStudioCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, widgetStudioLocalizationCodes())
         assertTrue(widgetStudioIncompleteLocalizationCodes().toString(), widgetStudioIncompleteLocalizationCodes().isEmpty())
     }

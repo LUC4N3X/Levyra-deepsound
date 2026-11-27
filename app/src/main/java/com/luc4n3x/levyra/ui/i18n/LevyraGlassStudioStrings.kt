@@ -13,7 +13,7 @@ internal data class GlassStudioCopy(
     val reset: String
 )
 
-internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (translationKey(code)) {
+internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (translationKey(code, regional = true)) {
     "it" -> GlassStudioCopy(
         title = "Expressive Glass",
         subtitle = "Profondità e materiale delle superfici in vetro",
@@ -457,6 +457,78 @@ internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (translatio
         performanceNote = "از تنظیم عملکرد بصری پیروی می‌کند: جلوه‌های پیشرفته در دستگاه‌های محدود و حالت صرفه‌جویی باتری خاموش می‌شوند.",
         disabledNote = "برای استفاده از این گزینه‌ها، Liquid Glass را در تنظیمات رابط روشن کنید.",
         reset = "بازنشانی"
+    )
+    "ur" -> GlassStudioCopy(
+        title = "اظہار کرنے والا گلاس",
+        subtitle = "شیشے کی سطحوں کی گہرائی اور مواد",
+        blur = "دھندلا",
+        transparency = "شفافیت",
+        tint = "رنگت",
+        refraction = "روشنی اپورتن",
+        refractionSubtitle = "فلوٹنگ بار کے کنارے پس منظر کو آہستہ سے موڑتے ہیں (Android 13+)",
+        performanceNote = "بصری کارکردگی کی پیروی کرتا ہے: محدود آلات اور بیٹری سیور میں جدید اثرات بند ہوجاتے ہیں۔",
+        disabledNote = "ان کنٹرولز کو استعمال کرنے کے لیے انٹرفیس سیٹنگز میں مائع گلاس کو آن کریں۔",
+        reset = "دوبارہ ترتیب دیں۔"
+    )
+    "ta" -> GlassStudioCopy(
+        title = "வெளிப்படுத்தும் கண்ணாடி",
+        subtitle = "கண்ணாடி மேற்பரப்புகளின் ஆழம் மற்றும் பொருள்",
+        blur = "தெளிவின்மை",
+        transparency = "வெளிப்படைத்தன்மை",
+        tint = "சாயல்",
+        refraction = "ஒளி ஒளிவிலகல்",
+        refractionSubtitle = "மிதக்கும் பட்டை விளிம்புகள் பின்னணியை மெதுவாக வளைக்கும் (Android 13+)",
+        performanceNote = "காட்சி செயல்திறனைப் பின்தொடர்கிறது: கட்டுப்படுத்தப்பட்ட சாதனங்களிலும் பேட்டரி சேமிப்பிலும் மேம்பட்ட விளைவுகள் முடக்கப்படும்.",
+        disabledNote = "இந்தக் கட்டுப்பாடுகளைப் பயன்படுத்த இடைமுக அமைப்புகளில் லிக்விட் கிளாஸை இயக்கவும்.",
+        reset = "மீட்டமை"
+    )
+    "te" -> GlassStudioCopy(
+        title = "వ్యక్తీకరణ గ్లాస్",
+        subtitle = "గాజు ఉపరితలాల లోతు మరియు పదార్థం",
+        blur = "బ్లర్",
+        transparency = "పారదర్శకత",
+        tint = "లేతరంగు",
+        refraction = "కాంతి వక్రీభవనం",
+        refractionSubtitle = "ఫ్లోటింగ్ బార్ అంచులు బ్యాక్‌డ్రాప్‌ను సున్నితంగా వంగి ఉంటాయి (Android 13+)",
+        performanceNote = "విజువల్ పనితీరును అనుసరిస్తుంది: నిర్బంధిత పరికరాలు మరియు బ్యాటరీ సేవర్‌లో అధునాతన ప్రభావాలు ఆఫ్ అవుతాయి.",
+        disabledNote = "ఈ నియంత్రణలను ఉపయోగించడానికి ఇంటర్‌ఫేస్ సెట్టింగ్‌లలో లిక్విడ్ గ్లాస్‌ని ఆన్ చేయండి.",
+        reset = "రీసెట్ చేయండి"
+    )
+    "mr" -> GlassStudioCopy(
+        title = "अभिव्यक्त ग्लास",
+        subtitle = "काचेच्या पृष्ठभागाची खोली आणि सामग्री",
+        blur = "अस्पष्ट",
+        transparency = "पारदर्शकता",
+        tint = "रंगछटा",
+        refraction = "प्रकाश अपवर्तन",
+        refractionSubtitle = "फ्लोटिंग बारच्या कडा पार्श्वभूमीला हळूवारपणे वाकतात (Android 13+)",
+        performanceNote = "व्हिज्युअल कामगिरीचे अनुसरण करते: प्रगत प्रभाव प्रतिबंधित उपकरणांवर आणि बॅटरी सेव्हरमध्ये बंद होतात.",
+        disabledNote = "ही नियंत्रणे वापरण्यासाठी इंटरफेस सेटिंग्जमध्ये लिक्विड ग्लास चालू करा.",
+        reset = "रीसेट करा"
+    )
+    "gu" -> GlassStudioCopy(
+        title = "અભિવ્યક્ત કાચ",
+        subtitle = "કાચની સપાટીઓની ઊંડાઈ અને સામગ્રી",
+        blur = "અસ્પષ્ટતા",
+        transparency = "પારદર્શિતા",
+        tint = "રંગભેદ",
+        refraction = "પ્રકાશ રીફ્રેક્શન",
+        refractionSubtitle = "ફ્લોટિંગ બારની કિનારીઓ બેકડ્રોપને હળવેથી વાળે છે (Android 13+)",
+        performanceNote = "વિઝ્યુઅલ પ્રદર્શનને અનુસરે છે: અદ્યતન અસરો પ્રતિબંધિત ઉપકરણો પર અને બેટરી સેવરમાં બંધ થાય છે.",
+        disabledNote = "આ નિયંત્રણોનો ઉપયોગ કરવા માટે ઇન્ટરફેસ સેટિંગ્સમાં લિક્વિડ ગ્લાસ ચાલુ કરો.",
+        reset = "રીસેટ કરો"
+    )
+    "pt-BR" -> GlassStudioCopy(
+        title = "Vidro Expressivo",
+        subtitle = "Profundidade e material das superfícies de vidro",
+        blur = "Desfoque",
+        transparency = "Transparência",
+        tint = "Matiz",
+        refraction = "Refração da luz",
+        refractionSubtitle = "As bordas da barra flutuante dobram suavemente o cenário (Android 13+)",
+        performanceNote = "Segue o desempenho visual: os efeitos avançados são desativados em dispositivos restritos e na economia de bateria.",
+        disabledNote = "Ative o Liquid Glass nas configurações da interface para usar esses controles.",
+        reset = "Redefinir"
     )
     else -> GlassStudioCopy(
         title = "Expressive Glass",

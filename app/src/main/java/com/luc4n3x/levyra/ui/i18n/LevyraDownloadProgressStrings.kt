@@ -57,7 +57,12 @@ private val downloadProgressCopies = mapOf(
     "vi" to DownloadProgressCopy("Đã tải %1\$d/%2\$d", "Đang chờ: %1\$d", "Tổng %1\$d%%", "Mở mục tải xuống"),
     "th" to DownloadProgressCopy("ดาวน์โหลดแล้ว %1\$d จาก %2\$d", "ในคิว: %1\$d", "ทั้งหมด %1\$d%%", "เปิดรายการดาวน์โหลด"),
     "fil" to DownloadProgressCopy("Na-download ang %1\$d sa %2\$d", "Nasa pila: %1\$d", "Kabuuan %1\$d%%", "Buksan ang mga download"),
-    "he" to DownloadProgressCopy("הורדו %1\$d מתוך %2\$d", "בתור: %1\$d", "סה״כ %1\$d%%", "פתיחת ההורדות")
+    "he" to DownloadProgressCopy("הורדו %1\$d מתוך %2\$d", "בתור: %1\$d", "סה״כ %1\$d%%", "פתיחת ההורדות"),
+    "ur" to DownloadProgressCopy("%1\$d از %2\$d ڈاؤن لوڈ ہو گیا۔", "قطار میں: %1\$d", "کل %1\$d%%", "ڈاؤن لوڈز کھولیں۔"),
+    "ta" to DownloadProgressCopy("%2\$d இல் %1\$d பதிவிறக்கப்பட்டது", "வரிசையில்: %1\$d", "மொத்தம் %1\$d%%", "பதிவிறக்கங்களைத் திறக்கவும்"),
+    "te" to DownloadProgressCopy("%2\$dలో %1\$d డౌన్‌లోడ్ చేయబడింది", "క్యూలో: %1\$d", "మొత్తం %1\$d%%", "డౌన్‌లోడ్‌లను తెరవండి"),
+    "mr" to DownloadProgressCopy("%2\$d पैकी %1\$d डाउनलोड केले", "रांगेत: %1\$d", "एकूण %1\$d%%", "डाउनलोड उघडा"),
+    "gu" to DownloadProgressCopy("%2\$d માંથી %1\$d ડાઉનલોડ કર્યું", "કતારમાં: %1\$d", "કુલ %1\$d%%", "ડાઉનલોડ્સ ખોલો")
 )
 
 internal fun downloadProgressCopy(code: String): DownloadProgressCopy = localizedValueOrEnglish(downloadProgressCopies, code)

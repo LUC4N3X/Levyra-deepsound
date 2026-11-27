@@ -114,6 +114,24 @@ private val themeStudioBaseBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "et" to themeStudio(
         "Theme Studio", "Üks eelseadistus määrab värvi kogu Levyras", "Eelvaade", "Rõhk", "Eelseadistusest"
+    ),
+    "ur" to themeStudio(
+        "تھیم اسٹوڈیو", "Levyra میں ایک پیش سیٹ ڈرائیو کا رنگ", "پیش نظارہ", "لہجہ", "پیش سیٹ سے"
+    ),
+    "ta" to themeStudio(
+        "தீம் ஸ்டுடியோ", "ஒரு முன்னமைக்கப்பட்ட Levyra முழுவதும் வண்ணத்தை இயக்குகிறது", "முன்னோட்டம்", "உச்சரிப்பு", "முன்னமைவில் இருந்து"
+    ),
+    "te" to themeStudio(
+        "థీమ్ స్టూడియో", "ఒక ప్రీసెట్ Levyra అంతటా రంగును డ్రైవ్ చేస్తుంది", "ప్రివ్యూ", "ఉచ్ఛారణ", "ప్రీసెట్ నుండి"
+    ),
+    "mr" to themeStudio(
+        "थीम स्टुडिओ", "Levyra वर एक प्रीसेट ड्राइव्ह रंग", "पूर्वावलोकन", "उच्चारण", "प्रीसेट पासून"
+    ),
+    "gu" to themeStudio(
+        "થીમ સ્ટુડિયો", "Levyra પર એક પ્રીસેટ ડ્રાઇવનો રંગ", "પૂર્વાવલોકન", "ઉચ્ચાર", "પ્રીસેટ થી"
+    ),
+    "pt-BR" to themeStudio(
+        "Estúdio Temático", "Uma predefinição direciona a cor em Levyra", "Visualização", "Sotaque", "Da predefinição"
     )
 )
 
@@ -165,7 +183,13 @@ private val themeAccentNameBundles: Map<String, Map<String, String>> = mapOf(
     "fil" to themeAccentNames("Asul", "Berde", "Indigo", "Kahel", "Rosas", "Cyan", "Lila", "Dilaw"),
     "he" to themeAccentNames("כחול", "ירוק", "אינדיגו", "כתום", "ורוד", "ציאן", "סגול", "צהוב"),
     "fi" to themeAccentNames("Sininen", "Vihreä", "Indigo", "Oranssi", "Vaaleanpunainen", "Syaani", "Purppura", "Keltainen"),
-    "et" to themeAccentNames("Sinine", "Roheline", "Indigo", "Oranž", "Roosa", "Tsüaan", "Lilla", "Kollane")
+    "et" to themeAccentNames("Sinine", "Roheline", "Indigo", "Oranž", "Roosa", "Tsüaan", "Lilla", "Kollane"),
+    "ur" to themeAccentNames("نیلا", "سبز", "انڈگو", "اورنج", "گلابی", "سیان", "جامنی", "پیلا"),
+    "ta" to themeAccentNames("நீலம்", "பச்சை", "இண்டிகோ", "ஆரஞ்சு", "இளஞ்சிவப்பு", "சியான்", "ஊதா", "மஞ்சள்"),
+    "te" to themeAccentNames("నీలం", "ఆకుపచ్చ", "నీలిమందు", "నారింజ రంగు", "పింక్", "నీలవర్ణం", "ఊదా రంగు", "పసుపు"),
+    "mr" to themeAccentNames("निळा", "हिरवा", "इंडिगो", "केशरी", "गुलाबी", "निळसर", "जांभळा", "पिवळा"),
+    "gu" to themeAccentNames("વાદળી", "લીલા", "ઈન્ડિગો", "નારંગી", "ગુલાબી", "સ્યાન", "જાંબલી", "પીળો"),
+    "pt-BR" to themeAccentNames("Azul", "Verde", "Índigo", "Laranja", "Rosa", "Ciano", "Roxo", "Amarelo")
 )
 
 private val themeStudioBundles: Map<String, Map<String, String>> =

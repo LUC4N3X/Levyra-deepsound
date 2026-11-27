@@ -9,7 +9,7 @@ import org.junit.Test
 class SettingsHubLocalizationTest {
     @Test
     fun everySupportedLanguageShipsCompleteSettingsHubCopy() {
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes, settingsHubLocalizationCodes())
         assertTrue(settingsHubIncompleteLocalizationCodes().toString(), settingsHubIncompleteLocalizationCodes().isEmpty())
     }

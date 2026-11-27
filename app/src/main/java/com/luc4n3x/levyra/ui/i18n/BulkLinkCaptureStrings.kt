@@ -61,7 +61,13 @@ private val bulkLinkCaptureCopies = mapOf(
     "vi" to BulkLinkCaptureCopy("Nhiều liên kết", "Liên kết phát hiện: {n}", "Bài hát tìm thấy: {n}", "Trùng lặp: {n}", "Không nhận dạng được: {n}", "Liên kết cần kiểm tra: {n}", "Không nhận dạng được bài hát nào từ các liên kết này", "Lưu danh sách phát", "Liên kết đã thu thập"),
     "th" to BulkLinkCaptureCopy("หลายลิงก์", "ลิงก์ที่พบ: {n}", "เพลงที่พบ: {n}", "รายการซ้ำ: {n}", "ไม่รู้จัก: {n}", "ลิงก์ที่ต้องตรวจสอบ: {n}", "ไม่พบเพลงที่รู้จักในลิงก์เหล่านี้", "บันทึกเพลย์ลิสต์", "ลิงก์ที่บันทึกไว้"),
     "fil" to BulkLinkCaptureCopy("Maraming link", "Mga link na nakita: {n}", "Mga kantang nahanap: {n}", "Mga duplicate: {n}", "Hindi nakilala: {n}", "Mga link na susuriin: {n}", "Walang nakilalang kanta sa mga link na ito", "I-save ang playlist", "Mga nakuhang link"),
-    "he" to BulkLinkCaptureCopy("קישורים מרובים", "קישורים שזוהו: {n}", "שירים שנמצאו: {n}", "כפולים: {n}", "לא זוהו: {n}", "קישורים לבדיקה: {n}", "לא זוהה שיר בקישורים האלה", "שמירת פלייליסט", "קישורים שנאספו")
+    "he" to BulkLinkCaptureCopy("קישורים מרובים", "קישורים שזוהו: {n}", "שירים שנמצאו: {n}", "כפולים: {n}", "לא זוהו: {n}", "קישורים לבדיקה: {n}", "לא זוהה שיר בקישורים האלה", "שמירת פלייליסט", "קישורים שנאספו"),
+    "ur" to BulkLinkCaptureCopy("متعدد لنکس", "لنکس کا پتہ چلا: {n}", "ٹریکس ملے: {n}", "نقلیں: {n}", "نہیں پہچانا گیا: {n}", "چیک کرنے کے لیے لنکس: {n}", "ان لنکس میں کوئی ٹریک نہیں پہچانا گیا۔", "پلے لسٹ کو محفوظ کریں۔", "پکڑے گئے لنکس"),
+    "ta" to BulkLinkCaptureCopy("பல இணைப்புகள்", "இணைப்புகள் கண்டறியப்பட்டன: {n}", "தடங்கள் கண்டறியப்பட்டன: {n}", "பிரதிகள்: {n}", "அங்கீகரிக்கப்படவில்லை: {n}", "சரிபார்க்க வேண்டிய இணைப்புகள்: {n}", "இந்த இணைப்புகளில் எந்த தடமும் அங்கீகரிக்கப்படவில்லை", "பிளேலிஸ்ட்டை சேமிக்கவும்", "கைப்பற்றப்பட்ட இணைப்புகள்"),
+    "te" to BulkLinkCaptureCopy("బహుళ లింక్‌లు", "లింక్‌లు కనుగొనబడ్డాయి: {n}", "ట్రాక్‌లు కనుగొనబడ్డాయి: {n}", "నకిలీలు: {n}", "గుర్తించబడలేదు: {n}", "తనిఖీ చేయడానికి లింక్‌లు: {n}", "ఈ లింక్‌లలో ఏ ట్రాక్ గుర్తించబడలేదు", "ప్లేజాబితాను సేవ్ చేయండి", "సంగ్రహించిన లింక్‌లు"),
+    "mr" to BulkLinkCaptureCopy("एकाधिक दुवे", "दुवे आढळले: {n}", "ट्रॅक सापडले: {n}", "डुप्लिकेट: {n}", "ओळखले नाही: {n}", "तपासण्यासाठी लिंक्स: {n}", "या लिंक्समध्ये कोणताही ट्रॅक ओळखला गेला नाही", "प्लेलिस्ट जतन करा", "कॅप्चर केलेले दुवे"),
+    "gu" to BulkLinkCaptureCopy("બહુવિધ લિંક્સ", "લિંક્સ મળી: {n}", "ટ્રેક્સ મળ્યા: {n}", "ડુપ્લિકેટ્સ: {n}", "ઓળખાયેલ નથી: {n}", "તપાસવા માટેની લિંક્સ: {n}", "આ લિંક્સમાં કોઈ ટ્રેક ઓળખાયો ન હતો", "પ્લેલિસ્ટ સાચવો", "કબજે કરેલી લિંક્સ"),
+    "pt-BR" to BulkLinkCaptureCopy("Vários links", "Links detectados: {n}", "Faixas encontradas: {n}", "Duplicatas: {n}", "Não reconhecido: {n}", "Links para verificar: {n}", "Nenhuma faixa foi reconhecida nestes links", "Salvar lista de reprodução", "Links capturados")
 )
 
 internal fun bulkLinkCaptureCopy(code: String): BulkLinkCaptureCopy =

@@ -186,7 +186,7 @@ class LevyraHomeStudioSettingsTest {
     @Test
     fun homeStudioCopyCoversEveryLanguage() {
         assertEquals(
-            LevyraLanguageCatalog.languages.map { it.code }.toSet(),
+            LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet(),
             homeStudioLocalizationCodes()
         )
     }

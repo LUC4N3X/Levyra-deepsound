@@ -9,13 +9,13 @@ class CuratedDecadeCollectionsLocalizationTest {
 
     private val requiredCodes = listOf(
         "en", "it", "es", "fr", "de", "pt", "pt-BR", "nl", "pl", "ro", "el", "sv", "da", "cs", "uk", "ru", "nb", "ca",
-        "kk", "tr", "ar", "fa", "zh", "zh-Hant", "ja", "ko", "hi", "bn", "id", "ms", "vi", "th", "fil", "he", "hu",
+        "kk", "tr", "ar", "fa", "zh", "zh-Hant", "ja", "ko", "hi", "bn", "ur", "ta", "te", "mr", "gu", "id", "ms", "vi", "th", "fil", "he", "hu",
         "fi", "bg", "hr", "sr", "sk", "et", "sq"
     )
 
     @Test
     fun `every required language has its own short collection copy`() {
-        assertEquals(42, requiredCodes.toSet().size)
+        assertEquals(47, requiredCodes.toSet().size)
         assertEquals(requiredCodes.toSet(), curatedCollectionsLocalizationCodes())
         val english = curatedCollectionsCopy("en")
         requiredCodes.forEach { code ->

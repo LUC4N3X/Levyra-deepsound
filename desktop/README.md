@@ -119,14 +119,14 @@ Desktop releases are created with `--latest=false`, so the Android release remai
 
 ## Languages
 
-The desktop version compiles the same localization catalog used by the Android APK. All 42 selectable languages are supported:
+The desktop version compiles the same localization catalog used by the Android APK. All 47 selectable languages are supported:
 
 - English
 - Italiano
 - Español
 - Français
 - Deutsch
-- Português
+- Português (Portugal)
 - Nederlands
 - Polski
 - Română
@@ -163,8 +163,13 @@ The desktop version compiles the same localization catalog used by the Android A
 - Slovenčina
 - Bahasa Melayu
 - فارسی
+- اردو
+- தமிழ்
+- తెలుగు
+- मराठी
+- ગુજરાતી
 
-Arabic, Hebrew, and Persian enable RTL layout in both onboarding and the entire desktop interface. Traditional Chinese and Brazilian Portuguese retain their regional language tags.
+Arabic, Hebrew, Persian, and Urdu enable RTL layout in both onboarding and the entire desktop interface. Traditional Chinese and Brazilian Portuguese retain their regional language tags.
 
 ## Requirements
 
@@ -277,7 +282,7 @@ The Desktop lifecycle hardening used the GPL-3.0 SimpMusic project as an archite
 
 ## Design Constraints
 
-The interface preserves the official Levyra icon, localized onboarding, country menus with real flags and native country names, RTL layout for Arabic and Hebrew, the integrated Library, and a closable player.
+The interface preserves the official Levyra icon, localized onboarding, country menus with real flags and native country names, RTL layout for Arabic, Hebrew, Persian, and Urdu, the integrated Library, and a closable player.
 
 It does not introduce manual country-code fields. Every string shared with the Android APK keeps coming from the shared localization catalog; the Desktop module only owns the labels for features that exist on Windows alone (sleep timer, playback speed, global media keys, keyboard shortcuts), so no shared text can drift between the two clients.
 

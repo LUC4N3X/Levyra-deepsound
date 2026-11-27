@@ -337,16 +337,55 @@ internal val dockMorphCopies: Map<String, LevyraDockMorphCopy> = mapOf(
         merge = "Eclipse",
         mergeSubtitle = "ממזג את הנגן המוקטן ואת סרגל הניווט למעגן קומפקטי בזמן גלילה. גללו למעלה כדי להרחיב אותו שוב.",
         off = "כבוי"
+    ),
+    "ur" to LevyraDockMorphCopy(
+        title = "اسکرول اثر",
+        subtitle = "جب آپ اسکرول کرتے ہیں تو منی پلیئر اور نیویگیشن بار کیسے رد عمل ظاہر کرتے ہیں۔",
+        tide = "جوار",
+        merge = "چاند گرہن",
+        mergeSubtitle = "سکرول کرتے وقت منی پلیئر اور نیویگیشن بار کو ایک کمپیکٹ ڈاک میں ضم کرتا ہے۔ اسے دوبارہ پھیلانے کے لیے اوپر سکرول کریں۔",
+        off = "آف"
+    ),
+    "ta" to LevyraDockMorphCopy(
+        title = "உருள் விளைவு",
+        subtitle = "நீங்கள் உருட்டும் போது மினி பிளேயர் மற்றும் வழிசெலுத்தல் பட்டி எவ்வாறு செயல்படுகிறது.",
+        tide = "அலை",
+        merge = "கிரகணம்",
+        mergeSubtitle = "ஸ்க்ரோலிங் செய்யும் போது மினி பிளேயர் மற்றும் நேவிகேஷன் பட்டியை ஒரு சிறிய டாக்கில் இணைக்கிறது. அதை மீண்டும் விரிவாக்க மேலே உருட்டவும்.",
+        off = "ஆஃப்"
+    ),
+    "te" to LevyraDockMorphCopy(
+        title = "స్క్రోల్ ప్రభావం",
+        subtitle = "మీరు స్క్రోల్ చేస్తున్నప్పుడు మినీ ప్లేయర్ మరియు నావిగేషన్ బార్ ఎలా స్పందిస్తాయి.",
+        tide = "పోటు",
+        merge = "గ్రహణం",
+        mergeSubtitle = "స్క్రోలింగ్ చేస్తున్నప్పుడు మినీ ప్లేయర్ మరియు నావిగేషన్ బార్‌ను కాంపాక్ట్ డాక్‌లో విలీనం చేస్తుంది. దాన్ని మళ్లీ విస్తరించడానికి పైకి స్క్రోల్ చేయండి.",
+        off = "ఆఫ్"
+    ),
+    "mr" to LevyraDockMorphCopy(
+        title = "स्क्रोल प्रभाव",
+        subtitle = "तुम्ही स्क्रोल करत असताना मिनी प्लेयर आणि नेव्हिगेशन बारची प्रतिक्रिया कशी असते.",
+        tide = "भरती",
+        merge = "ग्रहण",
+        mergeSubtitle = "स्क्रोल करताना मिनी प्लेअर आणि नेव्हिगेशन बार एका संक्षिप्त डॉकमध्ये विलीन करते. ते पुन्हा विस्तृत करण्यासाठी वर स्क्रोल करा.",
+        off = "बंद"
+    ),
+    "gu" to LevyraDockMorphCopy(
+        title = "સ્ક્રોલ અસર",
+        subtitle = "જ્યારે તમે સ્ક્રોલ કરો ત્યારે મિની પ્લેયર અને નેવિગેશન બાર કેવી રીતે પ્રતિક્રિયા આપે છે.",
+        tide = "ભરતી",
+        merge = "ગ્રહણ",
+        mergeSubtitle = "સ્ક્રોલ કરતી વખતે મિની પ્લેયર અને નેવિગેશન બારને કોમ્પેક્ટ ડોકમાં મર્જ કરે છે. તેને ફરીથી વિસ્તૃત કરવા માટે ઉપર સ્ક્રોલ કરો.",
+        off = "બંધ"
+    ),
+    "pt-BR" to LevyraDockMorphCopy(
+        title = "Efeito de rolagem",
+        subtitle = "Como o miniplayer e a barra de navegação reagem enquanto você rola.",
+        tide = "Maré",
+        merge = "Eclipse",
+        mergeSubtitle = "Mescla o miniplayer e a barra de navegação em um dock compacto durante a rolagem. Role para cima para expandi-lo novamente.",
+        off = "Desligado"
     )
 )
 
-fun LevyraStrings.dockMorph(): LevyraDockMorphCopy = localizedValueOrEnglish(dockMorphCopies, code).forBrazil(code) { brazilian() }
-
-private fun LevyraDockMorphCopy.brazilian(): LevyraDockMorphCopy = copy(
-    title = LevyraBrazilianPortuguese.adapt(title),
-    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
-    tide = LevyraBrazilianPortuguese.adapt(tide),
-    merge = LevyraBrazilianPortuguese.adapt(merge),
-    mergeSubtitle = LevyraBrazilianPortuguese.adapt(mergeSubtitle),
-    off = LevyraBrazilianPortuguese.adapt(off)
-)
+fun LevyraStrings.dockMorph(): LevyraDockMorphCopy = localizedValueOrEnglish(dockMorphCopies, code)

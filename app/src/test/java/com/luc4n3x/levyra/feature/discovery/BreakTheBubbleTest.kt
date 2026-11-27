@@ -158,7 +158,7 @@ class BreakTheBubbleTest {
                 assertEquals("$code ${SmartMusicText.entries[index]}", placeholder.findAll(english[index]).map { it.value }.sorted().toList(), placeholder.findAll(value).map { it.value }.sorted().toList())
             }
         }
-        assertEquals(41, smartMusicLocalizationCodes().size)
+        assertEquals(47, smartMusicLocalizationCodes().size)
         assertEquals("Avventurosa", smartMusicCopy("it")[SmartMusicText.BubbleAdventurous])
         assertEquals("Out of orbit", smartMusicCopy("en")[SmartMusicText.BubbleOut])
         assertTrue(smartMusicCopy("pt-BR")[SmartMusicText.MoodTitle].isNotBlank())

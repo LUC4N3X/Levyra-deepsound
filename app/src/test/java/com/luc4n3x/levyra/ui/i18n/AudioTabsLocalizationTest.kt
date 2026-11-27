@@ -8,7 +8,7 @@ import org.junit.Test
 class AudioTabsLocalizationTest {
     @Test
     fun everySupportedLanguageShipsAudioTabLabels() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, audioTabsLocalizationCodes())
         (supported + LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE).forEach { code ->
             val copy = audioTabsCopy(code)
