@@ -12,7 +12,8 @@ internal enum class AudioOffloadBlocker(val label: String) {
     NORMALIZATION("normalization"),
     PLAYBACK_SPEED("playback_speed"),
     SKIP_SILENCE("skip_silence"),
-    TRACK_QUEUE("track_queue")
+    TRACK_QUEUE("track_queue"),
+    VISUALIZER("visualizer")
 }
 
 internal data class AudioOffloadInputs(
@@ -25,7 +26,8 @@ internal data class AudioOffloadInputs(
     val pitch: Float,
     val skipSilenceEnabled: Boolean,
     val gaplessRequired: Boolean,
-    val trackQueue: Boolean = false
+    val trackQueue: Boolean = false,
+    val visualizerActive: Boolean = false
 ) {
     companion object {
         fun from(
@@ -54,7 +56,8 @@ internal data class AudioOffloadInputs(
                 pitch = pitch,
                 skipSilenceEnabled = skipSilenceEnabled,
                 gaplessRequired = normalized.gaplessEnabled,
-                trackQueue = trackQueue
+                trackQueue = trackQueue,
+                visualizerActive = normalized.spectrumVisualizerStyle.enabled
             )
         }
     }
@@ -78,6 +81,7 @@ internal object AudioOffloadPolicy {
             if (inputs.speed != 1f || inputs.pitch != 1f) add(AudioOffloadBlocker.PLAYBACK_SPEED)
             if (inputs.skipSilenceEnabled) add(AudioOffloadBlocker.SKIP_SILENCE)
             if (inputs.trackQueue) add(AudioOffloadBlocker.TRACK_QUEUE)
+            if (inputs.visualizerActive) add(AudioOffloadBlocker.VISUALIZER)
         }
         return AudioOffloadDecision(blockers)
     }

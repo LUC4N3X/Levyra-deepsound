@@ -3469,6 +3469,13 @@ fun LevyraApp(
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onAudioOffloadPreference = viewModel::setAudioOffloadPreference,
+                    spectrumVisualizer = remember(state.lyricsLatencyProfiles, viewModel) {
+                        SpectrumVisualizerControls(
+                            latencyProfiles = state.lyricsLatencyProfiles,
+                            onStyle = viewModel::setSpectrumVisualizerStyle,
+                            onAdjustLatency = viewModel::adjustLyricsLatencyOffset
+                        )
+                    },
                     onPlaybackBuffer = viewModel::setPlaybackBuffer,
                     onResetEqualizer = viewModel::resetEqualizer,
                     onApplyAutoEq = viewModel::applyAutoEqImport,

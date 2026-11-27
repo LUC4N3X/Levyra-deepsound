@@ -16,6 +16,7 @@ import android.media.MediaRouter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Looper
 import android.os.Bundle
 import android.app.ActivityManager
 import android.os.Debug
@@ -149,6 +150,7 @@ import com.luc4n3x.levyra.runtime.RuntimeSignal
 import com.luc4n3x.levyra.player.enhanced.EnhancedAudioMetrics
 import com.luc4n3x.levyra.player.enhanced.EnhancedAudioProcessor
 import com.luc4n3x.levyra.player.enhanced.EnhancedAudioSourceFormatListener
+import com.luc4n3x.levyra.player.visualizer.SpectrumClockPublisher
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.widget.studio.WidgetStudioPlaybackSync
@@ -228,6 +230,7 @@ class PlaybackService : MediaLibraryService() {
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
     private val smartResumeTracker = SmartResumeTracker(SystemClock::elapsedRealtime)
     private val visualizerProcessor = VisualizerAudioProcessor()
+    private var spectrumClockPublisher: SpectrumClockPublisher? = null
     private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
     private val audioOffloadController = AudioOffloadController()
     private lateinit var playbackWakeLock: PowerManager.WakeLock
@@ -722,7 +725,17 @@ class PlaybackService : MediaLibraryService() {
             )
         }
         updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
+        applySpectrumVisualizer(normalized.spectrumVisualizerStyle.enabled)
         refreshAudioOffloadPolicy()
+    }
+
+    private fun applySpectrumVisualizer(enabled: Boolean) {
+        val publisher = spectrumClockPublisher ?: return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            publisher.setEnabled(enabled)
+        } else {
+            serviceScope.launch { publisher.setEnabled(enabled) }
+        }
     }
 
     private fun currentSmartAudioDeviceKey(): String? {
@@ -1167,6 +1180,9 @@ class PlaybackService : MediaLibraryService() {
         }
 
         activePlayer = player
+        spectrumClockPublisher = SpectrumClockPublisher(player, serviceScope).also { publisher ->
+            publisher.setEnabled(currentAudioSettings.spectrumVisualizerStyle.enabled)
+        }
         refreshAudioOffloadPolicy()
         player.addListener(object : Player.Listener {
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -3542,6 +3558,8 @@ class PlaybackService : MediaLibraryService() {
             if (activeService === this) activeService = null
         }
         if (::autoLibrary.isInitialized) autoLibrary.close()
+        spectrumClockPublisher?.release()
+        spectrumClockPublisher = null
         serviceScope.cancel()
         mediaSession?.run {
             RuntimeHooks.player(RuntimeSignal.PLAYER_RELEASED)

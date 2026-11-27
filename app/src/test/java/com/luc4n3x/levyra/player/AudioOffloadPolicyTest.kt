@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.backupAudioSettingsToJson
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.SpectrumVisualizerStyle
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -264,5 +265,23 @@ class AudioOffloadPolicyTest {
         assertEquals(AudioOffloadPreference.OFF, AudioOffloadPreference.fromStorage(" OFF "))
         assertEquals(AudioOffloadPreference.AUTOMATIC, AudioOffloadPreference.fromStorage(null))
         assertEquals(AudioOffloadPreference.AUTOMATIC, AudioOffloadPreference.fromStorage(""))
+    }
+
+    @Test
+    fun visualizerBlocksOffloadOnlyWhenEnabled() {
+        assertTrue(decide().allowed)
+        val decision = decide(plainSettings.copy(spectrumVisualizerStyle = SpectrumVisualizerStyle.BARS))
+        assertEquals(setOf(AudioOffloadBlocker.VISUALIZER), decision.blockers)
+    }
+
+    @Test
+    fun visualizerStyleSurvivesBackupAndDefaultsToOff() {
+        val restored = backupAudioSettingsFromJson(
+            JSONObject(backupAudioSettingsToJson(plainSettings.copy(spectrumVisualizerStyle = SpectrumVisualizerStyle.ANALYZER)).toString())
+        )
+        assertEquals(SpectrumVisualizerStyle.ANALYZER, restored.spectrumVisualizerStyle)
+        assertEquals(SpectrumVisualizerStyle.OFF, LevyraAudioSettings().spectrumVisualizerStyle)
+        assertEquals(SpectrumVisualizerStyle.OFF, SpectrumVisualizerStyle.fromStorage("unknown"))
+        assertEquals(SpectrumVisualizerStyle.OSCILLOSCOPE, SpectrumVisualizerStyle.fromStorage(" Oscilloscope "))
     }
 }

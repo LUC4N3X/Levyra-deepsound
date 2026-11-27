@@ -777,13 +777,15 @@ private fun NowPlayingHost(
         model.playbackController.state.map(PlaybackUiState::withoutTransientUiTicks).distinctUntilChanged()
     }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
     val lyrics by model.lyricsController.lyrics.collectAsState()
+    val settings by model.settings.collectAsState()
     NowPlayingScreen(
         state = playback,
         playbackStateFlow = model.playbackController.state,
         lyricsState = lyrics,
         actions = actions,
         onBack = model::back,
-        onJumpTo = model.playbackController::jumpTo
+        onJumpTo = model.playbackController::jumpTo,
+        outputLatencyOffsetMs = settings.outputLatencyOffsetMs
     )
 }
 
@@ -846,33 +848,39 @@ private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
     sleepRemainingMs = 0L
 )
 
+internal class OverwriteConfirmingFileChooser(
+    private val resolveTarget: (File) -> File,
+    private val overwriteTitle: String,
+    private val overwriteMessage: ((String) -> String)?
+) : JFileChooser() {
+    override fun approveSelection() {
+        if (dialogType == SAVE_DIALOG) {
+            val selected = selectedFile ?: return
+            val target = resolveTarget(selected)
+            selectedFile = target
+            if (target.exists()) {
+                val result = JOptionPane.showConfirmDialog(
+                    this,
+                    overwriteMessage?.invoke(target.name)
+                        ?: "${approveButtonText.orEmpty()} ${target.name}?",
+                    overwriteTitle.ifBlank { dialogTitle.orEmpty() },
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+                )
+                if (result != JOptionPane.YES_OPTION) return
+            }
+        }
+        super.approveSelection()
+    }
+}
+
 private suspend fun choosePlaylistFile(
     save: Boolean,
     suggestedName: String,
     overwriteTitle: String = "",
     overwriteMessage: ((String) -> String)? = null
 ): String = withContext(Dispatchers.Swing) {
-    val chooser = object : JFileChooser() {
-        override fun approveSelection() {
-            if (dialogType == SAVE_DIALOG) {
-                val selected = selectedFile ?: return
-                val target = playlistTarget(selected)
-                selectedFile = target
-                if (target.exists()) {
-                    val result = JOptionPane.showConfirmDialog(
-                        this,
-                        overwriteMessage?.invoke(target.name)
-                            ?: "${approveButtonText.orEmpty()} ${target.name}?",
-                        overwriteTitle.ifBlank { dialogTitle.orEmpty() },
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                    )
-                    if (result != JOptionPane.YES_OPTION) return
-                }
-            }
-            super.approveSelection()
-        }
-    }
+    val chooser = OverwriteConfirmingFileChooser(::playlistTarget, overwriteTitle, overwriteMessage)
     chooser.fileSelectionMode = JFileChooser.FILES_ONLY
     chooser.isMultiSelectionEnabled = false
     chooser.fileFilter = FileNameExtensionFilter("M3U", "m3u", "m3u8")

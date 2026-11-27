@@ -64,6 +64,7 @@ import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
+import com.luc4n3x.levyra.domain.SpectrumVisualizerStyle
 import com.luc4n3x.levyra.domain.DEFAULT_GENTLE_WAKE_DAYS
 import com.luc4n3x.levyra.domain.GentleWakeSettings
 import com.luc4n3x.levyra.domain.GentleWakeSourceType
@@ -252,6 +253,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_ORBIT_LAYOUT] = normalizedAudio.orbitLayout?.encoded().orEmpty()
             mutable[KEY_AUDIO_ENHANCED_AUDIO] = normalizedAudio.enhancedAudioEnabled
             mutable[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalizedAudio.audioOffloadPreference.storageValue
+            mutable[KEY_AUDIO_SPECTRUM_VISUALIZER] = normalizedAudio.spectrumVisualizerStyle.storageValue
             mutable[KEY_AUDIO_NIGHT_ENABLED] = normalizedAudio.nightListeningEnabled
             mutable[KEY_AUDIO_NIGHT_PRESET] = normalizedAudio.nightListeningPreset.storageValue
             mutable[KEY_AUDIO_NIGHT_TRIM] = normalizedAudio.nightListeningTrimDb
@@ -714,6 +716,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_ORBIT_LAYOUT] = normalized.orbitLayout?.encoded().orEmpty()
             it[KEY_AUDIO_ENHANCED_AUDIO] = normalized.enhancedAudioEnabled
             it[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalized.audioOffloadPreference.storageValue
+            it[KEY_AUDIO_SPECTRUM_VISUALIZER] = normalized.spectrumVisualizerStyle.storageValue
             it[KEY_AUDIO_NIGHT_ENABLED] = normalized.nightListeningEnabled
             it[KEY_AUDIO_NIGHT_PRESET] = normalized.nightListeningPreset.storageValue
             it[KEY_AUDIO_NIGHT_TRIM] = normalized.nightListeningTrimDb
@@ -1284,6 +1287,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             orbitLayout = OrbitLayout.decode(preferences[KEY_AUDIO_ORBIT_LAYOUT]),
             enhancedAudioEnabled = preferences[KEY_AUDIO_ENHANCED_AUDIO] ?: true,
             audioOffloadPreference = AudioOffloadPreference.fromStorage(preferences[KEY_AUDIO_OFFLOAD_PREFERENCE]),
+            spectrumVisualizerStyle = SpectrumVisualizerStyle.fromStorage(preferences[KEY_AUDIO_SPECTRUM_VISUALIZER]),
             nightListeningEnabled = preferences[KEY_AUDIO_NIGHT_ENABLED] ?: false,
             nightListeningPreset = NightListeningPreset.fromStorage(preferences[KEY_AUDIO_NIGHT_PRESET]),
             nightListeningTrimDb = preferences[KEY_AUDIO_NIGHT_TRIM] ?: 0f,
@@ -1771,6 +1775,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_ORBIT_LAYOUT = stringPreferencesKey("audio_orbit_layout")
         val KEY_AUDIO_ENHANCED_AUDIO = booleanPreferencesKey("audio_enhanced_audio_enabled")
         val KEY_AUDIO_OFFLOAD_PREFERENCE = stringPreferencesKey("audio_offload_preference")
+        val KEY_AUDIO_SPECTRUM_VISUALIZER = stringPreferencesKey("audio_spectrum_visualizer")
         val KEY_AUDIO_NIGHT_ENABLED = booleanPreferencesKey("audio_night_listening_enabled")
         val KEY_AUDIO_NIGHT_PRESET = stringPreferencesKey("audio_night_listening_preset")
         val KEY_AUDIO_NIGHT_TRIM = floatPreferencesKey("audio_night_listening_trim_db")

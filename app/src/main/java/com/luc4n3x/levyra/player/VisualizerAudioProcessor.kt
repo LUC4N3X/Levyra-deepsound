@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.player
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import com.luc4n3x.levyra.player.visualizer.PcmHistory
+import com.luc4n3x.levyra.player.visualizer.SpectrumEngine
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
@@ -10,7 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class VisualizerAudioProcessor : AudioProcessor {
+class VisualizerAudioProcessor internal constructor(
+    private val history: PcmHistory = SpectrumEngine.history
+) : AudioProcessor {
 
     companion object {
         private val _waveformState = MutableStateFlow(FloatArray(0))
@@ -24,6 +28,7 @@ class VisualizerAudioProcessor : AudioProcessor {
 
     private var isActive = false
     private var inputAudioFormat = AudioFormat.NOT_SET
+    private var historyFormat = AudioFormat.NOT_SET
     private var outputAudioFormat = AudioFormat.NOT_SET
     private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
@@ -36,6 +41,7 @@ class VisualizerAudioProcessor : AudioProcessor {
         this.inputAudioFormat = inputAudioFormat
         outputAudioFormat = inputAudioFormat
         isActive = true
+        history.configure(inputAudioFormat.sampleRate)
         return outputAudioFormat
     }
 
@@ -52,6 +58,9 @@ class VisualizerAudioProcessor : AudioProcessor {
         }
 
         extractWaveform(inputBuffer.asReadOnlyBuffer())
+        if (historyFormat != AudioFormat.NOT_SET) {
+            history.append(inputBuffer, historyFormat.encoding, historyFormat.channelCount)
+        }
 
         val output = replaceOutputBuffer(size)
         output.put(inputBuffer)
@@ -124,6 +133,8 @@ class VisualizerAudioProcessor : AudioProcessor {
 
     override fun flush(streamMetadata: AudioProcessor.StreamMetadata) {
         clearBufferedState()
+        historyFormat = inputAudioFormat
+        history.beginSegment(streamMetadata.periodUid, streamMetadata.positionOffsetUs)
     }
 
     override fun reset() {
@@ -132,6 +143,7 @@ class VisualizerAudioProcessor : AudioProcessor {
         inputAudioFormat = AudioFormat.NOT_SET
         outputAudioFormat = AudioFormat.NOT_SET
         buffer = AudioProcessor.EMPTY_BUFFER
+        historyFormat = AudioFormat.NOT_SET
         _waveformState.value = FloatArray(0)
     }
 

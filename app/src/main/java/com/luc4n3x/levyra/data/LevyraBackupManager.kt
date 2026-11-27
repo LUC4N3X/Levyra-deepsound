@@ -2040,6 +2040,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("orbitLayout", value.orbitLayout?.encoded())
     .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
     .put("audioOffloadPreference", value.audioOffloadPreference.storageValue)
+    .put("spectrumVisualizerStyle", value.spectrumVisualizerStyle.storageValue)
     .put("nightListeningEnabled", value.nightListeningEnabled)
     .put("nightListeningPreset", value.nightListeningPreset.storageValue)
     .put("nightListeningTrimDb", value.nightListeningTrimDb.toDouble())
@@ -2133,6 +2134,7 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         orbitLayout = OrbitLayout.decode(json.optString("orbitLayout")),
         enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true),
         audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference")),
+        spectrumVisualizerStyle = com.luc4n3x.levyra.domain.SpectrumVisualizerStyle.fromStorage(json.optString("spectrumVisualizerStyle")),
         nightListeningEnabled = json.optBoolean("nightListeningEnabled", false),
         nightListeningPreset = com.luc4n3x.levyra.domain.NightListeningPreset.fromStorage(json.optString("nightListeningPreset")),
         nightListeningTrimDb = json.optDouble("nightListeningTrimDb", 0.0).toFloat(),

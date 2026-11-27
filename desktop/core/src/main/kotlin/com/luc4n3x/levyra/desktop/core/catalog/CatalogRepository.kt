@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.desktop.core.model.PageCursor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -162,6 +163,20 @@ class CatalogRepository(
     }
 
     private fun playlistDetail(ref: CollectionRef): CollectionDetail {
+        val mixId = CatalogMapper.collectionIdOf(ref.url).takeIf(::isGeneratedMixId)
+            ?: return fetchPlaylistDetail(ref)
+        val key = generatedMixKey(mixId, ExtractorRuntime.localization().localizationCode, ExtractorRuntime.contentCountry().countryCode)
+        val now = System.currentTimeMillis()
+        generatedMixSnapshots[key]?.takeIf { now - it.first < GENERATED_MIX_TTL_MS }?.let { return it.second }
+        val detail = fetchPlaylistDetail(ref)
+        if (detail.page.tracks.isNotEmpty()) {
+            if (generatedMixSnapshots.size >= MAX_GENERATED_MIX_SNAPSHOTS) generatedMixSnapshots.clear()
+            generatedMixSnapshots[key] = now to detail
+        }
+        return detail
+    }
+
+    private fun fetchPlaylistDetail(ref: CollectionRef): CollectionDetail {
         val info = PlaylistInfo.getInfo(service, ref.url)
         val page = CatalogMapper.toPage(info.relatedItems.orEmpty(), info.nextPage, null)
         val artwork = ref.artworkUrl.ifBlank { info.thumbnailUrl.orEmpty() }
@@ -359,6 +374,14 @@ internal enum class DesktopArtistTabKind {
     ALBUMS,
     PLAYLISTS
 }
+
+internal fun isGeneratedMixId(playlistId: String): Boolean = playlistId.removePrefix("VL").startsWith("RDTMAK")
+
+internal fun generatedMixKey(mixId: String, language: String, country: String): String = "$language|$country|${mixId.removePrefix("VL")}"
+
+private val generatedMixSnapshots = ConcurrentHashMap<String, Pair<Long, CollectionDetail>>()
+private const val GENERATED_MIX_TTL_MS = 6L * 60L * 60L * 1_000L
+private const val MAX_GENERATED_MIX_SNAPSHOTS = 24
 
 internal fun desktopArtistTabKind(handler: ListLinkHandler): DesktopArtistTabKind? {
     val labels = handler.contentFilters.orEmpty().map { it.name }

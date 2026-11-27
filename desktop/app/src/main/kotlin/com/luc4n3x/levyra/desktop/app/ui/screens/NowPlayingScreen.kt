@@ -59,7 +59,8 @@ fun NowPlayingScreen(
     actions: TrackActions,
     onBack: () -> Unit,
     onJumpTo: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    outputLatencyOffsetMs: Int = 0
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
@@ -158,6 +159,7 @@ fun NowPlayingScreen(
                         LyricsPanel(
                             lyricsState = lyricsState,
                             playbackStateFlow = playbackStateFlow,
+                            outputLatencyOffsetMs = outputLatencyOffsetMs,
                             modifier = Modifier.weight(1f)
                         )
                         if (state.queue.upcoming.isNotEmpty()) {
@@ -193,15 +195,19 @@ fun NowPlayingScreen(
 private fun LyricsPanel(
     lyricsState: LyricsUiState,
     playbackStateFlow: StateFlow<PlaybackUiState>,
+    outputLatencyOffsetMs: Int,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
     val lyrics = lyricsState.lyrics
     val listState = rememberLazyListState()
-    val activeIndex by remember(lyrics, playbackStateFlow) {
-        playbackStateFlow.map { lyrics?.activeIndex(it.positionMs) ?: -1 }.distinctUntilChanged()
-    }.collectAsState(initial = lyrics?.activeIndex(playbackStateFlow.value.positionMs) ?: -1)
+    val activeIndex by remember(lyrics, playbackStateFlow, outputLatencyOffsetMs) {
+        playbackStateFlow.map { lyrics?.activeIndex(compensatedLyricsPosition(it.positionMs, outputLatencyOffsetMs)) ?: -1 }
+            .distinctUntilChanged()
+    }.collectAsState(
+        initial = lyrics?.activeIndex(compensatedLyricsPosition(playbackStateFlow.value.positionMs, outputLatencyOffsetMs)) ?: -1
+    )
 
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0 && !listState.isScrollInProgress) {
@@ -251,3 +257,6 @@ private fun LyricsPanel(
         }
     }
 }
+
+internal fun compensatedLyricsPosition(positionMs: Long, outputLatencyOffsetMs: Int): Long =
+    (positionMs - outputLatencyOffsetMs).coerceAtLeast(0L)
