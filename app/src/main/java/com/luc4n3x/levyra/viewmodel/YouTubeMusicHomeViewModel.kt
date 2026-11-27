@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccountRepository
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicMixes
+import com.luc4n3x.levyra.data.youtubemusic.isYoutubeMusicGeneratedMix
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.luc4n3x.levyra.domain.Track
@@ -85,6 +86,7 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
         val current = _state.value
         val same = current.language == language && current.browseId == browseId
         if (!force && same && (current.loading || current.shelves.isNotEmpty())) return
+        if (force) refreshGeneratedMixes()
         fetch(language, current.selectedChip.takeIf { same }.orEmpty(), keepChips = same, browseId = browseId)
     }
 
@@ -136,6 +138,11 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
             }
             previewRequests.remove(playlistId)
         }
+    }
+
+    private fun refreshGeneratedMixes() {
+        generatedMixes.refresh()
+        _previews.update { previews -> previews.filterKeys { !isYoutubeMusicGeneratedMix(it) } }
     }
 
     private suspend fun playlistDetail(playlistId: String, language: String, limit: Int) =

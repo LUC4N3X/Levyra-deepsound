@@ -165,12 +165,13 @@ class CatalogRepository(
     private fun playlistDetail(ref: CollectionRef): CollectionDetail {
         val mixId = CatalogMapper.collectionIdOf(ref.url).takeIf(::isGeneratedMixId)
             ?: return fetchPlaylistDetail(ref)
+        val key = generatedMixKey(mixId, ExtractorRuntime.localization().localizationCode, ExtractorRuntime.contentCountry().countryCode)
         val now = System.currentTimeMillis()
-        generatedMixSnapshots[mixId]?.takeIf { now - it.first < GENERATED_MIX_TTL_MS }?.let { return it.second }
+        generatedMixSnapshots[key]?.takeIf { now - it.first < GENERATED_MIX_TTL_MS }?.let { return it.second }
         val detail = fetchPlaylistDetail(ref)
         if (detail.page.tracks.isNotEmpty()) {
             if (generatedMixSnapshots.size >= MAX_GENERATED_MIX_SNAPSHOTS) generatedMixSnapshots.clear()
-            generatedMixSnapshots[mixId] = now to detail
+            generatedMixSnapshots[key] = now to detail
         }
         return detail
     }
@@ -375,6 +376,8 @@ internal enum class DesktopArtistTabKind {
 }
 
 internal fun isGeneratedMixId(playlistId: String): Boolean = playlistId.removePrefix("VL").startsWith("RDTMAK")
+
+internal fun generatedMixKey(mixId: String, language: String, country: String): String = "$language|$country|${mixId.removePrefix("VL")}"
 
 private val generatedMixSnapshots = ConcurrentHashMap<String, Pair<Long, CollectionDetail>>()
 private const val GENERATED_MIX_TTL_MS = 6L * 60L * 60L * 1_000L

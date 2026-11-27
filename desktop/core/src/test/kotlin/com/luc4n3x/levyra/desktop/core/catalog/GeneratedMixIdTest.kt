@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.desktop.core.catalog
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -11,5 +13,13 @@ class GeneratedMixIdTest {
         assertTrue(isGeneratedMixId("VLRDTMAK5uy_kset8DisdE7LSD4TNjEVvrKRTmG7a56E"))
         assertFalse(isGeneratedMixId("RDCLAK5uy_kmPRjHDECIcuVwnKsx2Ng7fyNgFKWNJFs"))
         assertFalse(isGeneratedMixId("PL4fGSI1pDJn6O1LS0XSdF3RyO0Rq_LDeI"))
+    }
+
+    @Test
+    fun snapshotKeyFollowsLanguageAndCountry() {
+        val italian = generatedMixKey("VLRDTMAK5uy_a", "it", "IT")
+        assertEquals(italian, generatedMixKey("RDTMAK5uy_a", "it", "IT"))
+        assertNotEquals(italian, generatedMixKey("RDTMAK5uy_a", "en", "IT"))
+        assertNotEquals(italian, generatedMixKey("RDTMAK5uy_a", "it", "US"))
     }
 }

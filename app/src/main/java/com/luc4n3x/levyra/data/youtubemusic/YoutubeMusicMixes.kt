@@ -7,6 +7,8 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -14,31 +16,32 @@ import timber.log.Timber
 internal fun isYoutubeMusicGeneratedMix(playlistId: String): Boolean =
     playlistId.trim().removePrefix("VL").startsWith(GENERATED_MIX_PREFIX)
 
-internal class YoutubeMusicMixSnapshots(
-    private val clock: () -> Long = System::currentTimeMillis,
-    private val ttlMs: Long = MIX_SNAPSHOT_TTL_MS,
-    private val maxEntries: Int = MAX_MIX_SNAPSHOTS
-) {
-    private class Entry(val detail: YoutubeMusicPlaylistDetail, val storedAtMs: Long)
+internal class YoutubeMusicMixSnapshots(private val maxEntries: Int = MAX_MIX_SNAPSHOTS) {
+    private val entries = LinkedHashMap<String, YoutubeMusicPlaylistDetail>()
+    private val locks = HashMap<String, Mutex>()
 
-    private val entries = LinkedHashMap<String, Entry>()
+    suspend fun getOrLoad(key: String, load: suspend () -> YoutubeMusicPlaylistDetail?): YoutubeMusicPlaylistDetail? =
+        lock(key).withLock {
+            get(key) ?: load()?.also { put(key, it) }
+        }
 
     @Synchronized
-    fun get(key: String): YoutubeMusicPlaylistDetail? {
-        val entry = entries[key] ?: return null
-        if (clock() - entry.storedAtMs >= ttlMs) {
-            entries.remove(key)
-            return null
-        }
-        return entry.detail
+    fun get(key: String): YoutubeMusicPlaylistDetail? = entries[key]
+
+    @Synchronized
+    fun clear() {
+        entries.clear()
     }
 
     @Synchronized
-    fun put(key: String, detail: YoutubeMusicPlaylistDetail) {
+    private fun put(key: String, detail: YoutubeMusicPlaylistDetail) {
         entries.remove(key)
-        entries[key] = Entry(detail, clock())
+        entries[key] = detail
         while (entries.size > maxEntries) entries.remove(entries.keys.first())
     }
+
+    @Synchronized
+    private fun lock(key: String): Mutex = locks.getOrPut(key) { Mutex() }
 }
 
 internal class YoutubeMusicMixes(
@@ -53,9 +56,11 @@ internal class YoutubeMusicMixes(
         if (!isYoutubeMusicGeneratedMix(id)) return null
         val session = withContext(Dispatchers.IO) { runCatching { sessions.load().active }.getOrNull() }
         val key = listOf(session?.account?.id.orEmpty(), id, YoutubeRegionProfile.cacheScope(languageCode)).joinToString("|")
-        val detail = snapshots.get(key) ?: fetch(session, id, languageCode)?.also { snapshots.put(key, it) } ?: return null
+        val detail = snapshots.getOrLoad(key) { fetch(session, id, languageCode) } ?: return null
         return detail.copy(tracks = detail.tracks.take(limit.coerceAtLeast(1)))
     }
+
+    fun refresh() = snapshots.clear()
 
     private suspend fun fetch(session: YoutubeMusicSession?, id: String, languageCode: String): YoutubeMusicPlaylistDetail? {
         val personal = session?.let { active ->
@@ -98,5 +103,4 @@ internal class YoutubeMusicMixes(
 private const val GENERATED_MIX_PREFIX = "RDTMAK"
 private const val MIX_TRACK_LIMIT = 200
 private const val MAX_MIX_CONTINUATIONS = 3
-private const val MAX_MIX_SNAPSHOTS = 24
-private const val MIX_SNAPSHOT_TTL_MS = 6L * 60L * 60L * 1_000L
+private const val MAX_MIX_SNAPSHOTS = 48
