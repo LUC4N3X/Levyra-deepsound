@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.desktop.core.model.PageCursor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.Locale
+import org.json.JSONObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -36,7 +37,8 @@ import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
 class CatalogRepository(
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val personalBrowse: (suspend (browseId: String, language: String) -> JSONObject?)? = null
 ) {
     private val music = YoutubeMusicBrowse()
     private val artistAudience = SpotifyArtistAudience(clientFactory = { ExtractorHttp.client })
@@ -161,7 +163,23 @@ class CatalogRepository(
             .take(limit)
     }
 
-    private fun playlistDetail(ref: CollectionRef): CollectionDetail {
+    private suspend fun playlistDetail(ref: CollectionRef): CollectionDetail {
+        val mixId = CatalogMapper.collectionIdOf(ref.url).removePrefix("VL").takeIf { it.startsWith(GENERATED_MIX_PREFIX) }
+        if (mixId != null) personalMix(ref, mixId)?.let { return it }
+        return publicPlaylistDetail(ref)
+    }
+
+    private suspend fun personalMix(ref: CollectionRef, mixId: String): CollectionDetail? {
+        val root = personalBrowse?.invoke("VL$mixId", ExtractorRuntime.localization().languageCode) ?: return null
+        val tracks = YoutubeMusicArtistPage.tracks(root, "", videos = false)
+        if (tracks.isEmpty()) return null
+        return CollectionDetail(
+            ref = ref.copy(artworkUrl = ref.artworkUrl.ifBlank { tracks.first().artworkUrl }, itemCount = tracks.size.toLong()),
+            page = CatalogPage(tracks = tracks)
+        )
+    }
+
+    private fun publicPlaylistDetail(ref: CollectionRef): CollectionDetail {
         val info = PlaylistInfo.getInfo(service, ref.url)
         val page = CatalogMapper.toPage(info.relatedItems.orEmpty(), info.nextPage, null)
         val artwork = ref.artworkUrl.ifBlank { info.thumbnailUrl.orEmpty() }
@@ -359,6 +377,8 @@ internal enum class DesktopArtistTabKind {
     ALBUMS,
     PLAYLISTS
 }
+
+private const val GENERATED_MIX_PREFIX = "RDTMAK"
 
 internal fun desktopArtistTabKind(handler: ListLinkHandler): DesktopArtistTabKind? {
     val labels = handler.contentFilters.orEmpty().map { it.name }

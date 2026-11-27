@@ -1,5 +1,11 @@
 package com.luc4n3x.levyra.desktop.app.di
 
+import com.luc4n3x.levyra.desktop.core.account.BrowserCookieImport
+import com.luc4n3x.levyra.desktop.core.account.DesktopYoutubeMusicAccounts
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import com.luc4n3x.levyra.desktop.app.state.CatalogController
 import com.luc4n3x.levyra.desktop.app.state.DesktopUpdateController
 import com.luc4n3x.levyra.desktop.app.state.DiscoverController
@@ -62,7 +68,11 @@ class AppContainer {
     private val initialSettings = settingsStore.current.also { settings ->
         ExtractorRuntime.ensureInitialized(settings.language, settings.contentCountry)
     }
-    private val catalogRepository = CatalogRepository()
+    val youtubeMusicAccounts = DesktopYoutubeMusicAccounts(paths.root) {
+        MoodsRepository.innerTubeLanguage(settingsStore.current.language.tag)
+    }
+    val browserCookieImport = BrowserCookieImport()
+    private val catalogRepository = CatalogRepository(personalBrowse = youtubeMusicAccounts::browse)
     private val youtubeResolver = YoutubeStreamResolver()
     private val streamResolver = DirectStreamResolver(DesktopHighQualityResolver.create(scope, youtubeResolver, paths.root.resolve("cache"),
         { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }))
@@ -132,7 +142,7 @@ class AppContainer {
         repository = lyricsRepository
     )
 
-    private val moodsRepository = MoodsRepository()
+    private val moodsRepository = MoodsRepository(personalBrowse = youtubeMusicAccounts::browse)
 
     private val moodsController = MoodsController(scope, moodsRepository)
 
@@ -185,10 +195,20 @@ class AppContainer {
             resumeMain = { if (!playbackController.state.value.isPlaying) playbackController.togglePlayPause() },
             playFullTrack = { track -> playbackController.playTrack(downloadController.completedTrack(track) ?: track) },
             language = { settingsStore.current.language.tag }
-        )
+        ),
+        youtubeMusicAccounts = youtubeMusicAccounts,
+        browserCookieImport = browserCookieImport
     )
 
     init {
+        scope.launch { youtubeMusicAccounts.load() }
+        scope.launch {
+            youtubeMusicAccounts.accounts
+                .map { accounts -> accounts.firstOrNull { it.active }?.id }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { homeFeedController.reloadCurated() }
+        }
         if (initialSettings.resumeOnStartup) {
             playbackController.restoreSession()
         }
