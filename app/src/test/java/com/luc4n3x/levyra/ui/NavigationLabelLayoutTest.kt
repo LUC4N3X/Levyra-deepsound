@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.domain.NavIndicator
 import com.luc4n3x.levyra.domain.NavLabelMode
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.domain.NavTuning
@@ -76,6 +77,44 @@ class NavigationLabelLayoutTest {
     fun `collapsed tray with stacked labels keeps sliding labels out`() {
         val geometry = navDockGeometry(false, true, 76.dp, 18.dp)
         assertEquals(0.dp, geometry.lift)
+    }
+
+    @Test
+    fun `only floating expanding pill docks squeeze sideways when collapsed`() {
+        val geometry = navDockGeometry(true, true, 64.dp, 0.dp)
+        val pill = NavTuning(labels = NavLabelMode.Expanding, indicator = NavIndicator.Pill)
+        val floatingPill = pill.copy(indicator = NavIndicator.Floating)
+        assertEquals(8.dp, navCompactionSqueeze(true, navExpansion(NavStyle.FloatingDock), pill, geometry))
+        assertEquals(0.dp, navCompactionSqueeze(true, navExpansion(NavStyle.LiquidGlass), floatingPill, geometry))
+        assertEquals(0.dp, navCompactionSqueeze(true, null, pill, geometry))
+        assertEquals(0.dp, navCompactionSqueeze(false, navExpansion(NavStyle.SuperExpressive), pill, geometry))
+    }
+
+    @Test
+    fun `dock squeeze follows compaction and yields to an attached mini player`() {
+        assertEquals(0, navSqueezeSide(21f, 0f, 0f))
+        assertEquals(11, navSqueezeSide(21f, 0.5f, 0f))
+        assertEquals(21, navSqueezeSide(21f, 1f, 0f))
+        assertEquals(0, navSqueezeSide(21f, 1f, 1f))
+        assertEquals(11, navSqueezeSide(21f, 1f, 0.5f))
+    }
+
+    @Test
+    fun `expanding pill keeps its rest size and fits inside the collapsed bar`() {
+        for (requested in listOf(56, 64, 76)) {
+            for (scale in listOf(0.8f, 1f, 1.2f)) {
+                val geometry = navDockGeometry(true, true, requested.dp, 0.dp)
+                val full = geometry.height.value
+                val compact = geometry.compactHeight.value
+                val pill = 44f * scale
+                val rest = expandingPillHeight(pill, NavIndicator.Pill.pillSettle(full, full), full, 8f, 32f)
+                assertEquals(minOf(pill, full - 8f).coerceAtLeast(32f), rest, 0.001f)
+                val collapsed = expandingPillHeight(pill, NavIndicator.Pill.pillSettle(compact, full), compact, 8f, 32f)
+                assertTrue("$requested at $scale", collapsed in 32f..(compact - 8f))
+            }
+        }
+        assertEquals(33f, expandingPillHeight(44f, NavIndicator.Pill.pillSettle(48f, 64f), 48f, 8f, 32f), 0.001f)
+        assertEquals(1f, NavIndicator.Floating.pillSettle(48f, 64f), 0f)
     }
 
     @Test

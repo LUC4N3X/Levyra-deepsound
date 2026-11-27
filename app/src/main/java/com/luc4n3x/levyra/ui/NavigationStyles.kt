@@ -667,22 +667,27 @@ private fun splitOrbShape(detach: Float): Shape {
     )
 }
 
-private fun navCompactionSqueeze(floating: Boolean, expansion: NavExpansion?, tuning: NavTuning, geometry: NavDockGeometry): Dp =
+internal fun navCompactionSqueeze(floating: Boolean, expansion: NavExpansion?, tuning: NavTuning, geometry: NavDockGeometry): Dp =
     if (floating && expansion != null && tuning.indicator.expandsAsPill) (geometry.height - geometry.compactHeight) / 2 else 0.dp
 
 private val NavIndicator.expandsAsPill: Boolean
     get() = this == NavIndicator.Pill || this == NavIndicator.Morph || this == NavIndicator.Circle
 
-private fun NavIndicator.pillSettle(visibleHeight: Float, fullHeight: Float): Float =
+internal fun NavIndicator.pillSettle(visibleHeight: Float, fullHeight: Float): Float =
     if (expandsAsPill) (visibleHeight / fullHeight).coerceIn(0f, 1f) else 1f
+
+internal fun expandingPillHeight(pill: Float, settle: Float, visibleHeight: Float, edge: Float, iconBox: Float): Float =
+    minOf(pill * settle, visibleHeight - edge).coerceAtLeast(iconBox)
+
+internal fun navSqueezeSide(squeezePx: Float, compaction: Float, hold: Float): Int =
+    (squeezePx * compaction.coerceIn(0f, 1f) * (1f - hold.coerceIn(0f, 1f))).roundToInt()
 
 private fun Modifier.navSqueeze(squeeze: Dp, compaction: () -> Float, hold: () -> Float): Modifier =
     if (squeeze <= 0.dp) {
         this
     } else {
         layout { measurable, constraints ->
-            val amount = compaction().coerceIn(0f, 1f) * (1f - hold().coerceIn(0f, 1f))
-            val side = (squeeze.toPx() * amount).roundToInt()
+            val side = navSqueezeSide(squeeze.toPx(), compaction(), hold())
             val width = (constraints.maxWidth - side * 2).coerceAtLeast(0)
             val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
             layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(side, 0) }
@@ -1762,7 +1767,7 @@ private fun DrawScope.drawExpandingIndicator(
     val width = restWidth + (fullWidth - restWidth) * grown
     when (tuning.indicator) {
         NavIndicator.Pill, NavIndicator.Morph, NavIndicator.Circle -> {
-            val height = minOf(expansion.pillHeight.toPx() * scale * settle, visibleHeight - 8.dp.toPx()).coerceAtLeast(iconBox)
+            val height = expandingPillHeight(expansion.pillHeight.toPx() * scale, settle, visibleHeight, 8.dp.toPx(), iconBox)
             val bend = if (tuning.indicator == NavIndicator.Morph || expansion.morph) grown else 0f
             drawRoundRect(
                 color = colors.indicator,
