@@ -20,6 +20,8 @@ val prepareSharedAudioSources = tasks.register("prepareSharedAudioSources") {
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicAccountClient.kt")
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicDeviceLink.kt")
         include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicLinkClient.kt")
+        include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicPagination.kt")
+        include("com/luc4n3x/levyra/data/youtubemusic/YoutubeMusicPlaylistSync.kt")
     }
     inputs.files(sources)
     outputs.dir(sharedAudioSources)

@@ -41,14 +41,55 @@ internal class YoutubeMusicAccountClient {
             .takeIf(String::isNotBlank) ?: throw YoutubeMusicProtocolException()
     }
 
-    suspend fun addToPlaylist(session: YoutubeMusicSession, playlistId: String, videoIds: List<String>) {
-        val actions = JSONArray()
-        videoIds.forEach { videoId ->
-            actions.put(JSONObject().put("action", "ACTION_ADD_VIDEO").put("addedVideoId", videoId).put("dedupeOption", "DEDUPE_OPTION_SKIP"))
+    suspend fun addToPlaylist(session: YoutubeMusicSession, playlistId: String, videoIds: List<String>): Set<String> =
+        editInBatches(session, playlistId, videoIds.distinct(), { it }) { videoId ->
+            JSONObject().put("action", "ACTION_ADD_VIDEO").put("addedVideoId", videoId).put("dedupeOption", "DEDUPE_OPTION_SKIP")
         }
-        val body = payload("en").put("playlistId", playlistId.removePrefix("VL")).put("actions", actions)
+
+    suspend fun removeFromPlaylist(session: YoutubeMusicSession, playlistId: String, removals: List<YoutubeMusicPlaylistRemoval>): Set<String> =
+        editInBatches(session, playlistId, removals.filter { it.setVideoId.isNotBlank() }, YoutubeMusicPlaylistRemoval::videoId) { removal ->
+            JSONObject().put("action", "ACTION_REMOVE_VIDEO").put("removedVideoId", removal.videoId).put("setVideoId", removal.setVideoId)
+        }
+
+    suspend fun renamePlaylist(session: YoutubeMusicSession, playlistId: String, title: String) {
+        val clean = title.trim().take(MAX_PLAYLIST_TITLE_LENGTH)
+        if (clean.isEmpty()) return
+        editPlaylist(session, playlistId, JSONArray().put(JSONObject().put("action", "ACTION_SET_PLAYLIST_NAME").put("playlistName", clean)))
+    }
+
+    private suspend fun <T> editInBatches(
+        session: YoutubeMusicSession,
+        playlistId: String,
+        items: List<T>,
+        videoId: (T) -> String,
+        action: (T) -> JSONObject
+    ): Set<String> {
+        val rejected = LinkedHashSet<String>()
+        var accepted = false
+        suspend fun send(batch: List<T>) {
+            try {
+                editPlaylist(session, playlistId, JSONArray().also { actions -> batch.forEach { actions.put(action(it)) } })
+                accepted = true
+            } catch (error: IOException) {
+                val itemRejected = error is YoutubeMusicEditRejected || (error is YoutubeMusicAccountHttpException && error.status == 400)
+                if (!itemRejected) throw error
+                if (batch.size == 1) {
+                    rejected += videoId(batch.first())
+                    if (!accepted && rejected.size >= MAX_REJECTED_BEFORE_ACCEPTED) throw error
+                } else {
+                    send(batch.subList(0, batch.size / 2))
+                    send(batch.subList(batch.size / 2, batch.size))
+                }
+            }
+        }
+        items.chunked(EDIT_BATCH_SIZE).forEach { send(it) }
+        return rejected
+    }
+
+    private suspend fun editPlaylist(session: YoutubeMusicSession, playlistId: String, actions: JSONArray) {
+        val body = payload("en").put("playlistId", canonicalYoutubeMusicPlaylistId(playlistId)).put("actions", actions)
         val status = request(session, "youtubei/v1/browse/edit_playlist", body).optString("status")
-        if (!status.contains("SUCCEEDED")) throw YoutubeMusicProtocolException()
+        if (!status.contains("SUCCEEDED")) throw YoutubeMusicEditRejected()
     }
 
     suspend fun registerPlayback(session: YoutubeMusicSession, videoId: String) {
@@ -157,5 +198,8 @@ internal class YoutubeMusicAccountClient {
         const val TRACKING_DOMAIN = "youtube.com"
         const val CPN_LENGTH = 16
         const val CPN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        const val EDIT_BATCH_SIZE = 50
+        const val MAX_REJECTED_BEFORE_ACCEPTED = 4
+        const val MAX_PLAYLIST_TITLE_LENGTH = 150
     }
 }

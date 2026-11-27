@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 31
+const val LEVYRA_DATABASE_VERSION = 32
 
 @Database(
     entities = [
@@ -39,7 +39,8 @@ const val LEVYRA_DATABASE_VERSION = 31
         PersonalCollectionTrackEntity::class,
         PodcastSubscriptionEntity::class,
         PodcastEpisodeProgressEntity::class,
-        SavedPlaylistEntity::class
+        SavedPlaylistEntity::class,
+        PlaylistSyncEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -66,6 +67,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun personalCollectionDao(): PersonalCollectionDao
     abstract fun podcastLibraryDao(): PodcastLibraryDao
     abstract fun savedPlaylistsDao(): SavedPlaylistsDao
+    abstract fun playlistSyncDao(): PlaylistSyncDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -937,6 +939,23 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `playlist_sync` (`playlistId` TEXT NOT NULL, `accountId` TEXT NOT NULL, " +
+                        "`remotePlaylistId` TEXT NOT NULL, `localTitle` TEXT NOT NULL, `remoteTitle` TEXT NOT NULL, " +
+                        "`videoIds` TEXT NOT NULL, `autoSync` INTEGER NOT NULL, `synced` INTEGER NOT NULL, " +
+                        "`localUpdatedAt` INTEGER NOT NULL, `lastSyncedAt` INTEGER NOT NULL, `lastError` TEXT NOT NULL, " +
+                        "`unmatched` INTEGER NOT NULL, `keptLocal` INTEGER NOT NULL, PRIMARY KEY(`playlistId`), " +
+                        "FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_sync_accountId_remotePlaylistId` " +
+                        "ON `playlist_sync` (`accountId`, `remotePlaylistId`)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -967,7 +986,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_27_28,
             MIGRATION_28_29,
             MIGRATION_29_30,
-            MIGRATION_30_31
+            MIGRATION_30_31,
+            MIGRATION_31_32
         )
 
         fun get(context: Context): LevyraDatabase {

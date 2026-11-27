@@ -14,7 +14,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.util.UUID
 
 internal enum class YoutubeMusicCollection(val browseId: String) {
     Playlists("FEmusic_liked_playlists"),
@@ -160,7 +159,7 @@ internal class YoutubeMusicAccountRepository(context: Context) {
 
     suspend fun importTracks(session: YoutubeMusicSession, browseId: String, title: String, tracks: List<Track>): Int = withContext(Dispatchers.IO) {
         if (tracks.isEmpty()) return@withContext 0
-        val id = "ytm-" + UUID.nameUUIDFromBytes("${session.account.id}:$browseId".toByteArray(Charsets.UTF_8))
+        val id = youtubeMusicImportPlaylistId(session.account.id, browseId)
         val existing = playlists.load(id)
         val clean = tracks.map { it.copy(streamUrl = "", videoStreamUrl = "") }
         val valid = clean.filter { it.id.isNotBlank() && it.title.isNotBlank() }
@@ -183,5 +182,4 @@ internal fun youtubeMusicShelfPlaylists(entries: List<YoutubeMusicLibraryEntry>)
         .sortedByDescending(YoutubeMusicLibraryEntry::owned)
         .take(YOUTUBE_MUSIC_SHELF_LIMIT)
 
-private val YOUTUBE_MUSIC_SYSTEM_PLAYLISTS = setOf("VLLM", "VLSE")
 private const val YOUTUBE_MUSIC_SHELF_LIMIT = 20

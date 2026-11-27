@@ -66,6 +66,7 @@ import com.luc4n3x.levyra.desktop.core.podcast.PodcastLocale
 import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.OnboardingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistSyncDialog
 import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
@@ -437,6 +438,25 @@ fun LevyraRoot(model: LevyraAppModel) {
 
                                             Destination.PLAYLIST -> {
                                                 val playlist = library.playlists.firstOrNull { it.id == openPlaylistId }
+                                                val syncLink = library.playlistSyncs.firstOrNull { it.playlistId == openPlaylistId }
+                                                val syncingPlaylists by model.playlistSync.syncing.collectAsState()
+                                                val youtubeMusicSignedIn by model.youtubeMusicAccounts.accounts.collectAsState()
+                                                var syncDialogOpen by remember(openPlaylistId) { mutableStateOf(false) }
+                                                if (syncDialogOpen && playlist != null) {
+                                                    PlaylistSyncDialog(
+                                                        sync = model.playlistSync,
+                                                        playlist = playlist,
+                                                        link = syncLink,
+                                                        syncing = playlist.id in syncingPlaylists,
+                                                        accountName = youtubeMusicSignedIn.firstOrNull { it.active }?.name,
+                                                        languageCode = strings.languageCode,
+                                                        onSignIn = {
+                                                            syncDialogOpen = false
+                                                            model.navigate(Destination.SETTINGS)
+                                                        },
+                                                        onDismiss = { syncDialogOpen = false }
+                                                    )
+                                                }
                                                 PlaylistScreen(
                                                     playlist = playlist,
                                                     actions = actions,
@@ -489,7 +509,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                                 }
                                                             )
                                                         }
-                                                    }
+                                                    },
+                                                    syncLink = syncLink,
+                                                    syncing = playlist?.id in syncingPlaylists,
+                                                    onOpenSync = { syncDialogOpen = true }
                                                 )
                                             }
 

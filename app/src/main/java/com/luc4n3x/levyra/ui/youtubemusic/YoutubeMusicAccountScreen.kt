@@ -59,6 +59,7 @@ import com.luc4n3x.levyra.data.youtubemusic.*
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.*
+import com.luc4n3x.levyra.ui.library.playlistSyncErrorText
 import com.luc4n3x.levyra.viewmodel.youtubemusic.*
 
 @Composable
@@ -84,7 +85,10 @@ internal fun YoutubeMusicAccountScreen(
     onPlay: (List<Track>, Track) -> Unit,
     onArtist: (ArtistHit) -> Unit,
     onImported: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    syncedRemotes: Map<String, Boolean> = emptyMap(),
+    syncFailure: Pair<String, PlaylistSyncError>? = null,
+    onKeepSynced: (YoutubeMusicLibraryEntry) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val computerLink by viewModel.computerLink.collectAsStateWithLifecycle()
@@ -96,7 +100,7 @@ internal fun YoutubeMusicAccountScreen(
     LaunchedEffect(languageCode, state.restoring, state.active?.id) { viewModel.open(languageCode) }
     val error = state.error?.message(copy)
     val tone = levyraUtilityColors()
-    val actions = YoutubeMusicScreenActions(onPlay, onArtist, onImported, onClose) { showAccounts = true }
+    val actions = YoutubeMusicScreenActions(onPlay, onArtist, onImported, onClose, { showAccounts = true }, syncedRemotes, syncFailure, onKeepSynced)
     val back: () -> Unit = { if (state.detail != null) viewModel.closeDetail() else onClose() }
     if (state.showLogin) {
         YoutubeMusicLoginScreen(copy, state.checkingLogin, error, viewModel::acceptCookie, viewModel::cancelLogin)
@@ -142,7 +146,10 @@ private class YoutubeMusicScreenActions(
     val artist: (ArtistHit) -> Unit,
     val imported: () -> Unit,
     val close: () -> Unit,
-    val accounts: () -> Unit
+    val accounts: () -> Unit,
+    val syncedRemotes: Map<String, Boolean>,
+    val syncFailure: Pair<String, PlaylistSyncError>?,
+    val keepSynced: (YoutubeMusicLibraryEntry) -> Unit
 )
 
 private fun YoutubeMusicAccountNotice.message(copy: YoutubeMusicCopy): String = when (this) {
@@ -325,6 +332,9 @@ private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, co
                     ) { Icon(Icons.Rounded.PlayArrow, copy.play) }
                 }
                 Text(copy.importDescription, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (detail != null && detail.owned && detail.collection == YoutubeMusicCollection.Playlists) {
+                    YoutubeMusicKeepSynced(detail, tone, actions, enabled = !state.busy)
+                }
             }
         }
         items(page?.tracks.orEmpty(), key = { it.id }, contentType = { "YoutubeMusicAccountScreen-page" }) { track ->
@@ -520,4 +530,35 @@ private fun Modifier.bleed(gutter: Dp): Modifier = layout { measurable, constrai
     val extra = gutter.roundToPx()
     val placeable = measurable.measure(constraints.copy(minWidth = constraints.maxWidth + extra * 2, maxWidth = constraints.maxWidth + extra * 2))
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra, 0) }
+}
+
+@Composable
+private fun YoutubeMusicKeepSynced(entry: YoutubeMusicLibraryEntry, tone: LevyraUtilityColors, actions: YoutubeMusicScreenActions, enabled: Boolean) {
+    val copy = LocalLevyraStrings.current.playlistSyncCopy
+    val remoteId = canonicalYoutubeMusicPlaylistId(entry.browseId)
+    val syncing = actions.syncedRemotes[remoteId]
+    val failure = actions.syncFailure?.takeIf { it.first == remoteId }?.second
+    FilledTonalButton(
+        onClick = { actions.keepSynced(entry) },
+        enabled = enabled && syncing != true,
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = tone.container, contentColor = tone.onContainer),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+    ) {
+        if (syncing == true) {
+            CircularWavyProgressIndicator(Modifier.size(18.dp), color = tone.onContainer)
+        } else {
+            Icon(if (syncing == false) Icons.Rounded.CloudDone else Icons.Rounded.CloudSync, null, Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            when (syncing) {
+                true -> copy[PlaylistSyncText.Syncing]
+                false -> copy[PlaylistSyncText.SyncNow]
+                null -> copy[PlaylistSyncText.KeepSynced]
+            }
+        )
+    }
+    if (failure != null && syncing != true) {
+        Text(playlistSyncErrorText(copy, failure), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
 }

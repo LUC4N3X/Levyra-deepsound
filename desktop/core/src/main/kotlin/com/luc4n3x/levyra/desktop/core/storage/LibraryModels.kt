@@ -9,7 +9,8 @@ data class LocalPlaylist(
     val id: String,
     val name: String,
     val createdAt: Long,
-    val tracks: List<Track> = emptyList()
+    val tracks: List<Track> = emptyList(),
+    val updatedAt: Long = 0L
 ) {
     val artworkUrl: String get() = tracks.firstOrNull { it.hasArtwork }?.artworkUrl.orEmpty()
 }
@@ -29,7 +30,25 @@ data class LibraryData(
     val recentSearches: List<String> = emptyList(),
     val followedArtists: List<CollectionRef> = emptyList(),
     val pinnedArtists: List<CollectionRef> = emptyList(),
-    val excludedArtists: Map<String, String> = emptyMap()
+    val excludedArtists: Map<String, String> = emptyMap(),
+    val playlistSyncs: List<PlaylistSyncLink> = emptyList()
+)
+
+@Serializable
+data class PlaylistSyncLink(
+    val playlistId: String,
+    val accountId: String,
+    val remotePlaylistId: String,
+    val localTitle: String = "",
+    val remoteTitle: String = "",
+    val videoIds: List<String> = emptyList(),
+    val autoSync: Boolean = true,
+    val synced: Boolean = false,
+    val localUpdatedAt: Long = 0L,
+    val lastSyncedAt: Long = 0L,
+    val lastError: String = "",
+    val unmatched: Int = 0,
+    val keptLocal: Int = 0
 )
 
 @Serializable

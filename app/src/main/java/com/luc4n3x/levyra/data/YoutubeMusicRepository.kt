@@ -2298,19 +2298,21 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun parsePlaylistTrackRenderers(renderers: List<JSONObject>, playlistId: String): List<Track> {
-        return renderers.mapNotNull { renderer ->
-            val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
-            val albumReference = extractYoutubeMusicAlbumReference(renderer)
-            val artistReferences = extractYoutubeMusicArtistReferences(renderer, track.artist)
-            val trackNumber = extractPlaylistTrackNumber(renderer)
-            track.copy(
-                album = albumReference.first.ifBlank { track.album },
-                albumBrowseId = albumReference.second,
-                artistBrowseIds = artistReferences.map { it.browseId },
-                trackNumber = trackNumber,
-                explicit = renderer.toString().hasExplicitBadge()
-            )
-        }.distinctBy { it.id }
+        return renderers.mapNotNull { parsePlaylistRenderer(it, playlistId) }.distinctBy { it.id }
+    }
+
+    internal fun parsePlaylistRenderer(renderer: JSONObject, playlistId: String): Track? {
+        val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return null
+        val albumReference = extractYoutubeMusicAlbumReference(renderer)
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, track.artist)
+        val trackNumber = extractPlaylistTrackNumber(renderer)
+        return track.copy(
+            album = albumReference.first.ifBlank { track.album },
+            albumBrowseId = albumReference.second,
+            artistBrowseIds = artistReferences.map { it.browseId },
+            trackNumber = trackNumber,
+            explicit = renderer.toString().hasExplicitBadge()
+        )
     }
 
     internal fun parsePlaylistHeader(root: JSONObject, playlistId: String): YoutubeMusicPlaylistDetail {

@@ -1944,10 +1944,14 @@ internal fun LevyraLibraryScreen(
 @Composable
 internal fun LevyraPlaylistDetailScreen(
     viewModel: LevyraViewModel,
-    state: LevyraUiState
+    state: LevyraUiState,
+    onOpenYoutubeMusic: () -> Unit = {}
 ) {
     val playlist = state.openPlaylist ?: return
     val strings = LocalLevyraStrings.current
+    val syncLinks by viewModel.playlistSync.links.collectAsStateWithLifecycle()
+    val syncingIds by viewModel.playlistSync.syncing.collectAsStateWithLifecycle()
+    val syncLink = syncLinks[playlist.id]
     val playlistProCopy = strings.playlistProCopy()
     var query by rememberSaveable(playlist.id) { mutableStateOf("") }
     var searchActive by rememberSaveable(playlist.id) { mutableStateOf(false) }
@@ -2165,6 +2169,17 @@ internal fun LevyraPlaylistDetailScreen(
                         }
                     )
                 }
+                if (syncLink != null) {
+                    item(key = "playlist-detail-sync") {
+                        PlaylistSyncStatusChip(
+                            link = syncLink,
+                            syncing = playlist.id in syncingIds,
+                            contentColor = colors.content,
+                            onClick = { viewModel.playlistSync.open(playlist) },
+                            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 8.dp)
+                        )
+                    }
+                }
                 if (playlist.tags.isNotEmpty()) {
                     item(key = "playlist-detail-organization") {
                         PlaylistTagsLine(
@@ -2376,7 +2391,8 @@ internal fun LevyraPlaylistDetailScreen(
                         selectionMode = true
                         selectedKeys = selectAllPlaylistItemKeys(orderedItems)
                     },
-                    onExport = { viewModel.playlistExport.open(playlist) }
+                    onExport = { viewModel.playlistExport.open(playlist) },
+                    onSyncYoutubeMusic = { viewModel.playlistSync.open(playlist) }
                 )
             }
         )
@@ -2443,6 +2459,19 @@ internal fun LevyraPlaylistDetailScreen(
     val exportState by viewModel.playlistExport.state.collectAsStateWithLifecycle()
     if (exportState.visible && exportState.playlistId == playlist.id) {
         PlaylistExportSheet(viewModel.playlistExport, exportState)
+    }
+    val syncSheet by viewModel.playlistSync.sheet.collectAsStateWithLifecycle()
+    if (syncSheet.visible && syncSheet.playlistId == playlist.id) {
+        PlaylistSyncSheet(
+            controller = viewModel.playlistSync,
+            state = syncSheet,
+            link = syncLink,
+            syncing = playlist.id in syncingIds,
+            onSignIn = {
+                viewModel.playlistSync.dismiss()
+                onOpenYoutubeMusic()
+            }
+        )
     }
 
     changeMatchTrack?.let { target ->

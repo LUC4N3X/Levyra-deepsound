@@ -32,6 +32,28 @@ internal object YoutubeMusicPlaylistPageParser {
             .flatMap(::renderersFromContainer)
     }
 
+    fun hasContinuationContainer(root: JSONObject): Boolean =
+        root.has("continuationContents") || root.has("onResponseReceivedActions") || root.has("onResponseReceivedEndpoints")
+
+    fun hasPlaylistShelf(root: JSONObject): Boolean {
+        val shelves = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicPlaylistShelfRenderer", shelves)
+        return shelves.isNotEmpty()
+    }
+
+    fun unrecognizedItems(root: JSONObject): Int = selectedContainers(root).sumOf { container ->
+        listOf("contents", "continuationItems").sumOf { arrayKey ->
+            val items = container.optJSONArray(arrayKey) ?: return@sumOf 0
+            (0 until items.length()).count { index ->
+                val item = items.optJSONObject(index) ?: return@count true
+                if (item.has("musicResponsiveListItemRenderer") || item.has("continuationItemRenderer")) return@count false
+                val nested = mutableListOf<JSONObject>()
+                collectObjectsByKey(item, "musicResponsiveListItemRenderer", nested)
+                nested.isEmpty()
+            }
+        }
+    }
+
     fun continuation(root: JSONObject): String {
         selectedContainers(root).forEach { container ->
             continuationFromContainer(container).takeIf(String::isNotBlank)?.let { return it }

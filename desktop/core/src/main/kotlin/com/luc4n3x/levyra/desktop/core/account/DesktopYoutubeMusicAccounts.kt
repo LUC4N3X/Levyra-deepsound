@@ -64,6 +64,8 @@ class DesktopYoutubeMusicAccounts internal constructor(
 
     fun newLinkHost(): YoutubeMusicLinkHost = YoutubeMusicLinkHost(::signInResult)
 
+    internal val playlistClient: YoutubeMusicAccountClient get() = client
+
     suspend fun browse(browseId: String, language: String, continuation: String = ""): JSONObject? {
         val session = activeSession() ?: return null
         return try {

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
@@ -150,6 +151,8 @@ import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import com.luc4n3x.levyra.ui.i18n.playlistExportCopy
+import com.luc4n3x.levyra.ui.i18n.PlaylistSyncText
+import com.luc4n3x.levyra.ui.i18n.playlistSyncCopy
 import androidx.compose.material.icons.rounded.IosShare
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
@@ -951,7 +954,8 @@ internal fun PlaylistDetailTopActions(
     onTogglePinToHome: () -> Unit,
     onLikeAll: () -> Unit,
     onSelectAll: () -> Unit,
-    onExport: () -> Unit
+    onExport: () -> Unit,
+    onSyncYoutubeMusic: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val exportLabel = remember(strings.code) { playlistExportCopy(strings.code).action }
@@ -1031,6 +1035,11 @@ internal fun PlaylistDetailTopActions(
                 text = { Text(exportLabel) },
                 leadingIcon = { Icon(Icons.Rounded.IosShare, null) },
                 onClick = { menuExpanded = false; onExport() }
+            )
+            DropdownMenuItem(
+                text = { Text(strings.playlistSyncCopy[PlaylistSyncText.MenuAction]) },
+                leadingIcon = { Icon(Icons.Rounded.CloudSync, null) },
+                onClick = { menuExpanded = false; onSyncYoutubeMusic() }
             )
             if (playlist.tracks.isNotEmpty() || playlist.albums.isNotEmpty()) {
                 DropdownMenuItem(

@@ -8,6 +8,7 @@ internal class YoutubeMusicAccountStorageException : IOException("YouTube Music 
 internal class YoutubeMusicSessionExpired : IOException("YouTube Music session requires sign-in")
 internal class YoutubeMusicProtocolException : IOException("YouTube Music returned an unsupported response")
 internal class YoutubeMusicLibraryLimit : IOException("YouTube Music library exceeds the import limit")
+internal class YoutubeMusicEditRejected : IOException("YouTube Music rejected the playlist edit")
 
 internal object YoutubeMusicAuth {
     const val ORIGIN = "https://music.youtube.com"

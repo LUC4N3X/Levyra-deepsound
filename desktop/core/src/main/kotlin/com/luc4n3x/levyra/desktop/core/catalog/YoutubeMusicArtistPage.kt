@@ -78,27 +78,29 @@ internal object YoutubeMusicArtistPage {
 
     fun tracks(root: JSONObject, artist: String, videos: Boolean): List<Track> {
         val renderer = if (videos) "musicTwoRowItemRenderer" else "musicResponsiveListItemRenderer"
-        return artistObjects(root, renderer).mapNotNull { row ->
-            val first = row.optJSONArray("flexColumns")?.optJSONObject(0)
-                ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
-            val title = artistText(first ?: row, if (first == null) "title" else "text")
-            val navigation = row.optJSONObject("navigationEndpoint")
-            val endpoint = navigation?.optJSONObject("watchEndpoint") ?: artistObjects(first, "watchEndpoint").firstOrNull()
-            val id = endpoint?.optString("videoId").orEmpty().ifBlank {
-                row.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
-            }
-            if (id.isBlank() || title.isBlank()) return@mapNotNull null
-            val type = endpoint?.optJSONObject("watchEndpointMusicSupportedConfigs")
-                ?.optJSONObject("watchEndpointMusicConfig")?.optString("musicVideoType").orEmpty()
-            if (!videos && (type == "MUSIC_VIDEO_TYPE_OMV" || type == "MUSIC_VIDEO_TYPE_UGC")) return@mapNotNull null
-            val columns = artistObjects(row.optJSONArray("flexColumns"), "musicResponsiveListItemFlexColumnRenderer") +
-                artistObjects(row.optJSONArray("fixedColumns"), "musicResponsiveListItemFixedColumnRenderer")
-            val lines = columns.drop(1).flatMap { column -> artistText(column, "text").split(" • ", " · ") }
-            val credits = if (videos) artistText(row, "subtitle").substringBefore(" • ") else lines.firstOrNull().orEmpty()
-            val metadata = if (videos) artistText(row, "subtitle").split(" • ").drop(1) else lines.drop(1)
-            Track(id, title, credits.ifBlank { artist }, videoUrl = Track.watchUrlOf(id), artworkUrl = artistArt(row),
-                durationMs = trackDurationMs(lines), musicVideo = videos, viewCount = trackViewCount(metadata))
-        }.distinctBy { it.id }
+        return artistObjects(root, renderer).mapNotNull { row -> track(row, artist, videos) }.distinctBy { it.id }
+    }
+
+    fun track(row: JSONObject, artist: String, videos: Boolean, includeMusicVideos: Boolean = false): Track? {
+        val first = row.optJSONArray("flexColumns")?.optJSONObject(0)
+            ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+        val title = artistText(first ?: row, if (first == null) "title" else "text")
+        val navigation = row.optJSONObject("navigationEndpoint")
+        val endpoint = navigation?.optJSONObject("watchEndpoint") ?: artistObjects(first, "watchEndpoint").firstOrNull()
+        val id = endpoint?.optString("videoId").orEmpty().ifBlank {
+            row.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
+        }
+        if (id.isBlank() || title.isBlank()) return null
+        val type = endpoint?.optJSONObject("watchEndpointMusicSupportedConfigs")
+            ?.optJSONObject("watchEndpointMusicConfig")?.optString("musicVideoType").orEmpty()
+        if (!videos && !includeMusicVideos && (type == "MUSIC_VIDEO_TYPE_OMV" || type == "MUSIC_VIDEO_TYPE_UGC")) return null
+        val columns = artistObjects(row.optJSONArray("flexColumns"), "musicResponsiveListItemFlexColumnRenderer") +
+            artistObjects(row.optJSONArray("fixedColumns"), "musicResponsiveListItemFixedColumnRenderer")
+        val lines = columns.drop(1).flatMap { column -> artistText(column, "text").split(" • ", " · ") }
+        val credits = if (videos) artistText(row, "subtitle").substringBefore(" • ") else lines.firstOrNull().orEmpty()
+        val metadata = if (videos) artistText(row, "subtitle").split(" • ").drop(1) else lines.drop(1)
+        return Track(id, title, credits.ifBlank { artist }, videoUrl = Track.watchUrlOf(id), artworkUrl = artistArt(row),
+            durationMs = trackDurationMs(lines), musicVideo = videos || (includeMusicVideos && type == "MUSIC_VIDEO_TYPE_OMV"), viewCount = trackViewCount(metadata))
     }
 
     private fun trackDurationMs(lines: List<String>): Long {

@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.playlistexport.RemotePlaylistExporter
 import com.luc4n3x.levyra.data.playlistexport.planRemotePlaylistExport
 import com.luc4n3x.levyra.data.playlistexport.writePlaylistFile
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccountHttpException
+import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicEditRejected
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicPlaylistExporter
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicProtocolException
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicSession
@@ -160,7 +161,13 @@ class PlaylistExportController internal constructor(
             }
             try {
                 withContext(Dispatchers.IO) { exporter.export(current.title, current.plan.videoIds, progress) }
-                _state.update { it.copy(phase = PlaylistExportPhase.SENT) }
+                _state.update {
+                    if (it.added < current.plan.videoIds.size) {
+                        it.copy(phase = PlaylistExportPhase.PARTIAL, error = PlaylistExportError.SERVICE)
+                    } else {
+                        it.copy(phase = PlaylistExportPhase.SENT)
+                    }
+                }
             } catch (error: CancellationException) {
                 _state.update { if (it.visible) it.copy(phase = PlaylistExportPhase.CANCELLED) else it }
                 throw error
@@ -204,7 +211,7 @@ class PlaylistExportController internal constructor(
 
     private fun Exception.toExportError(): PlaylistExportError = when (this) {
         is YoutubeMusicSessionExpired -> PlaylistExportError.SIGN_IN
-        is YoutubeMusicProtocolException, is YoutubeMusicAccountHttpException -> PlaylistExportError.SERVICE
+        is YoutubeMusicProtocolException, is YoutubeMusicAccountHttpException, is YoutubeMusicEditRejected -> PlaylistExportError.SERVICE
         is IOException -> PlaylistExportError.NETWORK
         else -> PlaylistExportError.SERVICE
     }
