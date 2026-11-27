@@ -64,6 +64,21 @@ class NavigationLabelLayoutTest {
     }
 
     @Test
+    fun `collapsed tray without stacked labels keeps icons centered in the visible band`() {
+        for (requested in listOf(56, 60, 80)) {
+            val geometry = navDockGeometry(false, true, requested.dp, 0.dp)
+            val visibleIconCenter = geometry.iconTop - geometry.lift + 16.dp
+            assertEquals(geometry.compactHeight / 2, visibleIconCenter)
+        }
+    }
+
+    @Test
+    fun `collapsed tray with stacked labels keeps sliding labels out`() {
+        val geometry = navDockGeometry(false, true, 76.dp, 18.dp)
+        assertEquals(0.dp, geometry.lift)
+    }
+
+    @Test
     fun `hidden and expanding labels reserve no space below icons`() {
         assertEquals(0.dp, navLabelRoom(NavLabelMode.Never, 48.dp))
         assertEquals(0.dp, navLabelRoom(NavLabelMode.Expanding, 48.dp))
