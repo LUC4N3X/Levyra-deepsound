@@ -157,12 +157,12 @@ internal object LevyraSpotifyChartStrings {
         "th" to ("มี %s และอีกมากมาย" to "สร้างมาเพื่อคุณ"),
         "fil" to ("Kasama ang %s at marami pa" to "Ginawa para sa iyo"),
         "he" to ("עם %s ועוד" to "נוצר בשבילך"),
-        "ur" to ("With %s and more" to "آپ کے لیے بنایا گیا ہے۔"),
-        "ta" to ("With %s and more" to "உங்களுக்காக உருவாக்கப்பட்டது"),
-        "te" to ("With %s and more" to "మీ కోసం తయారు చేయబడింది"),
-        "mr" to ("With %s and more" to "तुमच्यासाठी बनवलेले"),
-        "gu" to ("With %s and more" to "તમારા માટે બનાવેલ છે"),
-        "pt-BR" to ("With %s and more" to "Feito para você")
+        "ur" to ("%s اور دیگر فنکاروں کے ساتھ" to "آپ کے لیے بنایا گیا ہے۔"),
+        "ta" to ("%s மற்றும் பிற கலைஞர்களுடன்" to "உங்களுக்காக உருவாக்கப்பட்டது"),
+        "te" to ("%sతో పాటు మరెందరో కళాకారులు" to "మీ కోసం తయారు చేయబడింది"),
+        "mr" to ("%s आणि इतर कलाकारांसह" to "तुमच्यासाठी बनवलेले"),
+        "gu" to ("%s અને અન્ય કલાકારો સાથે" to "તમારા માટે બનાવેલ છે"),
+        "pt-BR" to ("Com %s e outros artistas" to "Feito para você")
     )
 
     fun radioWithMany(code: String, artists: String): String =
@@ -266,12 +266,12 @@ internal object LevyraSpotifyChartStrings {
         "th" to ("เลือกศิลปินที่คุณชอบเพิ่มเติม" to "ศิลปินอื่นๆ ที่คุณอาจชอบ"),
         "fil" to ("Pumili ng iba pang artist na gusto mo." to "Iba pang artist na baka magustuhan mo"),
         "he" to ("בחרו עוד אמנים שאתם אוהבים." to "אמנים נוספים שאולי תאהבו"),
-        "ur" to ("Choose more artists you like." to "مزید فنکار آپ کو پسند آ سکتے ہیں۔"),
-        "ta" to ("Choose more artists you like." to "நீங்கள் விரும்பக்கூடிய மேலும் கலைஞர்கள்"),
-        "te" to ("Choose more artists you like." to "మీరు ఇష్టపడే మరిన్ని కళాకారులు"),
-        "mr" to ("Choose more artists you like." to "तुम्हाला आवडतील असे आणखी कलाकार"),
-        "gu" to ("Choose more artists you like." to "તમને ગમશે તેવા વધુ કલાકારો"),
-        "pt-BR" to ("Choose more artists you like." to "Mais artistas de que você pode gostar")
+        "ur" to ("اپنے مزید پسندیدہ فنکار منتخب کریں۔" to "مزید فنکار آپ کو پسند آ سکتے ہیں۔"),
+        "ta" to ("மேலும் பிடித்த கலைஞர்களைத் தேர்ந்தெடுக்கவும்." to "நீங்கள் விரும்பக்கூடிய மேலும் கலைஞர்கள்"),
+        "te" to ("మీకు నచ్చిన మరికొంత మంది కళాకారులను ఎంచుకోండి." to "మీరు ఇష్టపడే మరిన్ని కళాకారులు"),
+        "mr" to ("तुम्हाला आवडणारे आणखी कलाकार निवडा." to "तुम्हाला आवडतील असे आणखी कलाकार"),
+        "gu" to ("તમને ગમતા વધુ કલાકારો પસંદ કરો." to "તમને ગમશે તેવા વધુ કલાકારો"),
+        "pt-BR" to ("Escolha mais artistas de que você gosta." to "Mais artistas de que você pode gostar")
     )
 
     fun pickerTitle(code: String): String = localizedValueOrEnglish(pickerCopies, code).first

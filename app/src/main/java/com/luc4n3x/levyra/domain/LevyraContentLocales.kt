@@ -1052,7 +1052,7 @@ object LevyraContentLocales {
                 "gym" to music.workout,
                 "chill" to music.chill,
                 "focus" to music.focus,
-                "italia" to music.hits,
+                "italia" to music.localTitle,
                 "party" to music.party,
                 "drive" to music.drive,
                 "sad" to music.sad
