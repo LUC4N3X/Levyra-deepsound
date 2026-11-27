@@ -59,6 +59,13 @@ class HomeFeedController(
     val curatedPage: StateFlow<CuratedPageState> = curatedState.asStateFlow()
 
     @Synchronized
+    fun reloadCurated() {
+        val (languageTag, country) = curatedRegion ?: return
+        curatedRegion = null
+        load(country, languageTag)
+    }
+
+    @Synchronized
     fun load(country: String, languageTag: String) {
         val locale = languageTag to country
         if (locale != curatedRegion) {

@@ -140,7 +140,7 @@ class LevyraNavigationStudioSettingsTest {
 
     @Test
     fun navigationStudioCopyCoversEveryLanguage() {
-        val expected = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val expected = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(expected, navigationStudioLocalizationCodes())
         assertEquals(expected, navigationStudioCompleteLocalizationCodes())
     }

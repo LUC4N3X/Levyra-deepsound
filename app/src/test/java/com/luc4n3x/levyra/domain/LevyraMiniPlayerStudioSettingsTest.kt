@@ -106,7 +106,7 @@ class LevyraMiniPlayerStudioSettingsTest {
 
     @Test
     fun miniPlayerStudioCopyCoversEveryLanguage() {
-        val expected = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val expected = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(expected, miniPlayerStudioLocalizationCodes())
         assertEquals(expected, miniPlayerStudioCompleteLocalizationCodes())
     }

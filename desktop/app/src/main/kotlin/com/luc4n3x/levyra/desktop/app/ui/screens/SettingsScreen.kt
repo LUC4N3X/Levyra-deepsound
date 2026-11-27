@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.ui.screens
 
+import com.luc4n3x.levyra.desktop.core.account.BrowserCookieImport
+import com.luc4n3x.levyra.desktop.core.account.DesktopYoutubeMusicAccounts
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -69,7 +71,9 @@ fun SettingsScreen(
     onOpenDataFolder: () -> Unit,
     onRefreshAudioOutputDevices: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    onImportPhoneBackup: () -> Unit = {}
+    onImportPhoneBackup: () -> Unit = {},
+    youtubeMusicAccounts: DesktopYoutubeMusicAccounts? = null,
+    browserCookieImport: BrowserCookieImport? = null
 ) {
     val strings = LocalStrings.current
 
@@ -104,6 +108,11 @@ fun SettingsScreen(
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        if (page == SettingsPage.YOUTUBE_MUSIC && youtubeMusicAccounts != null && browserCookieImport != null) {
+            item(key = "settings-youtube-music") {
+                YoutubeMusicAccountPage(youtubeMusicAccounts, browserCookieImport, strings.languageCode)
+            }
+        }
         item(key = "settings-primary-$page") {
             Column(verticalArrangement = Arrangement.spacedBy(18.dp)) { SettingsPrimaryPages(page, strings, settings, dataDirectory, vlcStatus, appVersion, audioOutputDevices, audioOutputDeviceMissing, onUpdate, onBrowseVlc, onVerifyVlc, onOpenDataFolder, onRefreshAudioOutputDevices, onImportPhoneBackup) }
         }

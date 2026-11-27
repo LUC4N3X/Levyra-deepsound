@@ -261,5 +261,5 @@ If you hold rights to material distributed in Levyra or this repository and have
 ---
 
 <div align="center">
-  <sub><b>Made in Italy.</b></sub>
+  <sub>© 2026 LUC4N3X &nbsp;·&nbsp; Released under the GNU GPL v3.0</sub>
 </div>

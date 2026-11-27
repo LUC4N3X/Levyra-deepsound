@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">ఇష్టమైన వాటి నుండి తీసివేయండి</string>
     <string name="notification_shuffle_enable">షఫుల్‌ని ప్రారంభించండి</string>
     <string name="notification_shuffle_disable">షఫుల్‌ని నిలిపివేయండి</string>
-    <string name="notification_repeat_off">రిపీట్ ఆఫ్ చేయండి</string>
+    <string name="notification_repeat_off">పునరావృతం ఆఫ్‌లో ఉంది</string>
     <string name="notification_repeat_all">అన్నీ పునరావృతం చేయండి</string>
     <string name="notification_repeat_one">ఒకటి పునరావృతం చేయండి</string>
     <string name="tile_recognize_music">సంగీతాన్ని గుర్తించండి</string>

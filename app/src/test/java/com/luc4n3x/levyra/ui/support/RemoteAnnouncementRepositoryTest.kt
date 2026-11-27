@@ -46,7 +46,7 @@ class RemoteAnnouncementRepositoryTest {
         val catalog = loadPackagedCatalog()
         assertEquals(2, catalog.schemaVersion)
         val announcement = catalog.announcements.single { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }
-        val expectedLanguages = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val expectedLanguages = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
 
         assertEquals(expectedLanguages, announcement.translations.keys)
         assertEquals(AnnouncementStyle.OPEN_SOURCE, announcement.style)

@@ -41,12 +41,15 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.ui.i18n.SettingsHubText
 import com.luc4n3x.levyra.ui.i18n.settingsHubCopy
+import com.luc4n3x.levyra.ui.i18n.YoutubeMusicLinkText
+import com.luc4n3x.levyra.ui.i18n.youtubeMusicLinkCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
 
 internal enum class SettingsPage(val group: SettingsHubText, val icon: ImageVector, val tint: Color) {
     INTERFACE(SettingsHubText.Appearance, LevyraIcons.Settings, SectionTints.Lavender),
     PLAYBACK(SettingsHubText.Listening, LevyraIcons.Play, SectionTints.Rose),
     AUDIO(SettingsHubText.Listening, LevyraIcons.Tune, SectionTints.Periwinkle),
+    YOUTUBE_MUSIC(SettingsHubText.Library, LevyraIcons.Play, SectionTints.Rose),
     PROFILE(SettingsHubText.Library, LevyraIcons.Artist, SectionTints.Sky),
     STORAGE(SettingsHubText.Library, OfflineIcons.Folder, SectionTints.Mint),
     VLC(SettingsHubText.System, LevyraIcons.Disc, SectionTints.Amber),
@@ -57,6 +60,7 @@ internal enum class SettingsPage(val group: SettingsHubText, val icon: ImageVect
         INTERFACE -> strings.settingsInterface
         PLAYBACK -> strings.settingsPlayback
         AUDIO -> strings.settingsAudio
+        YOUTUBE_MUSIC -> "YouTube Music"
         PROFILE -> strings.settingsProfile
         STORAGE -> strings.settingsStorage
         VLC -> strings.settingsVlc
@@ -68,6 +72,7 @@ internal enum class SettingsPage(val group: SettingsHubText, val icon: ImageVect
         INTERFACE -> strings.settingsTheme
         PLAYBACK -> listOf(strings.settingsSpeed, strings.crossfade).joinToString(" · ")
         AUDIO -> listOf(strings.settingsEqualizer, strings.settingsAudioQuality).joinToString(" · ")
+        YOUTUBE_MUSIC -> SharedStrings.forCode(strings.languageCode).youtubeMusicLinkCopy[YoutubeMusicLinkText.SignIn]
         PROFILE -> strings.settingsCountry
         STORAGE -> strings.settingsOpenFolder
         VLC -> strings.settingsVlc

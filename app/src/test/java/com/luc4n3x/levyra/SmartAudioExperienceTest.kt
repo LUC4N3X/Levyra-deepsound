@@ -171,7 +171,7 @@ class SmartAudioExperienceTest {
 
     @Test
     fun everyLanguageShipsCompleteSmartAudioCopy() {
-        assertEquals(LevyraLanguageCatalog.languages.map { it.code }.toSet(), smartAudioLocalizationCodes())
+        assertEquals(LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet(), smartAudioLocalizationCodes())
         val english = smartAudioRawEntries("en")
         smartAudioLocalizationCodes().forEach { code ->
             val entries = smartAudioRawEntries(code)

@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">پسندیدہ سے ہٹا دیں۔</string>
     <string name="notification_shuffle_enable">شفل کو فعال کریں۔</string>
     <string name="notification_shuffle_disable">شفل کو غیر فعال کریں۔</string>
-    <string name="notification_repeat_off">دہرائیں۔</string>
+    <string name="notification_repeat_off">دہرانا بند ہے</string>
     <string name="notification_repeat_all">سب کو دہرائیں۔</string>
     <string name="notification_repeat_one">ایک دہرائیں۔</string>
     <string name="tile_recognize_music">موسیقی کو پہچانیں۔</string>

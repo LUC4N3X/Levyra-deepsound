@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">பிடித்தவற்றிலிருந்து அகற்று</string>
     <string name="notification_shuffle_enable">கலக்கலை இயக்கு</string>
     <string name="notification_shuffle_disable">ஷஃபிளை முடக்கு</string>
-    <string name="notification_repeat_off">மீண்டும் செய்யவும்</string>
+    <string name="notification_repeat_off">மீண்டும் இயக்குதல் முடக்கப்பட்டுள்ளது</string>
     <string name="notification_repeat_all">அனைத்தையும் மீண்டும் செய்யவும்</string>
     <string name="notification_repeat_one">ஒன்றை மீண்டும் செய்யவும்</string>
     <string name="tile_recognize_music">இசையை அங்கீகரிக்கவும்</string>

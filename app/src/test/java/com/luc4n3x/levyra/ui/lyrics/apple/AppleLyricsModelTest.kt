@@ -151,7 +151,7 @@ class AppleLyricsModelTest {
 
     @Test
     fun everySupportedLanguageShipsAppleLyricsCopy() {
-        val supported = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val supported = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(supported, appleLyricsLocalizationCodes())
         supported.forEach { code ->
             val copy = appleLyricsCopy(code)

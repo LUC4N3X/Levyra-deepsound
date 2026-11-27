@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">आवडीमधून काढा</string>
     <string name="notification_shuffle_enable">शफल सक्षम करा</string>
     <string name="notification_shuffle_disable">शफल अक्षम करा</string>
-    <string name="notification_repeat_off">बंद पुन्हा करा</string>
+    <string name="notification_repeat_off">पुन्हा वाजवणे बंद</string>
     <string name="notification_repeat_all">सर्व पुन्हा करा</string>
     <string name="notification_repeat_one">एक पुन्हा करा</string>
     <string name="tile_recognize_music">संगीत ओळखा</string>

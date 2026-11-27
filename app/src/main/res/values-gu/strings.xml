@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">મનપસંદમાંથી દૂર કરો</string>
     <string name="notification_shuffle_enable">શફલ સક્ષમ કરો</string>
     <string name="notification_shuffle_disable">શફલ અક્ષમ કરો</string>
-    <string name="notification_repeat_off">બંધ પુનરાવર્તન કરો</string>
+    <string name="notification_repeat_off">પુનરાવર્તન બંધ</string>
     <string name="notification_repeat_all">બધા પુનરાવર્તન કરો</string>
     <string name="notification_repeat_one">એક પુનરાવર્તન કરો</string>
     <string name="tile_recognize_music">સંગીતને ઓળખો</string>

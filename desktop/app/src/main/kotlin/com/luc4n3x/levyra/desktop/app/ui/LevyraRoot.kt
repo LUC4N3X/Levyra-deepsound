@@ -531,6 +531,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 onRefreshAudioOutputDevices = { createEngine ->
                                                     model.playbackController.refreshAudioOutputDevices(createEngine)
                                                 },
+                                                youtubeMusicAccounts = model.youtubeMusicAccounts,
+                                                browserCookieImport = model.browserCookieImport,
                                                 onImportPhoneBackup = {
                                                     scope.launch {
                                                         val selected = chooseBackupFile()

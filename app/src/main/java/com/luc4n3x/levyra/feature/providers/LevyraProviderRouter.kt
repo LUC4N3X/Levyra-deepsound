@@ -111,7 +111,8 @@ class LevyraProviderHealthTracker(
 }
 
 class YoutubeMusicCatalogProvider(
-    private val repository: YoutubeMusicRepository
+    private val repository: YoutubeMusicRepository,
+    private val generatedMixes: (suspend (String, String, Int) -> YoutubeMusicPlaylistDetail?)? = null
 ) : LevyraCatalogProvider {
     override val id: String = "youtube_music"
     override val priority: Int = 10
@@ -125,7 +126,7 @@ class YoutubeMusicCatalogProvider(
     }
 
     override suspend fun playlist(playlistId: String, languageCode: String, limit: Int): YoutubeMusicPlaylistDetail? {
-        return repository.playlist(playlistId, languageCode, limit)
+        return generatedMixes?.invoke(playlistId, languageCode, limit) ?: repository.playlist(playlistId, languageCode, limit)
     }
 }
 

@@ -1036,7 +1036,7 @@ object LevyraContentLocales {
             tasteQueries = mapOf(
                 "hits" to music.hits,
                 "rap" to music.rap,
-                "italiana" to music.hits,
+                "italiana" to music.localTitle,
                 "pop" to music.pop,
                 "gym" to music.workout,
                 "chill" to music.chill,

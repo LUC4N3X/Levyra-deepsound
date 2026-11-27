@@ -59,7 +59,7 @@ class PlaylistImportSessionCodecTest {
 
     @Test
     fun importHubCoversEveryCatalogLanguage() {
-        val codes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val codes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(codes, playlistImportHubLocalizationCodes())
         val english = playlistImportHubLocalizationEntries("en")
         codes.forEach { code ->

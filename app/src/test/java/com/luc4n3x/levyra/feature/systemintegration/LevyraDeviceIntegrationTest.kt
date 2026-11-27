@@ -371,7 +371,7 @@ class LevyraDeviceIntegrationTest {
 
     @Test
     fun deviceIntegrationCopyCoversEveryCatalogLanguage() {
-        val catalog = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalog = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalog, deviceIntegrationLocalizationCodes())
         catalog.forEach { code ->
             val copy = deviceIntegrationCopy(code)

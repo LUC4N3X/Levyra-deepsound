@@ -148,8 +148,8 @@ class DiscoverySessionTest {
 
     @Test
     fun everySupportedLanguageHasCompleteDiscoveryCopyWithPlaceholders() {
-        assertEquals(LevyraLanguageCatalog.languages.map { it.code }.toSet(), discoveryCopyLanguages())
-        LevyraLanguageCatalog.languages.forEach { language ->
+        assertEquals(LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet(), discoveryCopyLanguages())
+        LevyraLanguageCatalog.selectableLanguages.forEach { language ->
             val copy = discoveryCopy(language.code)
             assertTrue(language.code, copy.reasonBecause("XYZ").contains("XYZ"))
             val description = copy.cardDescription("TTT", "AAA")

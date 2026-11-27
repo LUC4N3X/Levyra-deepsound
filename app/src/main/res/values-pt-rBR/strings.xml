@@ -58,7 +58,7 @@
     <string name="notification_favorite_remove">Remover dos favoritos</string>
     <string name="notification_shuffle_enable">Ativar ordem aleatória</string>
     <string name="notification_shuffle_disable">Desativar ordem aleatória</string>
-    <string name="notification_repeat_off">Repetir</string>
+    <string name="notification_repeat_off">Repetição desativada</string>
     <string name="notification_repeat_all">Repita tudo</string>
     <string name="notification_repeat_one">Repita um</string>
     <string name="tile_recognize_music">Reconhecer música</string>
