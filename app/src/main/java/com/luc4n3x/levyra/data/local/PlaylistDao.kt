@@ -54,6 +54,9 @@ abstract class PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertPlaylist(playlist: PlaylistEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertPlaylistIfAbsent(playlist: PlaylistEntity): Long
+
     @Update
     abstract suspend fun updatePlaylist(playlist: PlaylistEntity): Int
 

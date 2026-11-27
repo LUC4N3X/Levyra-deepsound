@@ -37,6 +37,10 @@ import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.core.storage.LocalPlaylist
+import com.luc4n3x.levyra.desktop.core.storage.PlaylistSyncLink
+import com.luc4n3x.levyra.ui.i18n.PlaylistSyncText
+import com.luc4n3x.levyra.ui.i18n.playlistSyncCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -50,6 +54,9 @@ fun PlaylistScreen(
     onDelete: () -> Unit,
     onRemoveTrack: (String) -> Unit,
     onExport: () -> Unit,
+    syncLink: PlaylistSyncLink? = null,
+    syncing: Boolean = false,
+    onOpenSync: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
@@ -131,6 +138,22 @@ fun PlaylistScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (syncLink != null) {
+                        val syncCopy = remember(strings.languageCode) { SharedStrings.forCode(strings.languageCode).playlistSyncCopy }
+                        Text(
+                            text = listOfNotNull(
+                                syncCopy[PlaylistSyncText.Linked],
+                                when {
+                                    syncing -> syncCopy[PlaylistSyncText.Syncing]
+                                    syncLink.lastError.isNotBlank() -> null
+                                    syncLink.lastSyncedAt > 0L -> syncCopy.format(PlaylistSyncText.LastSynced, time = desktopSyncTime(syncLink.lastSyncedAt, strings.languageCode))
+                                    else -> syncCopy[PlaylistSyncText.NotSynced]
+                                }
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (syncLink.lastError.isNotBlank() && !syncing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        )
+                    }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -146,6 +169,9 @@ fun PlaylistScreen(
                         }
                         OutlinedButton(onClick = onExport, enabled = playlist.tracks.isNotEmpty()) {
                             Text(strings.playlistExport)
+                        }
+                        OutlinedButton(onClick = onOpenSync) {
+                            Text(remember(strings.languageCode) { SharedStrings.forCode(strings.languageCode).playlistSyncCopy[PlaylistSyncText.MenuAction] })
                         }
                         OutlinedButton(onClick = onDelete) {
                             Text(strings.playlistDelete)

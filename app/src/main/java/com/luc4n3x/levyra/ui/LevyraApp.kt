@@ -2088,6 +2088,7 @@ fun LevyraApp(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (state.lastFmAuthorizationPending) viewModel.completeLastFmAuthorization()
+        viewModel.playlistSync.onForeground()
     }
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
@@ -3345,13 +3346,12 @@ fun LevyraApp(
                 }
             }
             if (showYoutubeMusic) {
-                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountScreen(
-                    viewModel = youtubeMusicViewModel,
+                com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicAccountOverlay(
+                    viewModel = viewModel,
+                    accountViewModel = youtubeMusicViewModel,
                     languageCode = state.languageCode,
-                    onPlay = { tracks, track -> showYoutubeMusic = false; viewModel.playFrom(tracks, track) },
-                    onArtist = viewModel::openArtistFromHit,
-                    onImported = viewModel::refreshYoutubeMusicImports,
-                    onClose = { showYoutubeMusic = false }
+                    onClose = { showYoutubeMusic = false },
+                    modifier = Modifier.zIndex(40.6f)
                 )
             }
 
@@ -3712,7 +3712,7 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = detailEnter, exit = pageExit) {
-                LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
+                LevyraPlaylistDetailScreen(viewModel = viewModel, state = state, onOpenYoutubeMusic = { showYoutubeMusic = true })
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)

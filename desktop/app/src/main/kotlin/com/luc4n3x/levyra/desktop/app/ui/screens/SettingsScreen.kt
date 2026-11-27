@@ -73,7 +73,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onImportPhoneBackup: () -> Unit = {},
     youtubeMusicAccounts: DesktopYoutubeMusicAccounts? = null,
-    browserCookieImport: BrowserCookieImport? = null
+    browserCookieImport: BrowserCookieImport? = null,
+    playlistSync: com.luc4n3x.levyra.desktop.core.account.DesktopPlaylistSync? = null
 ) {
     val strings = LocalStrings.current
 
@@ -110,7 +111,7 @@ fun SettingsScreen(
     ) {
         if (page == SettingsPage.YOUTUBE_MUSIC && youtubeMusicAccounts != null && browserCookieImport != null) {
             item(key = "settings-youtube-music") {
-                YoutubeMusicAccountPage(youtubeMusicAccounts, browserCookieImport, strings.languageCode)
+                YoutubeMusicAccountPage(youtubeMusicAccounts, browserCookieImport, strings.languageCode, playlistSync)
             }
         }
         item(key = "settings-primary-$page") {

@@ -1,7 +1,11 @@
 package com.luc4n3x.levyra.desktop.app.di
 
 import com.luc4n3x.levyra.desktop.core.account.BrowserCookieImport
+import com.luc4n3x.levyra.desktop.core.account.DesktopPlaylistSync
 import com.luc4n3x.levyra.desktop.core.account.DesktopYoutubeMusicAccounts
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -72,6 +76,9 @@ class AppContainer {
         MoodsRepository.innerTubeLanguage(settingsStore.current.language.tag)
     }
     val browserCookieImport = BrowserCookieImport()
+    private val playlistSync = DesktopPlaylistSync(youtubeMusicAccounts, libraryStore, {
+        MoodsRepository.innerTubeLanguage(settingsStore.current.language.tag)
+    })
     private val catalogRepository = CatalogRepository(
         personalBrowse = youtubeMusicAccounts::browse,
         personalAccount = { youtubeMusicAccounts.activeAccountId }
@@ -200,11 +207,39 @@ class AppContainer {
             language = { settingsStore.current.language.tag }
         ),
         youtubeMusicAccounts = youtubeMusicAccounts,
-        browserCookieImport = browserCookieImport
+        browserCookieImport = browserCookieImport,
+        playlistSync = playlistSync
     )
 
     init {
         scope.launch { youtubeMusicAccounts.load() }
+        val playlistSyncRequests = Channel<Unit>(Channel.CONFLATED)
+        scope.launch {
+            for (request in playlistSyncRequests) {
+                try {
+                    playlistSync.syncDue()
+                } catch (error: kotlinx.coroutines.CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                }
+            }
+        }
+        scope.launch {
+            libraryStore.library
+                .map { data -> data.playlistSyncs.map { it.playlistId to it.autoSync } to data.playlists.associate { it.id to it.updatedAt } }
+                .distinctUntilChanged()
+                .collectLatest { (links, _) ->
+                    if (links.none { it.second }) return@collectLatest
+                    delay(PLAYLIST_SYNC_DEBOUNCE_MS)
+                    playlistSyncRequests.trySend(Unit)
+                }
+        }
+        scope.launch {
+            while (true) {
+                delay(PLAYLIST_SYNC_REFRESH_MS)
+                playlistSyncRequests.trySend(Unit)
+            }
+        }
         scope.launch {
             youtubeMusicAccounts.accounts
                 .map { accounts -> accounts.firstOrNull { it.active }?.id }
@@ -234,6 +269,8 @@ class AppContainer {
     )
 
     companion object {
+        private const val PLAYLIST_SYNC_DEBOUNCE_MS = 2_000L
+        private const val PLAYLIST_SYNC_REFRESH_MS = 15 * 60_000L
         fun bundledVlcDirectory(): Path? {
             val resources = System.getProperty("compose.application.resources.dir").orEmpty()
             if (resources.isBlank()) return null

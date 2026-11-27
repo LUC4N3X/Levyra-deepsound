@@ -76,7 +76,41 @@ class LibraryStore(
     }
 
     fun deletePlaylist(playlistId: String) = mutate { data ->
-        data.copy(playlists = data.playlists.filterNot { it.id == playlistId })
+        data.copy(
+            playlists = data.playlists.filterNot { it.id == playlistId },
+            playlistSyncs = data.playlistSyncs.filterNot { it.playlistId == playlistId }
+        )
+    }
+
+    fun removeTracks(playlistId: String, trackIds: Set<String>) = mutate { data ->
+        if (trackIds.isEmpty()) return@mutate data
+        data.copy(playlists = data.playlists.map { playlist ->
+            if (playlist.id == playlistId) playlist.copy(tracks = playlist.tracks.filterNot { it.id in trackIds }) else playlist
+        })
+    }
+
+    fun saveSyncLink(link: PlaylistSyncLink): Boolean {
+        var saved = false
+        mutate { data ->
+            if (data.playlists.none { it.id == link.playlistId }) return@mutate data
+            val conflict = data.playlistSyncs.any {
+                it.playlistId != link.playlistId && it.accountId == link.accountId && it.remotePlaylistId == link.remotePlaylistId
+            }
+            if (conflict) return@mutate data
+            saved = true
+            data.copy(playlistSyncs = data.playlistSyncs.filterNot { it.playlistId == link.playlistId } + link)
+        }
+        return saved
+    }
+
+    fun updateSyncLink(playlistId: String, accountId: String, remotePlaylistId: String, transform: (PlaylistSyncLink) -> PlaylistSyncLink) = mutate { data ->
+        data.copy(playlistSyncs = data.playlistSyncs.map { link ->
+            if (link.playlistId == playlistId && link.accountId == accountId && link.remotePlaylistId == remotePlaylistId) transform(link) else link
+        })
+    }
+
+    fun removeSyncLink(playlistId: String) = mutate { data ->
+        data.copy(playlistSyncs = data.playlistSyncs.filterNot { it.playlistId == playlistId })
     }
 
     fun addToPlaylist(playlistId: String, tracks: List<Track>) = mutate { data ->
@@ -138,8 +172,16 @@ class LibraryStore(
 
     @Synchronized
     private fun mutate(transform: (LibraryData) -> LibraryData) {
-        val updated = transform(state.value)
-        if (updated == state.value) return
+        val previous = state.value
+        val transformed = transform(previous)
+        if (transformed == previous) return
+        val before = previous.playlists.associateBy { it.id }
+        val now = nowMillis()
+        val updated = transformed.copy(playlists = transformed.playlists.map { playlist ->
+            val old = before[playlist.id]
+            if (old != null && old.name == playlist.name && old.tracks == playlist.tracks) playlist
+            else playlist.copy(updatedAt = maxOf(now, playlist.updatedAt))
+        })
         store.write(updated)
         state.value = updated
     }

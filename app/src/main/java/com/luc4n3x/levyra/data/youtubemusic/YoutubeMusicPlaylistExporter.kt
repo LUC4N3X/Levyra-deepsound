@@ -12,8 +12,7 @@ internal class YoutubeMusicPlaylistExporter(
         progress.onCreated("${YoutubeMusicAuth.ORIGIN}/playlist?list=$playlistId")
         var added = 0
         videoIds.chunked(BATCH_SIZE).forEach { batch ->
-            client.addToPlaylist(session, playlistId, batch)
-            added += batch.size
+            added += batch.size - client.addToPlaylist(session, playlistId, batch).size
             progress.onAdded(added)
         }
     }

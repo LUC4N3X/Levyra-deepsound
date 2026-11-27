@@ -254,6 +254,11 @@ class PlaylistStore(context: Context) {
         Playlist(id, name.trim().ifBlank { "Playlist" }, cover, tracks, now, now)
     }
 
+    suspend fun createEmpty(playlistId: String, name: String) = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        dao.insertPlaylistIfAbsent(PlaylistEntity(playlistId, name.trim().ifBlank { "Playlist" }, "", now, now))
+    }
+
     suspend fun replaceTrack(playlistId: String, oldTrackId: String, replacement: Track): Boolean = withContext(Dispatchers.IO) {
         if (replacement.id.isBlank() || replacement.title.isBlank()) return@withContext false
         dao.replaceTrackInPlace(

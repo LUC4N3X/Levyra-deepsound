@@ -1131,6 +1131,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val playlistExport: PlaylistExportController by lazy {
         PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext, listenBrainzLibrary)
     }
+    internal val playlistSync: PlaylistSyncController by lazy {
+        PlaylistSyncController(viewModelScope, getApplication<Application>().applicationContext, playlistStore, { _state.value.languageCode }) { playlistId ->
+            loadPlaylists()
+            viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+        }
+    }
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
     private val levyraContext: Context get() = getApplication<Application>().applicationContext
@@ -3581,6 +3587,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val lists = playlistStore.loadAll()
             val tags = playlistStore.allTags()
             _state.update { it.copy(playlists = lists, playlistTags = tags) }
+            playlistSync.onPlaylistsChanged()
         }
     }
 
@@ -4434,7 +4441,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun deletePlaylist(playlistId: String) {
         SpeedDial.playlistKey(playlistId)?.let(::removeSpeedDialPin)
         viewModelScope.launch {
-            playlistStore.delete(playlistId)
+            playlistSync.withPlaylistLock(playlistId) { playlistStore.delete(playlistId) }
             _state.update { if (it.openPlaylist?.id == playlistId) it.copy(openPlaylist = null) else it }
             loadPlaylists()
         }
@@ -4448,7 +4455,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             mutateSpeedDial { pins -> pins.filterNot { it.key in pinKeys } }
         }
         viewModelScope.launch {
-            uniqueIds.forEach { playlistStore.delete(it) }
+            uniqueIds.forEach { id -> playlistSync.withPlaylistLock(id) { playlistStore.delete(id) } }
             _state.update { current ->
                 if (current.openPlaylist?.id in uniqueIds) current.copy(openPlaylist = null) else current
             }
