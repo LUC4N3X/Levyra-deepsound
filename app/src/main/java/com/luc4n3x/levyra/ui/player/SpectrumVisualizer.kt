@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.domain.SpectrumVisualizerStyle
 import com.luc4n3x.levyra.player.visualizer.SpectrumEngine
 import com.luc4n3x.levyra.player.visualizer.SpectrumFrame
+import com.luc4n3x.levyra.ui.LevyraIsLight
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SpectrumText
 import com.luc4n3x.levyra.ui.i18n.spectrumCopy
@@ -55,26 +56,33 @@ fun PlayerSpectrumStrip(state: LevyraUiState, modifier: Modifier = Modifier) {
     val route = rememberLyricsAudioOutputRoute()
     val offsetMs = state.lyricsLatencyProfiles.resolve(route?.stableKey, route?.bluetooth == true)
     val tall = style == SpectrumVisualizerStyle.ANALYZER || style == SpectrumVisualizerStyle.SPECTROGRAM
+    val light = LevyraIsLight
+    val accent = Color(track.accentStart)
+    val background = remember(accent, light) {
+        if (light) lerp(Color.White, accent, 0.10f) else lerp(Color.Black, accent, 0.14f)
+    }
     Box(
         modifier
             .fillMaxWidth()
-            .background(SpectrumStripBackground)
+            .background(background)
             .navigationBarsPadding()
-            .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp)
+            .padding(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 2.dp)
     ) {
         SpectrumVisualizer(
             style = style,
             outputLatencyOffsetMs = offsetMs,
-            accent = Color(track.accentStart),
+            accent = accent,
             description = LocalLevyraStrings.current.spectrumCopy[SpectrumText.Accessibility],
+            light = light,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (tall) 72.dp else 52.dp)
+                .height(if (tall) SPECTRUM_TALL_HEIGHT else SPECTRUM_COMPACT_HEIGHT)
         )
     }
 }
 
-private val SpectrumStripBackground = Color(0xFF0B0B0D)
+private val SPECTRUM_COMPACT_HEIGHT = 32.dp
+private val SPECTRUM_TALL_HEIGHT = 48.dp
 
 @Composable
 fun SpectrumVisualizer(
@@ -82,18 +90,19 @@ fun SpectrumVisualizer(
     outputLatencyOffsetMs: Long,
     accent: Color,
     description: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    light: Boolean = false
 ) {
     if (!style.enabled) return
     SideEffect { SpectrumEngine.outputLatencyOffsetMs = outputLatencyOffsetMs }
     val frameState = SpectrumEngine.frame.collectAsStateWithLifecycle()
-    val palette = remember(accent) { SpectrumPalette(accent) }
+    val palette = remember(accent, light) { SpectrumPalette(accent, light) }
     val path = remember { Path() }
     val spectrogram = remember(style, palette) {
         if (style == SpectrumVisualizerStyle.SPECTROGRAM) SpectrogramCanvas(palette) else null
     }
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = remember(palette) { TextStyle(color = palette.grid.copy(alpha = 0.9f), fontSize = 9.sp) }
+    val labelStyle = remember(palette) { TextStyle(color = palette.label, fontSize = 8.sp) }
     val analyzerLabels = remember(style, labelStyle) {
         if (style == SpectrumVisualizerStyle.ANALYZER) {
             AnalyzerLabels(
@@ -119,11 +128,13 @@ fun SpectrumVisualizer(
     }
 }
 
-private class SpectrumPalette(accent: Color) {
+private class SpectrumPalette(accent: Color, light: Boolean) {
     val bright = lerp(accent, Color.White, 0.55f)
     val dim = accent.copy(alpha = 0.28f)
-    val grid = Color.White.copy(alpha = 0.16f)
-    val peak = Color.White.copy(alpha = 0.92f)
+    private val ink = if (light) Color.Black else Color.White
+    val grid = ink.copy(alpha = 0.16f)
+    val label = ink.copy(alpha = 0.55f)
+    val peak = ink.copy(alpha = if (light) 0.75f else 0.92f)
     val barBrush = Brush.verticalGradient(listOf(bright, accent, accent.copy(alpha = 0.55f)))
     val curveFill = Brush.verticalGradient(listOf(accent.copy(alpha = 0.55f), Color.Transparent))
     val curveStroke = Stroke(width = 2.2f, cap = StrokeCap.Round)
@@ -332,7 +343,7 @@ private class SpectrogramCanvas(private val palette: SpectrumPalette) {
 }
 
 private const val LED_COLUMNS = 24
-private const val LED_ROWS = 14
+private const val LED_ROWS = 9
 private const val SPECTROGRAM_COLUMNS = 240
-private val ANALYZER_GRID_DB = listOf(0, -24, -48, -72)
+private val ANALYZER_GRID_DB = listOf(0, -45)
 private val ANALYZER_FREQUENCY_LABELS = listOf(1 to "25", 7 to "100", 13 to "400", 17 to "1k", 23 to "4k", 27 to "10k")

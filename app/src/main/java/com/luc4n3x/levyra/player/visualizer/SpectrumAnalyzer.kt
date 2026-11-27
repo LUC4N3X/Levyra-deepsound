@@ -12,7 +12,7 @@ import kotlin.math.sqrt
 
 internal class SpectrumAnalyzer(val fftSize: Int = DEFAULT_FFT_SIZE) {
     init {
-        require(fftSize >= 64 && fftSize and (fftSize - 1) == 0)
+        require(fftSize >= 64 && fftSize and fftSize - 1 == 0)
     }
 
     val binCount = fftSize / 2 + 1
@@ -25,7 +25,7 @@ internal class SpectrumAnalyzer(val fftSize: Int = DEFAULT_FFT_SIZE) {
     private val imaginary = FloatArray(fftSize)
     private val bitReversed = IntArray(fftSize).also { table ->
         val bits = Integer.numberOfTrailingZeros(fftSize)
-        for (index in 0 until fftSize) table[index] = Integer.reverse(index) ushr (32 - bits)
+        for (index in 0 until fftSize) table[index] = Integer.reverse(index) ushr 32 - bits
     }
     private val cosTable = FloatArray(fftSize / 2) { cos(2.0 * PI * it / fftSize).toFloat() }
     private val sinTable = FloatArray(fftSize / 2) { sin(2.0 * PI * it / fftSize).toFloat() }
