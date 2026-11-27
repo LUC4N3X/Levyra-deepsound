@@ -183,6 +183,16 @@ class AgentHarnessTest(unittest.TestCase):
         self.assertEqual(0, hygiene["completed_since_clear"])
         self.assertFalse(hygiene["clear_recommended"])
 
+    def test_completed_boundary_recommends_clear_only_once(self) -> None:
+        checkpoint._reset_hygiene()
+        first = {"goal": "a", "edit_generation": 1, "edited_paths": ["x"]}
+        second = {"goal": "b", "edit_generation": 2, "edited_paths": ["y"]}
+        self.assertFalse(checkpoint._record_completed_boundary(first))
+        self.assertTrue(checkpoint._record_completed_boundary(second))
+        self.assertFalse(checkpoint._record_completed_boundary(second))
+        self.assertFalse(checkpoint._record_completed_boundary(second))
+        self.assertTrue(checkpoint._load_hygiene()["clear_recommended"])
+
     def test_checkpoint_allows_narrow_install_and_denies_broad_upgrade(self) -> None:
         narrow = {
             "session_id": "s",
