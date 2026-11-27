@@ -211,6 +211,54 @@ class YoutubeMusicPlaylistSyncTest {
     }
 
     @Test
+    fun remoteOnlySettleKeepsRemoteAddSoALocalRemovalPropagates() {
+        val local = listOf(local("a", A), local("b", B))
+        val remote = snapshot(row(A, "sa"))
+        val plan = plan(local = local, remote = remote, baseline = baseline(A))
+        val settled = settleRemoteOnlySync(plan, local, remote, PlaylistSyncRemoteResult(), "Mix", "Mix")
+
+        assertEquals(setOf(A, B), settled.videoIds)
+        val next = plan(local = listOf(local("a", A)), remote = snapshot(row(A, "sa"), row(B, "sb")), baseline = PlaylistSyncBaseline("Mix", "Mix", settled.videoIds))
+        assertTrue(next.addLocal.isEmpty())
+        assertEquals(listOf(YoutubeMusicPlaylistRemoval(B, "sb")), next.removeRemote)
+    }
+
+    @Test
+    fun remoteOnlySettleKeepsDeferredRemovalsAndRemoteRename() {
+        val local = listOf(local("a", A), local("b", B))
+        val remote = snapshot(row(A, "sa"), title = "Renamed")
+        val plan = plan(local = local, remote = remote, baseline = baseline(A, B))
+        val settled = settleRemoteOnlySync(plan, local, remote, PlaylistSyncRemoteResult(), "Mix", "Mix")
+
+        assertTrue(B in settled.videoIds)
+        assertEquals("Mix", settled.remoteTitle)
+        val next = plan(local = local, remote = remote, baseline = settled)
+        assertEquals(setOf("b"), next.removeLocal)
+        assertEquals("Renamed", next.renameLocal)
+    }
+
+    @Test
+    fun longLocalTitleIsRememberedAsSent() {
+        val long = "x".repeat(200)
+        val plan = plan(local = emptyList(), remote = snapshot(title = "Mix"), baseline = baseline(), title = long)
+
+        assertEquals(150, plan.renameRemote?.length)
+        val settled = settlePlaylistSync(plan, emptyList(), snapshot(title = "Mix"), PlaylistSyncRemoteResult(), emptySet(), long, "Mix")
+        val next = plan(local = emptyList(), remote = snapshot(title = long.take(150)), baseline = settled, title = long)
+        assertNull(next.renameLocal)
+        assertNull(next.renameRemote)
+    }
+
+    @Test
+    fun emptyOrUnknownContinuationContainersAreRejected() {
+        val empty = JSONObject().put("continuationContents", JSONObject())
+        val unknown = JSONObject().put("continuationContents", JSONObject().put("musicPlaylistShelfContinuation", JSONObject()))
+
+        assertFalse(YoutubeMusicPlaylistSnapshotParser.page(empty, continuation = true).recognized)
+        assertFalse(YoutubeMusicPlaylistSnapshotParser.page(unknown, continuation = true).recognized)
+    }
+
+    @Test
     fun baselineCodecDropsInvalidIds() {
         val decoded = decodePlaylistSyncVideoIds(encodePlaylistSyncVideoIds(listOf(A, "bad", B, A)))
 

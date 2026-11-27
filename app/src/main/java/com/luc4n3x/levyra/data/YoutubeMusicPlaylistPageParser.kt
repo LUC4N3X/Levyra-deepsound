@@ -33,7 +33,8 @@ internal object YoutubeMusicPlaylistPageParser {
     }
 
     fun hasContinuationContainer(root: JSONObject): Boolean =
-        root.has("continuationContents") || root.has("onResponseReceivedActions") || root.has("onResponseReceivedEndpoints")
+        (root.has("continuationContents") || root.has("onResponseReceivedActions") || root.has("onResponseReceivedEndpoints")) &&
+            selectedContainers(root).any { it.optJSONArray("contents") != null || it.optJSONArray("continuationItems") != null }
 
     fun hasPlaylistShelf(root: JSONObject): Boolean {
         val shelves = mutableListOf<JSONObject>()

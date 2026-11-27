@@ -62,6 +62,15 @@ internal class PlaylistSyncController(
     val links: StateFlow<Map<String, PlaylistSyncEntity>> = repository.links.stateIn(scope, SharingStarted.Eagerly, emptyMap())
     val syncing: StateFlow<Set<String>> = repository.syncing
 
+    init {
+        scope.launch {
+            while (true) {
+                delay(REMOTE_REFRESH_MS)
+                scheduleAuto(delayMs = 0L)
+            }
+        }
+    }
+
     fun open(playlist: Playlist) {
         sheetJob?.cancel()
         val plan = planRemotePlaylistExport(playlist.items().flatMap { it.playableTracks() })

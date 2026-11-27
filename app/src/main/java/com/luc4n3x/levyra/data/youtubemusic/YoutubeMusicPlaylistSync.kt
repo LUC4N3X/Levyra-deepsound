@@ -241,68 +241,82 @@ internal fun planYoutubeMusicPlaylistSync(
     val remoteByVideo = LinkedHashMap<String, MutableList<YoutubeMusicPlaylistRow>>()
     snapshot.rows.forEach { row -> remoteByVideo.getOrPut(row.videoId) { mutableListOf() } += row }
     val known = baseline?.videoIds.orEmpty()
-
-    val addRemote = localByVideo.keys.filter { it !in remoteByVideo && it !in known }
-    val addLocal = remoteByVideo.filterKeys { it !in localByVideo && it !in known }.values.map { it.first() }
-
-    val removeLocal = LinkedHashSet<String>()
     val pending = LinkedHashSet<String>()
-    var keptLocal = 0
+    if (!snapshot.complete) known.forEach { if (it !in remoteByVideo) pending += it }
+    val removals = planLocalRemovals(localByVideo, remoteByVideo.keys, known, snapshot.complete, pending)
+    val renames = planRenames(localTitle, snapshot.title, baseline)
+    return PlaylistSyncPlan(
+        addRemote = localByVideo.keys.filter { it !in remoteByVideo && it !in known },
+        removeRemote = planRemoteRemovals(remoteByVideo, localByVideo.keys, known, pending),
+        addLocal = remoteByVideo.filterKeys { it !in localByVideo && it !in known }.values.map { it.first() },
+        removeLocal = removals.keys,
+        renameRemote = renames.first,
+        renameLocal = renames.second,
+        pendingVideoIds = pending,
+        keptLocal = removals.kept,
+        heldBack = removals.heldBack,
+        unmatched = unmatched
+    )
+}
+
+private class LocalRemovals(val keys: Set<String>, val kept: Int, val heldBack: Int)
+
+private fun planLocalRemovals(
+    localByVideo: Map<String, List<PlaylistSyncLocalTrack>>,
+    remote: Set<String>,
+    known: Set<String>,
+    trusted: Boolean,
+    pending: MutableSet<String>
+): LocalRemovals {
+    val keys = LinkedHashSet<String>()
+    var kept = 0
     var heldBack = 0
-    val remoteTrusted = snapshot.complete
-    if (!remoteTrusted) known.forEach { if (it !in remoteByVideo) pending += it }
     localByVideo.forEach { (videoId, tracks) ->
-        if (videoId in remoteByVideo || videoId !in known) return@forEach
+        if (videoId in remote || videoId !in known) return@forEach
         when {
-            !remoteTrusted -> {
+            !trusted -> {
                 heldBack++
                 pending += videoId
             }
-            tracks.all { it.removable } -> tracks.forEach { removeLocal += it.key }
+            tracks.all { it.removable } -> tracks.forEach { keys += it.key }
             else -> {
-                keptLocal++
+                kept++
                 pending += videoId
-                tracks.filter { it.removable }.forEach { removeLocal += it.key }
+                tracks.filter { it.removable }.forEach { keys += it.key }
             }
         }
     }
+    return LocalRemovals(keys, kept, heldBack)
+}
 
-    val removeRemote = mutableListOf<YoutubeMusicPlaylistRemoval>()
+private fun planRemoteRemovals(
+    remoteByVideo: Map<String, List<YoutubeMusicPlaylistRow>>,
+    local: Set<String>,
+    known: Set<String>,
+    pending: MutableSet<String>
+): List<YoutubeMusicPlaylistRemoval> {
+    val removals = mutableListOf<YoutubeMusicPlaylistRemoval>()
     remoteByVideo.forEach { (videoId, rows) ->
-        if (videoId in localByVideo || videoId !in known) return@forEach
+        if (videoId in local || videoId !in known) return@forEach
         val removable = rows.filter { it.setVideoId.isNotBlank() }
         if (removable.size == rows.size) {
-            removable.forEach { removeRemote += YoutubeMusicPlaylistRemoval(videoId, it.setVideoId) }
+            removable.forEach { removals += YoutubeMusicPlaylistRemoval(videoId, it.setVideoId) }
         } else {
             pending += videoId
         }
     }
+    return removals
+}
 
+private fun planRenames(localTitle: String, remoteTitle: String, baseline: PlaylistSyncBaseline?): Pair<String?, String?> {
     val cleanLocal = localTitle.trim()
-    val cleanRemote = snapshot.title.trim()
-    var renameRemote: String? = null
-    var renameLocal: String? = null
-    if (baseline != null && cleanLocal.isNotBlank() && cleanRemote.isNotBlank() && cleanLocal != cleanRemote) {
-        val localChanged = cleanLocal != baseline.localTitle.trim()
-        val remoteChanged = cleanRemote != baseline.remoteTitle.trim()
-        when {
-            localChanged -> renameRemote = cleanLocal
-            remoteChanged -> renameLocal = cleanRemote
-        }
+    val cleanRemote = remoteTitle.trim()
+    if (baseline == null || cleanLocal.isBlank() || cleanRemote.isBlank() || cleanLocal == cleanRemote) return null to null
+    return when {
+        cleanLocal != baseline.localTitle.trim() -> cleanLocal.take(YOUTUBE_MUSIC_PLAYLIST_TITLE_LIMIT) to null
+        cleanRemote != baseline.remoteTitle.trim() -> null to cleanRemote
+        else -> null to null
     }
-
-    return PlaylistSyncPlan(
-        addRemote = addRemote,
-        removeRemote = removeRemote,
-        addLocal = addLocal,
-        removeLocal = removeLocal,
-        renameRemote = renameRemote,
-        renameLocal = renameLocal,
-        pendingVideoIds = pending,
-        keptLocal = keptLocal,
-        heldBack = heldBack,
-        unmatched = unmatched
-    )
 }
 
 internal fun settlePlaylistSync(
@@ -327,6 +341,27 @@ internal fun settlePlaylistSync(
     val finalRemoteTitle = plan.renameRemote ?: snapshot.title.trim().ifBlank { knownRemoteTitle.trim().ifBlank { finalLocalTitle } }
     return PlaylistSyncBaseline(finalLocalTitle, finalRemoteTitle, ids)
 }
+
+internal fun settleRemoteOnlySync(
+    plan: PlaylistSyncPlan,
+    local: List<PlaylistSyncLocalTrack>,
+    snapshot: YoutubeMusicPlaylistSnapshot,
+    remote: PlaylistSyncRemoteResult,
+    localTitle: String,
+    knownRemoteTitle: String
+): PlaylistSyncBaseline {
+    val deferredRemovals = local.filter { it.key in plan.removeLocal }.mapNotNull { it.videoId }
+    val remoteOnly = plan.copy(
+        addLocal = emptyList(),
+        removeLocal = emptySet(),
+        renameLocal = null,
+        pendingVideoIds = plan.pendingVideoIds + deferredRemovals
+    )
+    val settled = settlePlaylistSync(remoteOnly, local, snapshot, remote, emptySet(), localTitle, knownRemoteTitle)
+    return if (plan.renameLocal != null) settled.copy(remoteTitle = knownRemoteTitle.trim()) else settled
+}
+
+internal const val YOUTUBE_MUSIC_PLAYLIST_TITLE_LIMIT = 150
 
 private val YOUTUBE_MUSIC_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 

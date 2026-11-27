@@ -89,8 +89,8 @@ internal class YoutubeMusicPlaylistSyncRepository(
                     val claimed = withContext(NonCancellable) {
                         val (remoteId, remoteTitle) = when (target) {
                             PlaylistSyncTarget.CreateNew -> {
-                                val title = playlist.name.trim().ifBlank { "Levyra" }
-                                canonicalYoutubeMusicPlaylistId(client.createPlaylist(session, title.take(MAX_TITLE_LENGTH))) to title
+                                val title = playlist.name.trim().ifBlank { "Levyra" }.take(YOUTUBE_MUSIC_PLAYLIST_TITLE_LIMIT)
+                                canonicalYoutubeMusicPlaylistId(client.createPlaylist(session, title)) to title
                             }
                             is PlaylistSyncTarget.Existing -> canonicalYoutubeMusicPlaylistId(target.remotePlaylistId) to target.title.trim()
                         }
@@ -209,55 +209,77 @@ internal class YoutubeMusicPlaylistSyncRepository(
                 }
                 val current = playlists.load(playlistId) ?: return@withContext PlaylistSyncOutcome.Failed(PlaylistSyncError.MISSING)
                 if (current.updatedAt != playlist.updatedAt || current.name != playlist.name) {
-                    dao.recordError(playlistId, link.accountId, link.remotePlaylistId, "")
-                    return@withContext PlaylistSyncOutcome.Synced(
-                        PlaylistSyncSummary(
-                            addedRemotely = plan.addRemote.size - remote.rejectedAdds.size,
-                            removedRemotely = plan.removeRemote.map { it.videoId }.distinct().size - remote.rejectedRemovals.size,
-                            renamed = plan.renameRemote != null
-                        )
-                    )
-                }
-                val browseId = "VL${link.remotePlaylistId}"
-                val additions = plan.addLocal.mapNotNull { row ->
-                    parser.parsePlaylistRenderer(row.renderer, browseId)?.copy(streamUrl = "", videoStreamUrl = "")
-                }
-                if (plan.removeLocal.isNotEmpty()) playlists.removeTracks(playlistId, plan.removeLocal)
-                if (additions.isNotEmpty()) playlists.addTracks(playlistId, additions)
-                plan.renameLocal?.let { playlists.rename(playlistId, it) }
-                val updated = playlists.load(playlistId) ?: return@withContext PlaylistSyncOutcome.Failed(PlaylistSyncError.MISSING)
-                val present = updated.syncTracks().mapNotNullTo(hashSetOf()) { it.videoId }
-                val addedIds = plan.addLocal.mapNotNullTo(hashSetOf()) { row -> row.videoId.takeIf { it in present } }
-                val settled = settlePlaylistSync(plan, local, snapshot, remote, addedIds, playlist.name, link.remoteTitle)
-                dao.recordSync(
-                    playlistId = playlistId,
-                    accountId = link.accountId,
-                    remotePlaylistId = link.remotePlaylistId,
-                    localTitle = settled.localTitle,
-                    remoteTitle = settled.remoteTitle,
-                    videoIds = encodePlaylistSyncVideoIds(settled.videoIds),
-                    localUpdatedAt = updated.updatedAt,
-                    lastSyncedAt = System.currentTimeMillis(),
-                    unmatched = plan.unmatched,
-                    keptLocal = plan.keptLocal
-                )
-                PlaylistSyncOutcome.Synced(
-                    PlaylistSyncSummary(
-                        addedLocally = additions.size,
-                        removedLocally = plan.removeLocal.size,
-                        addedRemotely = plan.addRemote.size - remote.rejectedAdds.size,
-                        removedRemotely = plan.removeRemote.map { it.videoId }.distinct().size - remote.rejectedRemovals.size,
-                        renamed = plan.renameLocal != null || plan.renameRemote != null,
+                    val settled = settleRemoteOnlySync(plan, local, snapshot, remote, playlist.name, link.remoteTitle)
+                    dao.recordSync(
+                        playlistId = playlistId,
+                        accountId = link.accountId,
+                        remotePlaylistId = link.remotePlaylistId,
+                        localTitle = settled.localTitle,
+                        remoteTitle = settled.remoteTitle,
+                        videoIds = encodePlaylistSyncVideoIds(settled.videoIds),
+                        localUpdatedAt = playlist.updatedAt,
+                        lastSyncedAt = System.currentTimeMillis(),
                         unmatched = plan.unmatched,
-                        keptLocal = plan.keptLocal,
-                        waiting = plan.heldBack,
-                        rejected = remote.rejectedAdds.size + remote.rejectedRemovals.size
+                        keptLocal = plan.keptLocal
                     )
-                )
+                    return@withContext PlaylistSyncOutcome.Synced(remoteSummary(plan, remote))
+                }
+                applyLocalPlan(link, playlist, local, snapshot, plan, remote)
             }
         } finally {
             running.update { it - playlistId }
         }
+    }
+
+    private fun remoteSummary(plan: PlaylistSyncPlan, remote: PlaylistSyncRemoteResult) = PlaylistSyncSummary(
+        addedRemotely = plan.addRemote.size - remote.rejectedAdds.size,
+        removedRemotely = plan.removeRemote.map { it.videoId }.distinct().size - remote.rejectedRemovals.size,
+        renamed = plan.renameRemote != null,
+        rejected = remote.rejectedAdds.size + remote.rejectedRemovals.size
+    )
+
+    private suspend fun applyLocalPlan(
+        link: PlaylistSyncEntity,
+        playlist: Playlist,
+        local: List<PlaylistSyncLocalTrack>,
+        snapshot: YoutubeMusicPlaylistSnapshot,
+        plan: PlaylistSyncPlan,
+        remote: PlaylistSyncRemoteResult
+    ): PlaylistSyncOutcome {
+        val playlistId = link.playlistId
+        val browseId = "VL${link.remotePlaylistId}"
+        val additions = plan.addLocal.mapNotNull { row ->
+            parser.parsePlaylistRenderer(row.renderer, browseId)?.copy(streamUrl = "", videoStreamUrl = "")
+        }
+        if (plan.removeLocal.isNotEmpty()) playlists.removeTracks(playlistId, plan.removeLocal)
+        if (additions.isNotEmpty()) playlists.addTracks(playlistId, additions)
+        plan.renameLocal?.let { playlists.rename(playlistId, it) }
+        val updated = playlists.load(playlistId) ?: return PlaylistSyncOutcome.Failed(PlaylistSyncError.MISSING)
+        val present = updated.syncTracks().mapNotNullTo(hashSetOf()) { it.videoId }
+        val addedIds = plan.addLocal.mapNotNullTo(hashSetOf()) { row -> row.videoId.takeIf { it in present } }
+        val settled = settlePlaylistSync(plan, local, snapshot, remote, addedIds, playlist.name, link.remoteTitle)
+        dao.recordSync(
+            playlistId = playlistId,
+            accountId = link.accountId,
+            remotePlaylistId = link.remotePlaylistId,
+            localTitle = settled.localTitle,
+            remoteTitle = settled.remoteTitle,
+            videoIds = encodePlaylistSyncVideoIds(settled.videoIds),
+            localUpdatedAt = updated.updatedAt,
+            lastSyncedAt = System.currentTimeMillis(),
+            unmatched = plan.unmatched,
+            keptLocal = plan.keptLocal
+        )
+        return PlaylistSyncOutcome.Synced(
+            remoteSummary(plan, remote).copy(
+                addedLocally = additions.size,
+                removedLocally = plan.removeLocal.size,
+                renamed = plan.renameLocal != null || plan.renameRemote != null,
+                unmatched = plan.unmatched,
+                keptLocal = plan.keptLocal,
+                waiting = plan.heldBack
+            )
+        )
     }
 
     private suspend fun fail(link: PlaylistSyncEntity, error: PlaylistSyncError): PlaylistSyncOutcome {
@@ -296,7 +318,6 @@ internal class YoutubeMusicPlaylistSyncRepository(
     }
 
     private companion object {
-        const val MAX_TITLE_LENGTH = 150
         const val RETRY_BACKOFF_MS = 5 * 60_000L
     }
 }

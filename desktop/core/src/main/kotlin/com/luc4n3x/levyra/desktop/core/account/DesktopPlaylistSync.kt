@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.data.youtubemusic.collectYoutubeMusicPages
 import com.luc4n3x.levyra.data.youtubemusic.planYoutubeMusicPlaylistSync
 import com.luc4n3x.levyra.data.youtubemusic.playlistSnapshot
 import com.luc4n3x.levyra.data.youtubemusic.settlePlaylistSync
+import com.luc4n3x.levyra.data.youtubemusic.settleRemoteOnlySync
 import com.luc4n3x.levyra.data.youtubemusic.youtubeMusicPlaylistUrl
 import com.luc4n3x.levyra.desktop.core.catalog.YoutubeMusicArtistPage
 import com.luc4n3x.levyra.desktop.core.model.videoId
@@ -50,7 +51,7 @@ sealed interface DesktopPlaylistSyncOutcome {
     data class Failed(val error: DesktopPlaylistSyncError) : DesktopPlaylistSyncOutcome
 }
 
-data class DesktopOwnedPlaylist(val playlistId: String, val title: String, val subtitle: String)
+data class DesktopOwnedPlaylist(val playlistId: String, val title: String, val subtitle: String, val thumbnailUrl: String = "")
 
 class DesktopPlaylistSync(
     private val accounts: DesktopYoutubeMusicAccounts,
@@ -69,7 +70,7 @@ class DesktopPlaylistSync(
         val linked = library.current.playlistSyncs.filter { it.accountId == session.account.id }.mapTo(hashSetOf()) { it.remotePlaylistId }
         collectYoutubeMusicPages(key = YoutubeMusicOwnedPlaylist::playlistId) { continuation ->
             YoutubeMusicOwnedPlaylistParser.page(accounts.playlistClient.browse(session, LIBRARY_PLAYLISTS, language(), continuation))
-        }.filter { it.playlistId !in linked }.map { DesktopOwnedPlaylist(it.playlistId, it.title, it.subtitle) }
+        }.filter { it.playlistId !in linked }.map { DesktopOwnedPlaylist(it.playlistId, it.title, it.subtitle, it.thumbnailUrl) }
     }
 
     suspend fun createAndLink(playlistId: String, autoSync: Boolean): DesktopPlaylistSyncOutcome =
@@ -77,6 +78,24 @@ class DesktopPlaylistSync(
 
     suspend fun linkExisting(playlistId: String, remote: DesktopOwnedPlaylist, autoSync: Boolean): DesktopPlaylistSyncOutcome =
         link(playlistId, remote, autoSync)
+
+    suspend fun importAndLink(remote: DesktopOwnedPlaylist): DesktopPlaylistSyncOutcome = withContext(Dispatchers.IO) {
+        val session = try {
+            accounts.activeSession()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            return@withContext DesktopPlaylistSyncOutcome.Failed(error.toSyncError())
+        } ?: return@withContext DesktopPlaylistSyncOutcome.Failed(DesktopPlaylistSyncError.SIGN_IN)
+        val remoteId = canonicalYoutubeMusicPlaylistId(remote.playlistId)
+        library.current.playlistSyncs.firstOrNull { it.accountId == session.account.id && it.remotePlaylistId == remoteId }?.let {
+            return@withContext sync(it.playlistId)
+        }
+        val playlistId = library.createPlaylist(remote.title.ifBlank { "YouTube Music" })
+        val outcome = link(playlistId, remote, autoSync = true)
+        if (link(playlistId) == null) library.deletePlaylist(playlistId)
+        outcome
+    }
 
     suspend fun sync(playlistId: String): DesktopPlaylistSyncOutcome =
         runSync(playlistId, automatic = false) ?: DesktopPlaylistSyncOutcome.Failed(DesktopPlaylistSyncError.MISSING)
@@ -184,7 +203,19 @@ class DesktopPlaylistSync(
                 }
                 val current = playlist(playlistId) ?: return@withContext DesktopPlaylistSyncOutcome.Failed(DesktopPlaylistSyncError.MISSING)
                 if (current.updatedAt != playlist.updatedAt || current.name != playlist.name) {
-                    library.updateSyncLink(playlistId, link.accountId, link.remotePlaylistId) { it.copy(lastError = "") }
+                    val settled = settleRemoteOnlySync(plan, local, snapshot, remote, playlist.name, link.remoteTitle)
+                    val syncedAt = nowMillis()
+                    library.updateSyncLink(playlistId, link.accountId, link.remotePlaylistId) {
+                        it.copy(
+                            localTitle = settled.localTitle,
+                            remoteTitle = settled.remoteTitle,
+                            videoIds = settled.videoIds.toList(),
+                            synced = true,
+                            localUpdatedAt = playlist.updatedAt,
+                            lastSyncedAt = syncedAt,
+                            lastError = ""
+                        )
+                    }
                     return@withContext DesktopPlaylistSyncOutcome.Synced(
                         DesktopPlaylistSyncSummary(
                             addedRemotely = plan.addRemote.size - remote.rejectedAdds.size,

@@ -110,7 +110,8 @@ private val AccountGlow = Color(0xFFFF6B6B)
 internal fun YoutubeMusicAccountPage(
     accounts: DesktopYoutubeMusicAccounts,
     browserImport: BrowserCookieImport,
-    languageCode: String
+    languageCode: String,
+    playlistSync: com.luc4n3x.levyra.desktop.core.account.DesktopPlaylistSync? = null
 ) {
     val copy = remember(languageCode) { SharedStrings.forCode(languageCode).youtubeMusicLinkCopy }
     val signedIn by accounts.accounts.collectAsState()
@@ -120,7 +121,9 @@ internal fun YoutubeMusicAccountPage(
     val scope = rememberCoroutineScope()
 
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        AccountHero(copy, signedIn.firstOrNull { it.active })
+        val activeAccount = signedIn.firstOrNull { it.active }
+        AccountHero(copy, activeAccount)
+        if (activeAccount != null && playlistSync != null) YoutubeMusicSyncablePlaylists(playlistSync, activeAccount.id, languageCode)
         if (signedIn.isNotEmpty()) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))

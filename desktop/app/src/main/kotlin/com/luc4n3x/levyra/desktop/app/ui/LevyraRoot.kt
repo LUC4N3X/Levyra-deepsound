@@ -556,6 +556,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 },
                                                 youtubeMusicAccounts = model.youtubeMusicAccounts,
                                                 browserCookieImport = model.browserCookieImport,
+                                                playlistSync = model.playlistSync,
                                                 onImportPhoneBackup = {
                                                     scope.launch {
                                                         val selected = chooseBackupFile()
