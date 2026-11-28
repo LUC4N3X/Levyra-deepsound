@@ -469,7 +469,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 
-private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
 private const val FRESH_DISCOVERY_LOG_TAG = "FreshDiscovery"
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_TIMEOUT_MS = 10_000L
@@ -484,8 +483,6 @@ private const val MOOD_JOURNEY_PREFERENCES = "levyra_mood_journey"
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 
-private const val LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT = 600
-private const val SEARCH_LATENCY_LOG_TAG = "LevyraSearch"
 
 private data class SamplesPlaybackSession(
     val queue: PlaybackQueueSnapshot,
@@ -839,31 +836,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
     val smartListening: StateFlow<SmartListeningUiState> = _smartListening.asStateFlow()
-    private val spotifySearchClient by lazy {
-        com.luc4n3x.levyra.data.spotify.SpotifySearchClient(
-            catalogSearch = editorialChartsRepository::searchSpotifyMetadata,
-            countryProvider = { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
-        )
-    }
-    private val searchEngine = LevyraSearchEngine(
+    private val searchController = SearchController(
         scope = viewModelScope,
-        backend = YoutubeMusicSearchBackend(
-            repository = repository,
-            artistRepository = artistRepository,
-            providerRouter = providerRouter,
-            spotifyClient = spotifySearchClient,
-            localCandidateSource = ::localSearchCandidates,
-            playableTrack = { track -> youtubePlayableTrack(track) != null }
-        ),
-        sideEffects = object : SearchSideEffects {
-            override fun onRemoteTracks(tracks: List<Track>) = applyRemoteSearchTracks(tracks)
-
-            override fun onPrefetch(tracks: List<Track>) = prefetchSearchResults(tracks)
-
-            override fun onLatency(report: SearchLatencyReport) {
-                if (BuildConfig.DEBUG) Timber.tag(SEARCH_LATENCY_LOG_TAG).d(report.format())
-            }
-        }
+        uiState = _state,
+        application = application,
+        preferences = preferences,
+        repository = repository,
+        artistRepository = artistRepository,
+        providerRouter = providerRouter,
+        editorialChartsRepository = editorialChartsRepository,
+        moodEngine = moodEngine,
+        adaptivePlaybackPolicy = adaptivePlaybackPolicy,
+        calculateSmartScore = ::calculateSmartScore,
+        mergeTracks = ::mergeTracks,
+        prefetchTop = { tracks, count -> prefetchTop(tracks, count) }
     )
     private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
     private var sharedMediaJob: Job? = null
@@ -873,7 +859,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         levyraContext,
         repository
     )
-    private var favoriteStoreJob: Job? = null
     private val jamSession = JamSessionController(viewModelScope, _state, preferences, jamBridge)
     private var networkTestJob: Job? = null
     private var videoMetadataJob: Job? = null
@@ -915,7 +900,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartEnrichJob: Job? = null
     private var chartArtworkJob: Job? = null
     private var sleepTimerCollectorJob: Job? = null
-    private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
     private var similarSongsJob: Job? = null
     private var similarSongsSeedIdentity: String = ""
@@ -949,8 +933,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         refreshAlbumMotionArtwork = ::refreshAlbumMotionArtwork,
         recordSmartAlbumOpen = ::recordSmartAlbumOpen,
         refreshOfficialMetadataBatch = { tracks, limit -> refreshOfficialMetadataBatch(tracks, limit) },
-        clearTrackDislikes = ::clearTrackDislikes,
-        refreshForgottenFavorites = ::refreshForgottenFavorites
+        clearTrackDislikes = { tracks -> favoritesController.clearTrackDislikes(tracks) },
+        refreshForgottenFavorites = { favoritesController.refreshForgottenFavorites() }
     )
     private val playlistLibrary = PlaylistLibraryController(
         scope = viewModelScope,
@@ -962,20 +946,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         providerRouter = providerRouter,
         importEngine = playlistImportEngineDelegate,
         playlistSyncProvider = { playlistSync },
-        carryFavorite = { original, replacement -> carryFavorite(original, replacement) },
+        carryFavorite = { original, replacement -> favoritesController.carryFavorite(original, replacement) },
         removeSpeedDialPin = { key -> removeSpeedDialPin(key) },
         mutateSpeedDial = { transform -> mutateSpeedDial(transform) },
         clearPlayerReturnDetail = { playerReturnDetail = null }
     )
-    private var likeAllJob: Job? = null
     private var chartsJob: Job? = null
     private var chartPrefetchJob: Job? = null
     private var chartMemoryWarmJob: Job? = null
     private var chartCatalogPrimeJob: Job? = null
     private var radarJob: Job? = null
     private var releaseNotificationSettingsJob: Job? = null
-    private var forgottenFavoritesJob: Job? = null
-    private var excludedArtistsGeneration = 0L
     private val radioHost = object : RadioHost {
         override val smartOrbitPool: SmartOrbitPool get() = this@LevyraViewModel.smartOrbitPool
 
@@ -1241,6 +1222,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     )
     val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = offlineDownloads.downloadQualityPicker
     val pendingBatchCancel: StateFlow<BatchDownload?> = offlineDownloads.pendingBatchCancel
+    private val favoritesController = FavoritesController(
+        scope = viewModelScope,
+        uiState = _state,
+        application = application,
+        favoritesStore = favoritesStore,
+        favoriteMutationMutex = favoriteMutationMutex,
+        recommendationFeedbackMutationMutex = recommendationFeedbackMutationMutex,
+        recommendationFeedbackStore = recommendationFeedbackStore,
+        excludedArtistsStore = excludedArtistsStore,
+        queueEngine = queueEngine,
+        listeningPulseStore = listeningPulseStore,
+        offlineDownloads = offlineDownloads,
+        skipCurrentTrackIfNewlyAvoided = ::skipCurrentTrackIfNewlyAvoided,
+        recordSmartFavorite = ::recordSmartFavorite
+    )
     private val officialMetadata = OfficialMetadataController(
         viewModelScope,
         application,
@@ -1251,7 +1247,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         favoritesStore,
         playlistStore,
         preferences,
-        searchEngine,
+        searchController.engine,
         object : OfficialMetadataHost {
             override val smartOrbitDiscoveries: List<Track> get() = this@LevyraViewModel.smartOrbitDiscoveries
             override val exploreCache: ConcurrentHashMap<String, List<Track>> get() = this@LevyraViewModel.exploreCache
@@ -1378,7 +1374,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         observeMixChapters()
         viewModelScope.launch {
-            searchEngine.state.collect(::applySearchSnapshot)
+            searchController.engine.state.collect(::applySearchSnapshot)
         }
         viewModelScope.launch {
             val stored = withContext(Dispatchers.IO) { profilePhotoStore.current() }
@@ -1436,7 +1432,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         musicRecognition.observeHistory()
-        observeFavoriteStore()
+        favoritesController.observeFavoriteStore()
         jamSession.observeJamState()
         observeSimilarSongsSeed()
         observeConnectivity()
@@ -1796,10 +1792,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         offlineDownloads.observeDownloadTasks()
         offlineDownloads.observeDownloadBatches()
         loadPlaylists()
-        loadExcludedArtists()
-        loadRecommendationFeedback()
+        favoritesController.loadExcludedArtists()
+        favoritesController.loadRecommendationFeedback()
         loadAmbientSettings()
-        refreshForgottenFavorites()
+        favoritesController.refreshForgottenFavorites()
         viewModelScope.launch(Dispatchers.Default) { officialMetadata.consumeOfficialMetadataQueue() }
         viewModelScope.launch(Dispatchers.IO) {
             val backfilled = listeningPulseStore.ensureLifetimeBackfill()
@@ -2100,6 +2096,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _preferredAudioLanguage = MutableStateFlow(preferences.preferredAudioLanguage())
     val preferredAudioLanguage: StateFlow<String> = _preferredAudioLanguage.asStateFlow()
+    private val playbackPreferences = PlaybackPreferencesController(
+        scope = viewModelScope,
+        uiState = _state,
+        application = application,
+        preferences = preferences,
+        resolver = resolver,
+        player = player,
+        audioSettingsPersistence = audioSettingsPersistence,
+        offlineDownloads = offlineDownloads,
+        qobuzEnabled = _qobuzEnabled,
+        preferredAudioLanguage = _preferredAudioLanguage,
+        smartListening = _smartListening
+    )
 
     fun setHomeCompositionSettings(settings: com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings) {
         val normalized = settings.normalized()
@@ -2108,13 +2117,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setHomeCompositionSettings(normalized)
     }
 
-    fun setPreferredAudioLanguage(language: String) {
-        val normalized = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(language)
-        if (normalized == _preferredAudioLanguage.value) return
-        _preferredAudioLanguage.value = normalized
-        preferences.setPreferredAudioLanguage(normalized)
-        resolver.setPreferredAudioLanguage(normalized)
-    }
+    fun setPreferredAudioLanguage(language: String) = playbackPreferences.setPreferredAudioLanguage(language)
 
     fun setHomeStudioSettings(settings: LevyraHomeStudioSettings) = appearance.setHomeStudioSettings(settings)
 
@@ -2158,79 +2161,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun loadPlaylists() = playlistLibrary.loadPlaylists()
 
-    private fun loadExcludedArtists() {
-        val loadGeneration = excludedArtistsGeneration
-        viewModelScope.launch {
-            val excluded = excludedArtistsStore.load()
-            if (loadGeneration != excludedArtistsGeneration) return@launch
-            applyExcludedArtists(excluded)
-        }
-    }
+    fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) =
+        favoritesController.setTrackFeedback(track, kind)
 
-    private fun loadRecommendationFeedback() {
-        viewModelScope.launch {
-            recommendationFeedbackMutationMutex.withLock {
-                applyRecommendationFeedback(recommendationFeedbackStore.load())
-            }
-        }
-    }
-
-    private fun applyRecommendationFeedback(feedback: RecommendationFeedback) {
-        queueEngine.setRecommendationFeedback(feedback)
-        if (_state.value.recommendationFeedback == feedback) return
-        _state.update { it.copy(recommendationFeedback = feedback) }
-    }
-
-    fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) {
-        val entry = RecommendationFeedback.entryFor(track, kind) ?: return
-        viewModelScope.launch {
-            val (before, updated) = recommendationFeedbackMutationMutex.withLock {
-                val before = _state.value.recommendationFeedback
-                val updated = if (before.kindFor(track) == kind) {
-                    recommendationFeedbackStore.clear(entry.trackKey)
-                } else {
-                    recommendationFeedbackStore.record(entry)
-                }
-                applyRecommendationFeedback(updated)
-                before to updated
-            }
-            skipCurrentTrackIfNewlyAvoided(before, updated)
-        }
-    }
-
-    fun dislikeTracks(tracks: List<Track>) {
-        if (_state.value.jam.role == JamRole.Guest) return
-        val entries = tracks.mapNotNull { track ->
-            RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS)?.let { track to it }
-        }.distinctBy { (_, entry) -> entry.trackKey }
-        if (entries.isEmpty()) return
-        viewModelScope.launch {
-            val (before, updated) = recommendationFeedbackMutationMutex.withLock {
-                val before = _state.value.recommendationFeedback
-                var latest = before
-                entries.forEach { (track, entry) ->
-                    if (!before.isExplicitlyAvoided(track)) latest = recommendationFeedbackStore.record(entry)
-                }
-                applyRecommendationFeedback(latest)
-                before to latest
-            }
-            skipCurrentTrackIfNewlyAvoided(before, updated)
-        }
-    }
-
-    private suspend fun clearTrackDislikes(tracks: List<Track>) {
-        if (tracks.none(_state.value.recommendationFeedback::isExplicitlyAvoided)) return
-        recommendationFeedbackMutationMutex.withLock {
-            val feedback = _state.value.recommendationFeedback
-            val keys = tracks.filter(feedback::isExplicitlyAvoided).mapNotNull { track ->
-                RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS)?.trackKey
-            }.distinct()
-            if (keys.isEmpty()) return@withLock
-            var latest = feedback
-            keys.forEach { key -> latest = recommendationFeedbackStore.clear(key) }
-            applyRecommendationFeedback(latest)
-        }
-    }
+    fun dislikeTracks(tracks: List<Track>) = favoritesController.dislikeTracks(tracks)
 
     private fun skipCurrentTrackIfNewlyAvoided(before: RecommendationFeedback, after: RecommendationFeedback) {
         val current = _state.value.currentTrack ?: return
@@ -2252,54 +2186,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun applyExcludedArtists(excluded: List<ExcludedArtist>) {
-        _state.update {
-            it.copy(
-                excludedArtists = excluded,
-                artistExclusions = ArtistExclusions.from(excluded)
-            )
-        }
-    }
+    fun toggleExcludeArtist(browseId: String, name: String) = favoritesController.toggleExcludeArtist(browseId, name)
 
-    fun toggleExcludeArtist(browseId: String, name: String) {
-        val cleanName = name.trim()
-        if (!isExcludableArtist(browseId, cleanName)) return
-        val key = excludedArtistKeyOf(browseId, cleanName)
-        val current = _state.value.excludedArtists
-        val alreadyExcluded = current.any { it.key == key }
-        val updated = if (alreadyExcluded) {
-            current.filterNot { it.key == key }
-        } else {
-            listOf(ExcludedArtist(browseId.trim(), cleanName, System.currentTimeMillis())) +
-                current.filterNot { it.key == key }
-        }
-        applyExcludedArtists(updated)
-        excludedArtistsGeneration++
-        val mutationGeneration = excludedArtistsGeneration
-        viewModelScope.launch {
-            if (alreadyExcluded) {
-                excludedArtistsStore.include(browseId, cleanName)
-            } else {
-                excludedArtistsStore.exclude(browseId, cleanName)
-            }
-            val reloaded = excludedArtistsStore.load()
-            if (mutationGeneration != excludedArtistsGeneration) return@launch
-            applyExcludedArtists(reloaded)
-        }
-    }
-
-    fun includeArtist(artist: ExcludedArtist) {
-        val remaining = _state.value.excludedArtists.filterNot { it.key == artist.key }
-        applyExcludedArtists(remaining)
-        excludedArtistsGeneration++
-        val mutationGeneration = excludedArtistsGeneration
-        viewModelScope.launch {
-            excludedArtistsStore.include(artist.browseId, artist.name)
-            val reloaded = excludedArtistsStore.load()
-            if (mutationGeneration != excludedArtistsGeneration) return@launch
-            applyExcludedArtists(reloaded)
-        }
-    }
+    fun includeArtist(artist: ExcludedArtist) = favoritesController.includeArtist(artist)
 
     fun setPlaylistHidden(playlistId: String, hidden: Boolean) = playlistLibrary.setPlaylistHidden(playlistId, hidden)
 
@@ -2328,28 +2217,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) { preferences.setAmbientSettings(normalized) }
     }
 
-    private fun refreshForgottenFavorites() {
-        forgottenFavoritesJob?.cancel()
-        val favorites = _state.value.favorites
-        if (favorites.isEmpty()) {
-            if (_state.value.forgottenFavorites.isNotEmpty()) {
-                _state.update { it.copy(forgottenFavorites = emptyList()) }
-            }
-            return
-        }
-        forgottenFavoritesJob = viewModelScope.launch(Dispatchers.Default) {
-            val keys = ForgottenFavorites.listeningKeys(favorites)
-            val lastPlayed = listeningPulseStore.lastPlayedByKey(keys)
-            val selected = ForgottenFavorites.select(favorites, lastPlayed)
-            withContext(Dispatchers.Main) {
-                if (_state.value.favorites !== favorites) return@withContext
-                if (_state.value.forgottenFavorites != selected) {
-                    _state.update { it.copy(forgottenFavorites = selected) }
-                }
-            }
-        }
-    }
-
     fun createPlaylist(name: String, firstTrack: Track? = null) = playlistLibrary.createPlaylist(name, firstTrack)
 
     fun refreshYoutubeMusicImports() {
@@ -2364,22 +2231,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) =
         playlistLibrary.replacePlaylistTrack(playlistId, original, replacement)
-
-    private suspend fun carryFavorite(original: Track, replacement: Track) {
-        favoriteMutationMutex.withLock {
-            val updated = runCatchingPreservingCancellation { favoritesStore.replaceFavorite(original, replacement) }
-                .onFailure { error -> Timber.w(error, "Favorite replacement failed") }
-                .getOrNull() ?: return
-            val timestamps = favoritesStore.loadTimestampsSuspending()
-            _state.update { state ->
-                state.copy(
-                    favorites = updated,
-                    favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
-                    favoriteTimestamps = timestamps
-                )
-            }
-        }
-    }
 
     fun searchPlaylistReplacements(
         reference: Track,
@@ -2480,38 +2331,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showRecognition = false) }
         setQuery(query)
         searchNow(query)
-    }
-
-    private fun observeFavoriteStore() {
-        favoriteStoreJob?.cancel()
-        favoriteStoreJob = viewModelScope.launch {
-            favoritesStore.observeMembership().collect { membership ->
-                val addedCurrent = favoriteMutationMutex.withLock {
-                    val previous = _state.value.favorites
-                    val stale = withContext(Dispatchers.Default) { !membership.sameTracksAs(previous) }
-                    if (!stale) return@withLock null
-                    val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
-                    _state.update { state ->
-                        state.copy(
-                            favorites = favorites,
-                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
-                            favoriteTimestamps = timestamps
-                        )
-                    }
-                    withContext(Dispatchers.Default) {
-                        val current = _state.value.currentTrack
-                            ?.let { track -> FavoriteMembership.of(listOf(track)) }
-                        val previousMembership = FavoriteMembership.of(previous)
-                        favorites.filter { track ->
-                            current?.contains(track) == true && !previousMembership.contains(track)
-                        }
-                    }
-                } ?: return@collect
-                refreshForgottenFavorites()
-                addedCurrent.forEach { track -> autoDownloadFavorite(track, becameFavorite = true) }
-            }
-        }
     }
 
     fun cancelMusicRecognition() = musicRecognition.cancel()
@@ -3190,11 +3009,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun toggleAudioNormalization() {
-        val enabled = !_state.value.audioNormalization
-        preferences.setAudioNormalization(enabled)
-        updateAudioSettings(_state.value.audioSettings, audioNormalization = enabled)
-    }
+    fun toggleAudioNormalization() = playbackPreferences.toggleAudioNormalization()
 
     fun toggleShuffle() {
         if (jamController.rejectGuestLocalMutation()) return
@@ -3388,91 +3203,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetParametricEqualizer() = equalizer.resetParametricEqualizer()
 
-    fun setBassBoost(value: Int) {
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                parametricEqualizerEnabled = false,
-                bassBoost = value
-            )
-        )
-    }
+    fun setBassBoost(value: Int) = playbackPreferences.setBassBoost(value)
 
     fun setEqualizerBand(index: Int, value: Int) = equalizer.setEqualizerBand(index, value)
 
     fun resetEqualizer() = equalizer.resetEqualizer()
 
-    fun setPreampDb(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(preampDb = value))
-    }
+    fun setPreampDb(value: Float) = playbackPreferences.setPreampDb(value)
 
-    fun setLimiterEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(limiterEnabled = value))
-    }
+    fun setLimiterEnabled(value: Boolean) = playbackPreferences.setLimiterEnabled(value)
 
-    fun setEnhancedAudioEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(enhancedAudioEnabled = value))
-    }
+    fun setEnhancedAudioEnabled(value: Boolean) = playbackPreferences.setEnhancedAudioEnabled(value)
 
-    fun setAudioOffloadPreference(value: com.luc4n3x.levyra.domain.AudioOffloadPreference) {
-        updateAudioSettings(_state.value.audioSettings.copy(audioOffloadPreference = value))
-    }
+    fun setAudioOffloadPreference(value: com.luc4n3x.levyra.domain.AudioOffloadPreference) =
+        playbackPreferences.setAudioOffloadPreference(value)
 
-    fun setSpectrumVisualizerStyle(value: com.luc4n3x.levyra.domain.SpectrumVisualizerStyle) {
-        updateAudioSettings(_state.value.audioSettings.copy(spectrumVisualizerStyle = value))
-    }
+    fun setSpectrumVisualizerStyle(value: com.luc4n3x.levyra.domain.SpectrumVisualizerStyle) =
+        playbackPreferences.setSpectrumVisualizerStyle(value)
 
-    fun setPlaybackBuffer(value: PlaybackBufferSettings) {
-        updateAudioSettings(_state.value.audioSettings.copy(playbackBuffer = value))
-    }
+    fun setPlaybackBuffer(value: PlaybackBufferSettings) = playbackPreferences.setPlaybackBuffer(value)
 
-    fun setVirtualizer(value: Int) {
-        val settings = _state.value.audioSettings
-        updateAudioSettings(settings.copy(equalizerEnabled = !settings.parametricEqualizerEnabled, virtualizer = value))
-    }
+    fun setVirtualizer(value: Int) = playbackPreferences.setVirtualizer(value)
 
-    fun setCrossfadeSeconds(seconds: Int) {
-        updateAudioSettings(_state.value.audioSettings.copy(crossfadeSeconds = seconds))
-    }
+    fun setCrossfadeSeconds(seconds: Int) = playbackPreferences.setCrossfadeSeconds(seconds)
 
-    fun setDjSoftMode(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(djSoftMode = value, crossfadeSeconds = if (value && _state.value.audioSettings.crossfadeSeconds == 0) 6 else _state.value.audioSettings.crossfadeSeconds))
-    }
+    fun setDjSoftMode(value: Boolean) = playbackPreferences.setDjSoftMode(value)
 
-    fun setReplayGainEnabled(value: Boolean) {
-        setReplayGainMode(if (value) ReplayGainMode.SMART else ReplayGainMode.OFF)
-    }
+    fun setReplayGainEnabled(value: Boolean) = playbackPreferences.setReplayGainEnabled(value)
 
-    fun setReplayGainMode(mode: ReplayGainMode) {
-        updateAudioSettings(_state.value.audioSettings.withReplayGainMode(mode))
-    }
+    fun setReplayGainMode(mode: ReplayGainMode) = playbackPreferences.setReplayGainMode(mode)
 
-    fun setReplayGainPreampDb(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(replayGainPreampDb = value))
-    }
+    fun setReplayGainPreampDb(value: Float) = playbackPreferences.setReplayGainPreampDb(value)
 
-    fun setReplayGainPreventClipping(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(replayGainPreventClipping = value))
-    }
+    fun setReplayGainPreventClipping(value: Boolean) = playbackPreferences.setReplayGainPreventClipping(value)
 
-    fun setPlaybackSpeed(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(playbackSpeed = value))
-    }
+    fun setPlaybackSpeed(value: Float) = playbackPreferences.setPlaybackSpeed(value)
 
-    fun setTemporaryPlaybackSpeed(value: Float) {
-        val speed = value.coerceIn(0.25f, 3f)
-        val pitch = _state.value.audioSettings.pitch
-        player.setPlayback(speed, pitch)
-        _state.update { it.copy(playbackSpeed = speed) }
-    }
+    fun setTemporaryPlaybackSpeed(value: Float) = playbackPreferences.setTemporaryPlaybackSpeed(value)
 
-    fun setPitch(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(pitch = value))
-    }
+    fun setPitch(value: Float) = playbackPreferences.setPitch(value)
 
-    fun setGaplessEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(gaplessEnabled = value))
-    }
+    fun setGaplessEnabled(value: Boolean) = playbackPreferences.setGaplessEnabled(value)
 
     fun setPreloadNextTrack(value: Boolean) {
         updateAudioSettings(_state.value.audioSettings.copy(preloadNextTrack = value))
@@ -3494,77 +3265,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.isPlaying) syncAdvancedQueuePrefetch() else cancelAdvancedQueuePrefetch()
     }
 
-    fun setAaudioOutputEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(aaudioOutputEnabled = value))
-    }
+    fun setAaudioOutputEnabled(value: Boolean) = playbackPreferences.setAaudioOutputEnabled(value)
 
-    private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) {
-        val normalized = next.normalized()
-        audioSettingsPersistJob?.cancel()
-        audioSettingsPersistence.schedule(normalized)
-        audioSettingsPersistJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(120L)
-            audioSettingsPersistence.persist(normalized)
-        }
-        player.setPremiumAudioSettings(normalized, audioNormalization)
-        player.setPlayback(normalized.playbackSpeed, normalized.pitch)
-        _state.update { it.copy(audioSettings = normalized, playbackSpeed = normalized.playbackSpeed, audioNormalization = audioNormalization) }
-    }
+    private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) =
+        playbackPreferences.updateAudioSettings(next, audioNormalization)
 
+    fun setNightListeningEnabled(value: Boolean) = playbackPreferences.setNightListeningEnabled(value)
 
-    fun setNightListeningEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(nightListeningEnabled = value))
-    }
+    fun setNightListeningPreset(value: NightListeningPreset) = playbackPreferences.setNightListeningPreset(value)
 
-    fun setNightListeningPreset(value: NightListeningPreset) {
-        updateAudioSettings(_state.value.audioSettings.copy(nightListeningPreset = value))
-    }
+    fun setNightListeningTrim(value: Float) = playbackPreferences.setNightListeningTrim(value)
 
-    fun setNightListeningTrim(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(nightListeningTrimDb = value))
-    }
+    fun setSmartResumeEnabled(value: Boolean) = playbackPreferences.setSmartResumeEnabled(value)
 
-    fun setSmartResumeEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(smartResumeEnabled = value))
-    }
+    fun setSmartResumeProfile(value: com.luc4n3x.levyra.domain.SmartResumeProfile) =
+        playbackPreferences.setSmartResumeProfile(value)
 
-    fun setSmartResumeProfile(value: com.luc4n3x.levyra.domain.SmartResumeProfile) {
-        updateAudioSettings(_state.value.audioSettings.copy(smartResumeProfile = value))
-    }
+    fun setSmartResumeMinPause(seconds: Int) = playbackPreferences.setSmartResumeMinPause(seconds)
 
-    fun setSmartResumeMinPause(seconds: Int) {
-        updateAudioSettings(_state.value.audioSettings.copy(smartResumeMinPauseSeconds = seconds))
-    }
+    fun setAdaptiveListeningEnabled(value: Boolean) = playbackPreferences.setAdaptiveListeningEnabled(value)
 
-    fun setAdaptiveListeningEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningEnabled = value))
-        if (!value) {
-            com.luc4n3x.levyra.player.AdaptiveListeningBus.configure(com.luc4n3x.levyra.player.AdaptiveListeningConfig(enabled = false))
-            com.luc4n3x.levyra.feature.adaptive.AdaptiveListeningService.stop(getApplication())
-        }
-    }
+    fun setAdaptiveListeningSensitivity(value: com.luc4n3x.levyra.domain.AdaptiveSensitivity) =
+        playbackPreferences.setAdaptiveListeningSensitivity(value)
 
-    fun setAdaptiveListeningSensitivity(value: com.luc4n3x.levyra.domain.AdaptiveSensitivity) {
-        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningSensitivity = value))
-    }
+    fun setAdaptiveListeningMaxBoost(value: Float) = playbackPreferences.setAdaptiveListeningMaxBoost(value)
 
-    fun setAdaptiveListeningMaxBoost(value: Float) {
-        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningMaxBoostDb = value))
-    }
+    fun setSmartAudioProfilesEnabled(value: Boolean) = playbackPreferences.setSmartAudioProfilesEnabled(value)
 
-    fun setSmartAudioProfilesEnabled(value: Boolean) {
-        updateAudioSettings(_state.value.audioSettings.copy(smartAudioProfilesEnabled = value))
-    }
+    fun saveSmartAudioProfile(profile: SmartAudioProfile) = playbackPreferences.saveSmartAudioProfile(profile)
 
-    fun saveSmartAudioProfile(profile: SmartAudioProfile) {
-        val settings = _state.value.audioSettings
-        updateAudioSettings(settings.copy(smartAudioProfiles = SmartAudioResolver.upsert(settings.smartAudioProfiles, profile)))
-    }
-
-    fun removeSmartAudioProfile(deviceKey: String) {
-        val settings = _state.value.audioSettings
-        updateAudioSettings(settings.copy(smartAudioProfiles = settings.smartAudioProfiles.filterNot { it.deviceKey == deviceKey }))
-    }
+    fun removeSmartAudioProfile(deviceKey: String) = playbackPreferences.removeSmartAudioProfile(deviceKey)
 
     fun openSmartAudioProfiles() {
         _showSmartAudioProfiles.value = true
@@ -3619,26 +3349,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showAudioQualityPanel = false) }
     }
 
-    fun setAudioQuality(value: String) {
-        val normalized = LevyraAudioQuality.normalize(value)
-        preferences.setAudioQuality(normalized)
-        resolver.setAudioQuality(normalized)
-        offlineDownloads.lastDownloadQualityProbe = null
-        _state.update { it.copy(audioQuality = normalized) }
-    }
+    fun setAudioQuality(value: String) = playbackPreferences.setAudioQuality(value)
 
-    fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
-        preferences.setHighQualityAudioMode(mode)
-        resolver.setHighQualityAudioMode(mode)
-        offlineDownloads.lastDownloadQualityProbe = null
-        _state.update { it.copy(highQualityAudioMode = mode) }
-    }
+    fun setHighQualityAudioMode(mode: HighQualityAudioMode) = playbackPreferences.setHighQualityAudioMode(mode)
 
-    fun setQobuzEnabled(enabled: Boolean) {
-        preferences.setQobuzEnabled(enabled)
-        resolver.setQobuzEnabled(enabled)
-        _qobuzEnabled.value = enabled
-    }
+    fun setQobuzEnabled(enabled: Boolean) = playbackPreferences.setQobuzEnabled(enabled)
 
     fun openSleepTimer() {
         _state.update { it.copy(showSleepTimer = true) }
@@ -3648,62 +3363,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showSleepTimer = false) }
     }
 
-    fun setSleepTimerMinutes(minutes: Int) {
-        PlaybackService.startSleepTimer(minutes)
-    }
+    fun setSleepTimerMinutes(minutes: Int) = playbackPreferences.setSleepTimerMinutes(minutes)
 
-    fun setSleepTimerEndOfTrack() {
-        PlaybackService.startSleepTimerEndOfTrack()
-    }
+    fun setSleepTimerEndOfTrack() = playbackPreferences.setSleepTimerEndOfTrack()
 
-    fun setSleepWithMusicTimerMinutes(minutes: Int, timbreSoftening: Boolean) {
-        if (!PlaybackService.startSleepWithMusicTimer(minutes, timbreSoftening)) {
-            PlaybackService.startSleepTimer(minutes)
-        }
-    }
+    fun setSleepWithMusicTimerMinutes(minutes: Int, timbreSoftening: Boolean) =
+        playbackPreferences.setSleepWithMusicTimerMinutes(minutes, timbreSoftening)
 
-    fun setMotionControlSettings(value: MotionControlSettings) {
-        val normalized = value.normalized()
-        if (normalized == _smartListening.value.motionControlSettings) return
-        _smartListening.update {
-            it.copy(
-                motionControlSettings = normalized,
-                motionSensorCapability = MotionGestureController.inspectCapability(getApplication())
-            )
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            preferences.setMotionControlSettings(normalized)
-        }
-    }
+    fun setMotionControlSettings(value: MotionControlSettings) = playbackPreferences.setMotionControlSettings(value)
 
-    fun setGentleWakeSettings(value: GentleWakeSettings) {
-        val normalized = value.normalized()
-        val app = getApplication<Application>()
-        val reliability = GentleWakeScheduler.reliabilityStatus(app)
-        _smartListening.update {
-            it.copy(
-                gentleWakeSettings = normalized,
-                gentleWakeReliability = reliability
-            )
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            preferences.setGentleWakeSettings(normalized)
-            GentleWakeScheduler.apply(app, normalized)
-            if (_smartListening.value.sleepWithMusicSettings.linkMorningPromptToGentleWake) {
-                val snapshot = preferences.morningResumeSnapshot()
-                if (snapshot != null && !snapshot.dismissed) {
-                    val nextPrompt = MorningResumeSnapshot.computeMorningPromptTime(
-                        now = java.time.ZonedDateTime.now(),
-                        sleepSettings = _smartListening.value.sleepWithMusicSettings,
-                        gentleWakeSettings = normalized
-                    )
-                    val updatedSnapshot = snapshot.copy(promptAtEpochMs = nextPrompt.toInstant().toEpochMilli())
-                    preferences.setMorningResumeSnapshot(updatedSnapshot)
-                    GentleWakeScheduler.scheduleMorningResumePrompt(app, updatedSnapshot)
-                }
-            }
-        }
-    }
+    fun setGentleWakeSettings(value: GentleWakeSettings) = playbackPreferences.setGentleWakeSettings(value)
 
     fun refreshGentleWakeReliability() {
         val app = getApplication<Application>()
@@ -3743,14 +3412,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.stopGentleWakeAlarmForToday(getApplication())
     }
 
-    fun setSleepWithMusicSettings(value: SleepWithMusicSettings) {
-        val normalized = value.normalized()
-        if (normalized == _smartListening.value.sleepWithMusicSettings) return
-        _smartListening.update { it.copy(sleepWithMusicSettings = normalized) }
-        viewModelScope.launch(Dispatchers.IO) {
-            preferences.setSleepWithMusicSettings(normalized)
-        }
-    }
+    fun setSleepWithMusicSettings(value: SleepWithMusicSettings) = playbackPreferences.setSleepWithMusicSettings(value)
 
     fun resumeMorningPlayback() {
         val snapshot = _smartListening.value.morningResumeSnapshot ?: preferences.morningResumeSnapshot() ?: return
@@ -4365,7 +4027,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val playlistTags = playlistStore.allTags()
         val followed = followedArtistsStore.load()
         applyFollowedArtists(followed)
-        applyExcludedArtists(excludedArtistsStore.load())
+        favoritesController.applyExcludedArtists(excludedArtistsStore.load())
         pendingSeekMs = snapshot.lastPositionMs.coerceAtLeast(0L)
         val restoredTrack = snapshot.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
         val restoredAnimationsEnabled = snapshot.animationsEnabled &&
@@ -4450,7 +4112,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 ReleaseRadarWorker.cancel(levyraContext)
             }
         }
-        refreshForgottenFavorites()
+        favoritesController.refreshForgottenFavorites()
     }
 
     fun setLanguage(code: String) {
@@ -4492,7 +4154,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean, followNewLanguage: Boolean = false) {
         NewPipeRuntime.setLanguage(languageCode)
-        searchEngine.reset()
+        searchController.engine.reset()
         homeFeed.resetForLanguageChange()
         val selectedChartRegion = ChartsCatalog.regionAfterLanguageChange(
             storedRegionId = preferences.chartRegionId(),
@@ -5720,81 +5382,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return entry.id to enriched
     }
 
-    private val _searchHiddenListens = MutableStateFlow<Set<String>>(emptySet())
-    val searchHiddenListens: StateFlow<Set<String>> = _searchHiddenListens.asStateFlow()
-    private val searchHiddenListensWrite = kotlinx.coroutines.sync.Mutex()
+    val searchHiddenListens: StateFlow<Set<String>> = searchController.searchHiddenListens
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            val saved = preferences.searchHiddenListens()
-            _searchHiddenListens.update { saved + it }
-        }
+        searchController.restoreHiddenListens()
     }
 
-    fun removeRecentSearch(track: Track) {
-        val identity = LevyraPersonalOrbit.identityKey(track)
-        val hidden = _searchHiddenListens.updateAndGet { (it + identity).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet() }
-        viewModelScope.launch(Dispatchers.IO) {
-            searchHiddenListensWrite.withLock {
-                val merged = preferences.searchHiddenListens() + _searchHiddenListens.value + hidden
-                preferences.saveSearchHiddenListens(merged.toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet())
-            }
-        }
-        val matches: (Track) -> Boolean = { candidate ->
-            candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
-        }
-        var changed = false
-        val applied = _state.updateAndGet { state ->
-            val updated = state.recentSearches.filterNot(matches)
-            val updatedOrbit = state.personalOrbitTracks.filterNot(matches)
-            changed = updated.size != state.recentSearches.size ||
-                updatedOrbit.size != state.personalOrbitTracks.size
-            if (!changed) {
-                state
-            } else {
-                state.copy(recentSearches = updated, personalOrbitTracks = updatedOrbit)
-            }
-        }
-        if (!changed) return
-        val persistedSearches = applied.recentSearches
-        val persistedOrbit = applied.personalOrbitTracks
-        val languageCode = applied.languageCode
-        viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveRecentSearches(persistedSearches)
-            preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
-        }
-    }
+    fun removeRecentSearch(track: Track) = searchController.removeRecentSearch(track)
 
-    fun toggleFavorite(track: Track) {
-        if (track.isLiveRadio()) return
-        viewModelScope.launch {
-            val (updated, isFavorite) = favoriteMutationMutex.withLock {
-                val updated = favoritesStore.toggleFavorite(track)
-                val timestamps = favoritesStore.loadTimestampsSuspending()
-                val isFavorite = areAllFavoriteTracks(updated, listOf(track))
-                _state.update { state ->
-                    state.copy(
-                        favorites = updated,
-                        favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
-                        favoriteTimestamps = timestamps
-                    )
-                }
-                updated to isFavorite
-            }
-            if (isFavorite) clearTrackDislikes(listOf(track))
-            refreshForgottenFavorites()
-            LevyraArtworkCache.preloadPriority(
-                getApplication<Application>().applicationContext,
-                updated,
-                6
-            )
-            recordSmartFavorite(track, isFavorite)
-            autoDownloadFavorite(track, isFavorite)
-        }
-    }
-
-    private fun autoDownloadFavorite(track: Track, becameFavorite: Boolean) =
-        offlineDownloads.autoDownloadFavorite(track, becameFavorite)
+    fun toggleFavorite(track: Track) = favoritesController.toggleFavorite(track)
 
     fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
@@ -5825,108 +5421,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleCurrentAlbumFavorite() = albumDetailController.toggleFavorite()
 
-    fun toggleFavorites(tracks: List<Track>) {
-        val cleanTracks = tracks
-            .asSequence()
-            .filterNot { track -> track.isLiveRadio() }
-            .distinctBy { track ->
-                track.id.ifBlank {
-                    track.isrc.ifBlank {
-                        track.audioVideoId.ifBlank { track.title + "|" + track.artist }
-                    }
-                }
-            }
-            .toList()
-        if (cleanTracks.isEmpty()) return
-        viewModelScope.launch {
-            val updated = favoriteMutationMutex.withLock {
-                favoritesStore.toggleFavorites(cleanTracks).also { favorites ->
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
-                    _state.update { state ->
-                        state.copy(
-                            favorites = favorites,
-                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
-                            favoriteTimestamps = timestamps
-                        )
-                    }
-                }
-            }
-            clearTrackDislikes(cleanTracks.filter { track -> areAllFavoriteTracks(updated, listOf(track)) })
-            refreshForgottenFavorites()
-            LevyraArtworkCache.preloadPriority(
-                getApplication<Application>().applicationContext,
-                updated,
-                6
-            )
-            cleanTracks.forEach { track ->
-                val isFavorite = areAllFavoriteTracks(updated, listOf(track))
-                recordSmartFavorite(track, isFavorite)
-                autoDownloadFavorite(track, isFavorite)
-            }
-        }
-    }
+    fun toggleFavorites(tracks: List<Track>) = favoritesController.toggleFavorites(tracks)
 
-    fun likeAllTracks(tracks: List<Track>) {
-        val candidates = tracks.filterNot { track -> track.isLiveRadio() }
-        if (candidates.isEmpty() || likeAllJob?.isActive == true) return
-        likeAllJob = viewModelScope.launch {
-            val copy = LevyraStrings.forCode(_state.value.languageCode).likeAllCopy()
-            val addition = try {
-                favoriteMutationMutex.withLock {
-                    favoritesStore.addMissingFavorites(candidates).also { result ->
-                        val timestamps = favoritesStore.loadTimestampsSuspending()
-                        _state.update { state ->
-                            state.copy(
-                                favorites = result.favorites,
-                                favoriteIds = result.favorites.map { favorite -> favorite.id }.toSet(),
-                                favoriteTimestamps = timestamps
-                            )
-                        }
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Like all tracks failed")
-                _state.update { it.copy(offlineExportMessage = copy.failed) }
-                return@launch
-            }
-            if (addition.added.isEmpty()) {
-                _state.update { it.copy(offlineExportMessage = copy.alreadyLiked) }
-                return@launch
-            }
-            clearTrackDislikes(addition.added)
-            refreshForgottenFavorites()
-            LevyraArtworkCache.preloadPriority(
-                getApplication<Application>().applicationContext,
-                addition.favorites,
-                6
-            )
-            addition.added.forEach { track ->
-                recordSmartFavorite(track, true)
-                autoDownloadFavorite(track, true)
-            }
-            _state.update { it.copy(offlineExportMessage = copy.liked(addition.added.size)) }
-        }
-    }
+    fun likeAllTracks(tracks: List<Track>) = favoritesController.likeAllTracks(tracks)
 
-    fun removeFavorites(tracks: List<Track>) {
-        val ids = tracks.map { it.id }.filter(String::isNotBlank).toSet()
-        if (ids.isEmpty()) return
-        val current = _state.value.favorites
-        val updated = current.filterNot { it.id in ids }
-        if (updated.size == current.size) return
-        _state.update {
-            it.copy(
-                favorites = updated,
-                favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
-                favoriteTimestamps = it.favoriteTimestamps - ids
-            )
-        }
-        viewModelScope.launch(Dispatchers.IO) { favoritesStore.saveSuspending(updated) }
-        refreshForgottenFavorites()
-        _state.update { it.copy(offlineExportMessage = "Rimossi dai preferiti: ${current.size - updated.size}") }
-    }
+    fun removeFavorites(tracks: List<Track>) = favoritesController.removeFavorites(tracks)
 
     fun exportCurrentTrack() {
         val track = _state.value.currentTrack ?: return
@@ -6801,7 +6300,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setQuery(query: String) {
         _state.update { it.copy(query = query, searchError = null) }
-        searchEngine.onQueryChanged(query, _state.value.languageCode)
+        searchController.engine.onQueryChanged(query, _state.value.languageCode)
     }
 
     fun searchNow() {
@@ -6811,7 +6310,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun searchNow(query: String) {
         if (!isSearchableQuery(query)) return
         moveToTab(LevyraTab.Search, rememberCurrent = true)
-        searchEngine.submit(query, _state.value.languageCode)
+        searchController.engine.submit(query, _state.value.languageCode)
     }
 
     private fun applySearchSnapshot(snapshot: SearchSessionSnapshot) {
@@ -6847,57 +6346,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun localSearchCandidates(): List<LocalSearchCandidate> {
-        val snapshot = _state.value
-        val cached = repository.cachedTracks()
-        return buildList {
-            fun addTracks(tracks: List<Track>, affinity: Int) {
-                tracks.forEach { track -> add(LocalSearchCandidate(track, affinity)) }
-            }
-            addTracks(snapshot.recentSearches, LocalSearchAffinity.RECENT)
-            addTracks(snapshot.recentListens, LocalSearchAffinity.LISTENED)
-            addTracks(snapshot.favorites, LocalSearchAffinity.FAVORITE)
-            addTracks(
-                snapshot.localLibrary.catalog.songs.take(LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT),
-                LocalSearchAffinity.LOCAL_MEDIA
-            )
-            addTracks(snapshot.personalOrbitTracks, LocalSearchAffinity.ORBIT)
-            addTracks(snapshot.queue, LocalSearchAffinity.QUEUE)
-            addTracks(snapshot.tracks, LocalSearchAffinity.SESSION)
-            snapshot.homeSections.forEach { section -> addTracks(section.tracks, LocalSearchAffinity.HOME) }
-            addTracks(snapshot.charts, LocalSearchAffinity.CHARTS)
-            addTracks(cached.takeLast(LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT).asReversed(), LocalSearchAffinity.CACHE)
-        }
-    }
-
-    private fun applyRemoteSearchTracks(tracks: List<Track>) {
-        val queue = moodEngine.buildQueue(_state.value.selectedMood, tracks)
-        val smartScore = calculateSmartScore(queue)
-        val cacheReport = repository.cacheReport()
-        _state.update {
-            it.copy(
-                tracks = mergeTracks(it.tracks, tracks),
-                cacheReport = cacheReport,
-                smartScore = smartScore
-            )
-        }
-    }
-
-    private fun prefetchSearchResults(tracks: List<Track>) {
-        val plan = adaptivePlaybackPolicy.current(videoMode = false)
-        LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (plan.lowRam) 6 else 12)
-        prefetchTop(tracks, if (plan.lowRam) 2 else 4)
-    }
-
     private fun searchAlbumDeduplicationKey(album: AlbumHit): String =
         "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
     fun setSearchFilter(filter: SearchFilter) {
-        searchEngine.selectFilter(filter)
+        searchController.engine.selectFilter(filter)
     }
 
     fun loadMoreSearchSection(filter: SearchFilter) {
-        searchEngine.loadMore(filter)
+        searchController.engine.loadMore(filter)
     }
 
     fun searchAlbum(album: AlbumHit) {
@@ -8136,11 +7593,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun setSkipSilence(value: Boolean) {
-        preferences.setSkipSilence(value)
-        player.setSkipSilence(value)
-        _state.update { it.copy(skipSilence = value) }
-    }
+    fun setSkipSilence(value: Boolean) = playbackPreferences.setSkipSilence(value)
 
     fun openQueue() {
         _state.update { it.copy(showQueue = true) }
@@ -9607,8 +9060,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.value.currentTrack?.takeUnless { exitingApplication || it.isLiveRadio() }?.let {
             preferences.saveLastPlayback(it, player.positionMs)
         }
-        audioSettingsPersistJob?.cancel()
-        audioSettingsPersistence.flush()
+        playbackPreferences.flushPendingAudioSettings()
         listeningSession.flushListenSessionBlocking()
         playJob?.cancel()
         modeSwitchJob?.cancel()
@@ -9715,6 +9167,5 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 
-private const val LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT = 4_000
 private const val MAX_UNAVAILABLE_LOCAL_SKIPS = 8
 private const val COLLECTION_SKIP_WINDOW_MS = 60_000L
