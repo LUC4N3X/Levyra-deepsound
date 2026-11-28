@@ -257,6 +257,18 @@ class OfflineAudioStoreTest {
     }
 
     @Test
+    fun offlinePlaybackQueueKeepsTheDownloadArtwork() {
+        val controller = read("java/com/luc4n3x/levyra/viewmodel/OfflineDownloadsController.kt")
+        val builder = controller
+            .substringAfter("private fun offlinePlaybackTrack(download: DownloadedTrack): Track =")
+            .substringBefore("source = \"Offline\"")
+        assertTrue(controller.contains("host.playOfflineQueue(listOf(offlinePlaybackTrack(download)), 0)"))
+        assertTrue(controller.contains("downloads.filter { it.uri.isNotBlank() }.map(::offlinePlaybackTrack)"))
+        assertTrue(builder.contains("thumbnailUrl = downloadArtworkModel(download.uri, download.artworkUrl),"))
+        assertFalse(builder.contains("thumbnailUrl = \"\""))
+    }
+
+    @Test
     fun storageFullFailureKeepsItsLocalizedMessage() {
         val viewModel = read("java/com/luc4n3x/levyra/viewmodel/OfflineDownloadsController.kt")
         assertFalse(viewModel.contains("offlineExportMessage = host.cleanUserError(message)"))
