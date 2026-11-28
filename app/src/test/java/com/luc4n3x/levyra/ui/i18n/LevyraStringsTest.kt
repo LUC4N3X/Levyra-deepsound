@@ -450,21 +450,12 @@ class LevyraStringsTest {
 
     @Test
     fun viewModelDoesNotStoreLocalizedArtistErrorCopy() {
-        val source = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
-        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
-
-        assertFalse(Files.readString(source).contains("Profilo artista non disponibile"))
+        assertFalse(viewModelPackageSource().contains("Profilo artista non disponibile"))
     }
 
     @Test
     fun viewModelDoesNotLeakReportedItalianRuntimeMessages() {
-        val source = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
-        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
-        val content = Files.readString(source)
+        val content = viewModelPackageSource()
 
         listOf(
             "Salvato in $",
@@ -624,5 +615,15 @@ class LevyraStringsTest {
             "Troppe richieste a YouTube: attendi qualche secondo",
             italian.localizeUserError("HTTP 429", youtubePlayback = true)
         )
+    }
+
+    private fun viewModelPackageSource(): String {
+        val directory = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel")
+        ).firstOrNull(Files::isDirectory) ?: error("viewmodel package not found")
+        return Files.newDirectoryStream(directory, "*.kt").use { files ->
+            files.sorted().joinToString("\n") { Files.readString(it) }
+        }
     }
 }

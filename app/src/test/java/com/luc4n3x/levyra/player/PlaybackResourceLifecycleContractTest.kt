@@ -44,7 +44,7 @@ class PlaybackResourceLifecycleContractTest {
     @Test
     fun `primary audio processors are owned by the service instance`() {
         val service = readSource("player/PlaybackService.kt")
-        val viewModel = readSource("viewmodel/LevyraViewModel.kt")
+        val viewModel = readPackageSources("viewmodel")
 
         assertTrue(service.contains("private val normalizationProcessor = NormalizationAudioProcessor()"))
         assertTrue(service.contains("private fun applyPremiumAudioSettingsInternal"))
@@ -76,6 +76,11 @@ class PlaybackResourceLifecycleContractTest {
 
     private fun readSource(relativePath: String): String =
         Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
+
+    private fun readPackageSources(relativeDir: String): String =
+        Files.newDirectoryStream(sourceFile(relativeDir), "*.kt").use { files ->
+            files.sorted().joinToString("\n") { Files.readString(it).replace("\r\n", "\n") }
+        }
 
     private fun sourceFile(relativePath: String): Path = sequenceOf(
         Path.of("app/src/main/java/com/luc4n3x/levyra/$relativePath"),
