@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.viewmodel
 import com.luc4n3x.levyra.ui.albumSuggestionsSupported
 import com.luc4n3x.levyra.data.playlistimport.withEquivalentPlaybackSource
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
-import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import com.luc4n3x.levyra.player.SECTION_LOOP_POLL_MS
 import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.player.advance
@@ -52,7 +51,6 @@ import com.luc4n3x.levyra.data.PlaylistCoverCrop
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.SmartOfflineScheduler
 import com.luc4n3x.levyra.data.SmartOfflineOwnershipGate
-import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.ProfilePhotoStore
 import com.luc4n3x.levyra.data.LyricsLatencyProfiles
@@ -88,7 +86,6 @@ import com.luc4n3x.levyra.data.apple.AppleCatalogPage
 import com.luc4n3x.levyra.data.apple.AppleExploreCatalog
 import com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository
 import com.luc4n3x.levyra.data.apple.AppleStorefronts
-import com.luc4n3x.levyra.data.LyricsPhraseHit
 import com.luc4n3x.levyra.data.LyricsPhraseOutcome
 import com.luc4n3x.levyra.data.LyricsPhraseSearchRepository
 import com.luc4n3x.levyra.data.LyricsRepository
@@ -137,12 +134,9 @@ import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
 import com.luc4n3x.levyra.data.homeAlbumHitFromTrack
 import com.luc4n3x.levyra.data.homeAlbumArtistFromTrack
 import com.luc4n3x.levyra.data.isCanonicalHomeAlbumHit
-import com.luc4n3x.levyra.data.RecordingIdentityMatch
-import com.luc4n3x.levyra.data.addsDifferentPlaybackVariant
 import com.luc4n3x.levyra.data.VideoSourceChoice
 import com.luc4n3x.levyra.data.VideoSourceChoiceStore
 import com.luc4n3x.levyra.data.VideoUploadEvidence
-import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.toTrack
@@ -255,7 +249,6 @@ import com.luc4n3x.levyra.domain.RadioMixer
 import com.luc4n3x.levyra.domain.SmartOrbitCandidate
 import com.luc4n3x.levyra.domain.SmartOrbitEngine
 import com.luc4n3x.levyra.domain.SmartOrbitPool
-import com.luc4n3x.levyra.domain.ListeningDna
 import com.luc4n3x.levyra.domain.ListeningDnaEngine
 import com.luc4n3x.levyra.domain.ListeningDnaPeriod
 import com.luc4n3x.levyra.domain.LevyraMixDefaults
@@ -304,16 +297,11 @@ import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.withSelectedVideoQuality
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.YoutubeComment
-import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.domain.resonanceCommentsForTracks
-import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
-import com.luc4n3x.levyra.feature.motion.MotionTrackIdentity
-import com.luc4n3x.levyra.feature.motion.normalizeMotionText
-import com.luc4n3x.levyra.feature.motion.primaryMotionArtistMatches
 import com.luc4n3x.levyra.feature.providers.CachedPlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraNativePlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
@@ -359,18 +347,14 @@ import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
 import com.luc4n3x.levyra.feature.recognition.RecognitionProjectionActivity
 import com.luc4n3x.levyra.feature.recognition.RecognitionResult
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionController
-import com.luc4n3x.levyra.feature.recognition.NoOpRecognitionProvider
-import com.luc4n3x.levyra.feature.recognition.RecognitionProvider
 import com.luc4n3x.levyra.feature.recognition.RecognitionSearchQuery
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
-import com.luc4n3x.levyra.feature.sharedmedia.LevyraPlaylistDecodeResult
 import com.luc4n3x.levyra.feature.sharedmedia.LevyraPlaylistShareCodec
 import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedTrack
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
-import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaIntentParser
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_RETRY_DELAYS_MS
 import com.luc4n3x.levyra.feature.radio.LiveRadioArtworkResolver
 import com.luc4n3x.levyra.feature.radio.RadioRepository
@@ -416,7 +400,6 @@ import com.luc4n3x.levyra.data.locallibrary.isPreferredLocalSubstitute
 import com.luc4n3x.levyra.data.locallibrary.rejectPreferredLocalStream
 import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
 import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
-import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
@@ -465,7 +448,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -502,11 +484,6 @@ private const val VAULT_SYNC_FILE_ACCESS = Intent.FLAG_GRANT_READ_URI_PERMISSION
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 private const val EXPLORE_VIDEOS_LIMIT = 40
 
-data class AppleNewThisWeek(
-    val key: String = "",
-    val albums: List<com.luc4n3x.levyra.domain.AlbumHit> = emptyList(),
-    val loading: Boolean = false
-)
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
@@ -580,10 +557,6 @@ private data class SamplesPlaybackSession(
     val positionMs: Long
 )
 
-internal data class PlaybackResolveRequest(
-    val id: Long,
-    val startPaused: Boolean = false
-)
 
 internal fun distinctOnboardingPortraits(
     candidates: List<String>,
@@ -593,111 +566,17 @@ internal fun distinctOnboardingPortraits(
     return candidates.filterNot { it in shown }.ifEmpty { candidates }
 }
 
-internal fun shouldStartPlaybackPaused(
-    request: PlaybackResolveRequest,
-    activeRequestId: Long
-): Boolean = request.id == activeRequestId && request.startPaused
 
 private const val STORY_POST_END_SLACK_MS = 1_000L
 
-internal fun LevyraUiState.withExplicitPlaybackMode(videoMode: Boolean): LevyraUiState =
-    if (isVideoMode == videoMode && pendingVideoMode == null) this
-    else copy(isVideoMode = videoMode, pendingVideoMode = null)
-
-internal fun releaseRadarAlbumHit(entry: ReleaseRadarEntry): AlbumHit? {
-    val release = entry.release
-    val browseId = release.browseId.trim()
-    if (browseId.isBlank()) return null
-    val artist = entry.artistName.trim().ifBlank { release.subtitle.trim() }
-    return AlbumHit(
-        title = release.title,
-        artist = artist,
-        year = release.year,
-        thumbnailUrl = release.thumbnailUrl,
-        query = listOf(artist, release.title).filter(String::isNotBlank).joinToString(" "),
-        browseId = browseId,
-        artistBrowseId = entry.artistBrowseId.trim(),
-        explicit = release.explicit
-    )
-}
 
 private const val MIX_CHAPTERS_LOAD_DELAY_MS = 1_500L
 
-enum class LyricsPhraseSearchStatus { IDLE, TOO_SHORT, SEARCHING, RESULTS, RESULTS_UNVERIFIED, NO_MATCH, UNAVAILABLE }
-
-data class LyricsPhraseSearchUiState(
-    val visible: Boolean = false,
-    val query: String = "",
-    val status: LyricsPhraseSearchStatus = LyricsPhraseSearchStatus.IDLE,
-    val hits: List<LyricsPhraseHit> = emptyList()
-)
-
-internal fun releaseRadarSearchQuery(entry: ReleaseRadarEntry): String =
-    listOf(entry.release.title, entry.artistName).map(String::trim).filter(String::isNotBlank).joinToString(" ")
-
-internal fun prioritizeNewReleasesForUser(
-    releases: List<AlbumHit>,
-    preferredArtists: List<String>,
-    limit: Int
-): List<AlbumHit> {
-    if (limit <= 0) return emptyList()
-    val preferences = preferredArtists
-        .map { artist -> artist.trim().lowercase(java.util.Locale.ROOT) }
-        .filter(String::isNotBlank)
-        .distinct()
-    if (preferences.isEmpty()) return releases.take(limit)
-    val (matched, remaining) = releases.partition { release ->
-        val artist = release.artist.trim().lowercase(java.util.Locale.ROOT)
-        preferences.any { preferred ->
-            artist == preferred || artist.contains(preferred) || preferred.contains(artist)
-        }
-    }
-    return (matched + remaining)
-        .distinctBy { release ->
-            release.browseId.ifBlank {
-                "${release.artist.lowercase(java.util.Locale.ROOT)}|${release.title.lowercase(java.util.Locale.ROOT)}"
-            }
-        }
-        .take(limit)
-}
-
-internal fun LevyraUiState.withPublishedSamples(
-    tracks: List<Track>,
-    loading: Boolean = false,
-    failed: Boolean = false
-): LevyraUiState = copy(
-    exploreSamples = tracks,
-    isSamplesLoading = loading,
-    samplesLoadFailed = failed
-)
 
 private const val MAX_DEARROW_VIDEOS = 30
 private const val MAX_IMPORT_FILE_BYTES = 8L * 1024 * 1024
 private const val DEARROW_CONCURRENCY = 4
 
-internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
-
-internal fun shouldContinueMotionPrefetch(
-    activeKey: String,
-    currentKey: String,
-    nextKey: String,
-    queueChanged: Boolean
-): Boolean = when (activeKey) {
-    nextKey -> true
-    currentKey -> !queueChanged
-    else -> false
-}
-
-internal fun shouldRefreshMotionArtworkOwnership(
-    previous: LevyraInterfaceSettings,
-    next: LevyraInterfaceSettings
-): Boolean = previous.canvasSource != next.canvasSource ||
-    previous.motionArtworkWifiOnly != next.motionArtworkWifiOnly
-
-internal fun resumeStartPositionMs(pendingSeekMs: Long, durationMs: Long): Long =
-    pendingSeekMs.takeIf { positionMs ->
-        positionMs > 1500L && (durationMs <= 0L || positionMs < durationMs)
-    } ?: 0L
 
 internal fun shouldReuseFreshCurrentsRequest(
     activeRequestLanguage: String,
@@ -706,378 +585,15 @@ internal fun shouldReuseFreshCurrentsRequest(
 ): Boolean = !force && activeRequestLanguage == requestedLanguage
 
 
-internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
-    if (list.isEmpty()) return null
-    val selected = list.firstOrNull { candidate -> sameYoutubeShortSample(candidate, requested) }
-        ?: requested
-    return selected.takeIf(::isYoutubeShortTrack)
-}
-
-internal fun sameYoutubeShortSample(left: Track, right: Track): Boolean {
-    if (left.id.startsWith(SPOTIFY_CLIP_ID_PREFIX) || right.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)) {
-        return left.id == right.id
-    }
-    val videoId = PlaybackSourceIdentity.sourceVideoId(left)
-    return videoId.isNotBlank() && videoId == PlaybackSourceIdentity.sourceVideoId(right)
-}
-
-internal fun samplePlaybackVideoMode(track: Track): Boolean = !track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX)
-
-
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
     val safeCurrent = current?.coerceIn(1, 99) ?: 1
     return maxOf(safeCurrent, safeIncoming)
 }
 
-private val PLAYBACK_TITLE_PRODUCTION_MARKER = Regex(
-    """[(\[][^)\]]*\b(official|ufficiale|oficial|lyric|lyrics|testo|audio|video|visualizer|visualiser|clip)\b[^)\]]*[)\]]""",
-    RegexOption.IGNORE_CASE
-)
-private val PLAYBACK_TITLE_FEATURE_GROUP = Regex(
-    """[(\[]\s*(feat|ft|featuring|con|with)\b\.?[^)\]]*[)\]]""",
-    RegexOption.IGNORE_CASE
-)
-private val PLAYBACK_TITLE_FEATURE_TAIL = Regex(
-    """\s(feat|ft|featuring)\b\.?\s.*$""",
-    RegexOption.IGNORE_CASE
-)
-private val PLAYBACK_TITLE_TRAILING_MARKER = Regex(
-    """\s[-–|]\s(official\s+)?(music\s+)?(video|audio|lyrics?\s+video)\s*$""",
-    RegexOption.IGNORE_CASE
-)
-
-internal fun playbackTitleKey(title: String): String {
-    val core = title
-        .replace(PLAYBACK_TITLE_PRODUCTION_MARKER, " ")
-        .replace(PLAYBACK_TITLE_FEATURE_GROUP, " ")
-        .replace(PLAYBACK_TITLE_FEATURE_TAIL, " ")
-        .replace(PLAYBACK_TITLE_TRAILING_MARKER, " ")
-    return playbackTextKey(core).ifBlank { playbackTextKey(title) }
-}
-
-internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
-    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
-        RecordingIdentityMatch.Exact -> return true
-        RecordingIdentityMatch.Conflict -> return false
-        RecordingIdentityMatch.Unknown -> Unit
-    }
-    if (!playbackTitlesCompatible(target.title, candidate.title)) return false
-
-    val targetArtistTokens = playbackArtistTokens(target.artist)
-    if (targetArtistTokens.isEmpty()) return true
-    if (target.artistBrowseIds.isNotEmpty() && candidate.artistBrowseIds.any { it in target.artistBrowseIds }) {
-        return true
-    }
-    val candidateArtistTokens = PlaybackTokenSet(playbackArtistTokens("${candidate.artist} ${candidate.title}"))
-    val artistMatches = targetArtistTokens.count(candidateArtistTokens::matches)
-    val requiredMatches = maxOf(1, (targetArtistTokens.size + 1) / 2)
-    return artistMatches >= requiredMatches
-}
-
-private fun playbackTitlesCompatible(originalTitle: String, replacementTitle: String): Boolean {
-    if (addsDifferentPlaybackVariant(originalTitle, replacementTitle)) return false
-    val targetTitle = playbackTitleKey(originalTitle)
-    val candidateTitle = playbackTitleKey(replacementTitle)
-    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
-
-    val targetTitleTokens = playbackTokens(targetTitle)
-    val candidateTitleTokens = PlaybackTokenSet(playbackTokens(candidateTitle))
-    val titleMatches = targetTitleTokens.count(candidateTitleTokens::matches)
-    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
-    return candidateTitle == targetTitle ||
-        candidateTitle.startsWith("$targetTitle ") ||
-        targetTitle.startsWith("$candidateTitle ") ||
-        titleCoverage >= 0.8
-}
-
-internal fun playbackCandidateScore(
-    target: Track,
-    candidate: Track,
-    scoreDuration: Boolean = true
-): Int {
-    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
-        RecordingIdentityMatch.Exact -> return 10_000
-        RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
-        RecordingIdentityMatch.Unknown -> Unit
-    }
-    val targetTitle = playbackTextKey(target.title)
-    val targetArtist = playbackTextKey(target.artist)
-    val candidateTitle = playbackTextKey(candidate.title)
-    val candidateArtist = playbackTextKey(candidate.artist)
-    val candidateBlob = playbackTextKey("${candidate.title} ${candidate.artist} ${candidate.album}")
-    val titleTokens = playbackTokens(targetTitle)
-    val artistTokens = playbackArtistTokens(target.artist)
-    var score = 0
-    when {
-        candidateTitle == targetTitle -> score += 140
-        ImportTransliteration.sameRomanized(targetTitle, candidateTitle) -> score += 120
-        candidateTitle.isNotBlank() && (candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle)) -> score += 95
-        titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.split(' ').contains(it) } -> score += 70
-    }
-    when {
-        targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
-        targetArtist.isNotBlank() && ImportTransliteration.sameRomanized(targetArtist, candidateArtist) -> score += 70
-        targetArtist.isNotBlank() && candidateArtist.isNotBlank() &&
-            (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
-        artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.split(' ').contains(it) } -> score += 35
-    }
-    if (PLAYBACK_PENALTY_TERMS.any { candidateBlob.contains(it) } && PLAYBACK_PENALTY_TERMS.none { targetTitle.contains(it) }) score -= 60
-    if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
-    if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
-    if (scoreDuration && candidate.durationMs > 0L && target.durationMs > 0L) {
-        val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
-        if (delta <= 5_000L) {
-            score += 30
-        } else if (delta > 35_000L) {
-            score -= 25
-        }
-    }
-    return score
-}
-
-internal val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
-    """[(\[]\s*(official\s+|full\s+)?(audio|lyrics?\s+video|lyrics?|testo|visualizer|visualiser)\s*[)\]]""" +
-        """|\bofficial\s+audio\b|\baudio\s+ufficiale\b""",
-    RegexOption.IGNORE_CASE
-)
-
-internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
-
-internal val PLAYBACK_FAN_UPLOAD_MARKER = Regex(
-    """\b(karaoke|legendad[oa]|tradu[cç][aã]o|traducida|traduzione|subtitulad[oa]|sub\s+espa[nñ]ol|letra|lyrics?|cover|reaction)\b""",
-    RegexOption.IGNORE_CASE
-)
-
-internal fun videoPlaybackCandidateScore(
-    target: Track,
-    candidate: Track,
-    evidence: VideoUploadEvidence? = null
-): Int {
-    val recordingScore = playbackCandidateScore(target, candidate, scoreDuration = false)
-    if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
-    val type = candidate.videoType
-    val channelBonus = uploaderChannelBonus(target, evidence)
-    val officialUpload = YoutubeMusicVideoType.isOfficialVideo(type) || channelBonus >= VIDEO_OFFICIAL_CHANNEL_BONUS
-    val videoPreference = when {
-        officialUpload -> 20_000
-        YoutubeMusicVideoType.isArtTrack(type) -> -20_000
-        YoutubeMusicVideoType.isVideo(type) -> 1_000
-        else -> 0
-    }
-    val officialChannel = target.artistBrowseIds.isNotEmpty() &&
-        candidate.artistBrowseIds.any { it in target.artistBrowseIds }
-    val uploadTitles = listOfNotNull(candidate.title, evidence?.title)
-    val audioOnlyUpload = uploadTitles.any(PLAYBACK_AUDIO_ONLY_MARKER::containsMatchIn)
-    val fanUpload = uploadTitles.any(::isUnofficialUploadTitle) && !isUnofficialUploadTitle(target.title)
-    val official = officialUpload || channelBonus > 0
-    val durationMs = evidence?.durationMs?.takeIf { it > 0L } ?: candidate.durationMs
-    val views = maxOf(candidate.youtubeViewCount, evidence?.viewCount ?: -1L)
-    return recordingScore + videoPreference + channelBonus +
-        (if (officialChannel) 6_000 else 0) -
-        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) -
-        (if (fanUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) -
-        videoDurationPenalty(target.durationMs, durationMs, official) +
-        videoViewCountBonus(views)
-}
-
-internal fun Track.forModeResolution(): Track =
-    copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
-
-internal fun Track.withPreservedAudioIdentity(source: Track): Track {
-    if (audioVideoId.isNotBlank()) return this
-    val audioId = source.audioVideoId.trim().ifBlank {
-        youtubePlayableTrack(source)?.audioVideoId?.trim().orEmpty()
-    }
-    return if (audioId.isBlank()) this else copy(audioVideoId = audioId)
-}
-
-internal fun videoCandidateId(candidate: Track): String =
-    youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
-
-internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
-
-internal const val VIDEO_PROVIDER_RANK_STEP = 200
-
-internal fun selectPreferredVideoPlaybackCandidate(
-    target: Track,
-    candidates: List<Track>,
-    authoritativeIds: Set<String> = emptySet(),
-    evidence: Map<String, VideoUploadEvidence> = emptyMap()
-): Track? = rankVideoPlaybackCandidates(target, candidates, authoritativeIds, evidence).firstOrNull()
-
-internal fun rankVideoPlaybackCandidates(
-    target: Track,
-    candidates: List<Track>,
-    authoritativeIds: Set<String> = emptySet(),
-    evidence: Map<String, VideoUploadEvidence> = emptyMap()
-): List<Track> {
-    val videoPrimary = YoutubeMusicVideoType.isVideo(target.videoType)
-    val audioIdentityIds = buildSet {
-        add(target.audioVideoId.trim())
-        if (!videoPrimary) {
-            add(target.id.trim())
-            add(youtubeVideoId(target.videoUrl).trim())
-        }
-    }.filter { YOUTUBE_PLAYABLE_VIDEO_ID.matches(it) }.toSet() - target.counterpartVideoId.trim()
-    val eligible = candidates.asSequence()
-        .mapIndexed { rank, candidate -> rank to candidate }
-        .filter { (_, candidate) ->
-            val candidateId = videoCandidateId(candidate)
-            YOUTUBE_PLAYABLE_VIDEO_ID.matches(candidateId) &&
-                candidateId !in audioIdentityIds &&
-                !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
-        }
-        .filter { (_, candidate) ->
-            val upload = evidence[videoCandidateId(candidate)]
-            isPlaybackCandidateCompatible(target, candidate) &&
-                upload?.let { !addsDifferentPlaybackVariant(target.title, it.title) } != false &&
-                !isVideoDurationOutlier(target.durationMs, upload?.durationMs?.takeIf { it > 0L } ?: candidate.durationMs)
-        }
-        .distinctBy { (_, candidate) -> videoCandidateId(candidate) }
-        .toList()
-    val leaderId = dominantViewCountLeader(eligible.map { it.second }, evidence)
-    return eligible
-        .map { (rank, candidate) ->
-            val candidateId = videoCandidateId(candidate)
-            val authority = if (
-                candidateId in authoritativeIds && YoutubeMusicVideoType.isVideo(candidate.videoType)
-            ) {
-                VIDEO_PAIRING_AUTHORITY_BONUS
-            } else {
-                0
-            }
-            val popularity = if (candidateId == leaderId) VIDEO_POPULARITY_LEADER_BONUS else 0
-            val score = videoPlaybackCandidateScore(target, candidate, evidence[candidateId]) + authority + popularity -
-                rank * VIDEO_PROVIDER_RANK_STEP
-            score to candidate
-        }
-        .sortedByDescending { it.first }
-        .map { it.second }
-}
-
-private val PLAYBACK_PENALTY_TERMS = listOf(
-    "karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore",
-    "караоке", "кавер", "ремикс", "ремікс", "минусовка", "инструментал", "інструментал", "наживо", "живой звук"
-)
-
-internal fun playbackTextKey(value: String): String = MusicIdentityText.normalize(value)
-
-private class PlaybackTokenSet(tokens: List<String>) {
-    private val exact = tokens.toHashSet()
-    private val romanized = tokens.mapTo(HashSet(), ImportTransliteration::romanizedKey)
-    private val romanizedCyrillic = tokens.filter(ImportTransliteration::containsCyrillic)
-        .mapTo(HashSet(), ImportTransliteration::romanizedKey)
-
-    fun matches(token: String): Boolean {
-        if (token in exact) return true
-        val key = ImportTransliteration.romanizedKey(token)
-        if (key.length < 2) return false
-        return if (ImportTransliteration.containsCyrillic(token)) key in romanized else key in romanizedCyrillic
-    }
-}
-
-private fun playbackTokens(value: String): List<String> {
-    return playbackTextKey(value).split(' ').filter { it.length >= 2 }
-}
-
-internal fun playbackArtistTokens(value: String): List<String> {
-    val ignored = setOf("feat", "featuring", "ft", "and", "the", "con", "with", "vs")
-    return playbackTokens(value).filterNot { it in ignored }
-}
-
-internal fun selectArtistMotionSeed(
-    profileName: String,
-    tracks: List<Track>,
-    isLocal: (Track) -> Boolean
-): Track? = selectArtistMotionSeeds(profileName, tracks, isLocal).firstOrNull()
-
-internal fun selectArtistMotionSeeds(
-    profileName: String,
-    tracks: List<Track>,
-    isLocal: (Track) -> Boolean,
-    limit: Int = MAX_ARTIST_MOTION_SEEDS
-): List<Track> = tracks.filter { candidate ->
-    !isLocal(candidate) &&
-        primaryMotionArtistMatches(
-            MotionTrackIdentity.from(candidate).artists,
-            listOf(profileName)
-        )
-}.take(limit)
-
-private const val MAX_ARTIST_MOTION_SEEDS = 4
-
-internal suspend fun firstAvailableMotionArtwork(
-    attempts: List<suspend () -> MotionArtwork?>
-): MotionArtwork? = channelFlow {
-    attempts.forEach { attempt -> launch { send(attempt()) } }
-}.firstOrNull { it != null }
-
-internal fun selectAlbumMotionSeed(
-    detail: AlbumDetail,
-    isLocal: (Track) -> Boolean
-): Track? = detail.tracks.firstOrNull { candidate ->
-    !isLocal(candidate) && albumMotionSeedMatches(
-        track = candidate,
-        albumTitle = detail.album.title,
-        albumArtist = detail.album.artist
-    )
-}
-
-internal fun albumMotionSeedMatches(track: Track, albumTitle: String, albumArtist: String): Boolean {
-    val identity = MotionTrackIdentity.from(track)
-    if (albumArtist.isNotBlank() && !primaryMotionArtistMatches(identity.artists, listOf(albumArtist))) return false
-    if (albumTitle.isBlank() || identity.album.isBlank()) return true
-    return normalizeMotionText(identity.album) == normalizeMotionText(albumTitle)
-}
-
-internal fun canPublishAlbumMotionArtwork(
-    visible: AlbumDetail?,
-    expected: AlbumDetail,
-    albumVisible: Boolean,
-    animationsEnabled: Boolean,
-    motionArtworkEnabled: Boolean
-): Boolean {
-    if (!albumVisible || !animationsEnabled || !motionArtworkEnabled || visible == null) return false
-    val expectedBrowseId = expected.album.browseId
-    if (expectedBrowseId.isNotBlank() && visible.album.browseId.isNotBlank()) {
-        return visible.album.browseId.equals(expectedBrowseId, ignoreCase = true)
-    }
-    return visible.album.title.equals(expected.album.title, ignoreCase = true) &&
-        visible.album.artist.equals(expected.album.artist, ignoreCase = true)
-}
-
-data class ExploreGenreChartState(
-    val key: String = "",
-    val tracks: List<Track> = emptyList(),
-    val isLoading: Boolean = false,
-    val refreshedAtMs: Long = 0L
-)
-
-private const val EXPLORE_GENRE_CHART_REFRESH_MS = 6 * 60 * 60 * 1000L
-
-internal fun ExploreGenreChartState.coversRequest(requestKey: String, nowMs: Long): Boolean {
-    if (key != requestKey) return false
-    if (isLoading) return true
-    return tracks.isNotEmpty() && refreshedAtMs > 0L && nowMs - refreshedAtMs < EXPLORE_GENRE_CHART_REFRESH_MS
-}
-
-internal fun ExploreGenreChartState.finishedWith(result: List<Track>, nowMs: Long): ExploreGenreChartState = copy(
-    tracks = result.ifEmpty { tracks },
-    isLoading = false,
-    refreshedAtMs = if (result.isEmpty()) refreshedAtMs else nowMs
-)
 
 private const val EXPLORE_GENRE_CHART_FIRST_PAINT = 10
 
-data class ExploreGenreDiscoveryState(
-    val key: String = "",
-    val storefront: String = "",
-    val apple: List<com.luc4n3x.levyra.data.apple.AppleCatalogShelf> = emptyList(),
-    val lastFm: com.luc4n3x.levyra.data.lastfm.LastFmGenreDiscovery? = null,
-    val playlists: List<com.luc4n3x.levyra.data.YoutubeMusicMoodSection> = emptyList(),
-    val isLoading: Boolean = false
-)
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
@@ -17234,275 +16750,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 }
 
-internal enum class JamSimilarSongAction {
-    SelectExisting,
-    AddThenSelect,
-    AddOnly,
-    Reject
-}
-
-internal fun jamSimilarSongAction(jam: JamUiState, existingIndex: Int): JamSimilarSongAction = when {
-    jam.canControlPlayback && existingIndex >= 0 -> JamSimilarSongAction.SelectExisting
-    jam.canControlPlayback && jam.canAddTracks -> JamSimilarSongAction.AddThenSelect
-    jam.canAddTracks -> JamSimilarSongAction.AddOnly
-    else -> JamSimilarSongAction.Reject
-}
-
-internal fun playbackIdentity(track: Track): String = LevyraPersonalOrbit.identityKey(track)
-
-internal fun playbackTrackAfterQueueSync(current: Track?, queued: Track?): Track? {
-    if (queued == null) return null
-    return current?.takeIf {
-        playbackQueueIdentity(it) == playbackQueueIdentity(queued) && it.streamUrl.isNotBlank()
-    } ?: queued
-}
-
-internal fun queueSyncReplacedTrack(previous: Track?, synced: Track?): Boolean =
-    previous != null && synced != null && playbackQueueIdentity(previous) != playbackQueueIdentity(synced)
-
-internal fun playbackPositionForExit(
-    playerPositionMs: Long?,
-    pendingSeekMs: Long,
-    selectedPositionMs: Long = 0L,
-    isResolving: Boolean = false
-): Long = when {
-    isResolving || playerPositionMs == null ->
-        pendingSeekMs.takeIf { it > 0L } ?: selectedPositionMs.coerceAtLeast(0L)
-    else -> playerPositionMs.takeIf { it > 0L } ?: pendingSeekMs.coerceAtLeast(0L)
-}
-
-internal fun canTerminateProcessForExit(downloadStates: List<WorkInfo.State>): Boolean =
-    downloadStates.all { it.isFinished }
-
-private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 
 private const val LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT = 4_000
 private const val MAX_UNAVAILABLE_LOCAL_SKIPS = 8
 private const val COLLECTION_SKIP_WINDOW_MS = 60_000L
 
-internal fun queueSpaceDisplayName(space: QueueSpaceSummary?, strings: LevyraStrings): String =
-    space?.name?.trim()?.takeIf { it.isNotEmpty() } ?: strings.queueSpaceDefaultName
-
-internal fun duplicatedQueueSpaceName(name: String): String = "$name 2"
-
-internal fun catalogArtTrackId(ownId: String, playlist: com.luc4n3x.levyra.data.YoutubeMusicWatchPlaylist?): String? =
-    playlist?.tracks
-        ?.firstOrNull { it.videoId == ownId }
-        ?.counterpart
-        ?.takeIf { YoutubeMusicVideoType.isArtTrack(it.videoType) }
-        ?.videoId
-        ?.takeIf { it.isNotBlank() && it != ownId }
-
-internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {
-    val counterpart = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val fromUrl = youtubeVideoId(track.videoUrl).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val storedAudio = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val cachedVideoId = if (track.id.startsWith("spotify:")) {
-        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get().get(track.id)?.videoId?.trim()?.takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    } else ""
-    val regular = sequenceOf(storedAudio, fromIdUrl, rawId, fromUrl, cachedVideoId)
-        .firstOrNull(String::isNotBlank)
-        .orEmpty()
-    val type = track.videoType.uppercase()
-    val videoTyped = type.contains("OMV") || type.contains("UGC")
-    val videoId = when {
-        !preferVideo -> regular.ifBlank { counterpart }
-        type.contains("ATV") -> counterpart
-        videoTyped -> fromUrl.ifBlank { regular }
-        counterpart.isNotBlank() -> counterpart
-        else -> ""
-    }
-    if (videoId.isBlank()) return null
-    if (preferVideo && videoId == regular && !videoTyped) return null
-    return track.copy(
-        videoUrl = "https://www.youtube.com/watch?v=$videoId",
-        audioVideoId = regular
-    )
-}
-
-
-private val YOUTUBE_ENGAGEMENT_VIDEO_ID = YOUTUBE_PLAYABLE_VIDEO_ID
-
-internal fun youtubeEngagementVideoId(track: Track): String {
-    val selectedVideoId = PlaybackSourceIdentity.sourceVideoId(track)
-    val youtubeBacked = isYoutubeBackedTrack(track)
-    if (
-        youtubeBacked &&
-        YoutubeMusicVideoType.isVideo(track.videoType) &&
-        YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)
-    ) {
-        return selectedVideoId
-    }
-    if (youtubeBacked) {
-        val audioVideoId = track.audioVideoId.trim()
-        val counterpart = track.counterpartVideoId.trim()
-        val confirmedAudioPair =
-            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(audioVideoId) &&
-                selectedVideoId == audioVideoId
-        if (
-            confirmedAudioPair &&
-            YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(counterpart) &&
-            counterpart != audioVideoId
-        ) {
-            return counterpart
-        }
-    }
-    if (youtubeBacked && YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(selectedVideoId)) {
-        return selectedVideoId
-    }
-    val urlVideoId = youtubeVideoId(track.videoUrl).trim()
-    if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(urlVideoId)) return urlVideoId
-
-    val idUrlVideoId = youtubeVideoId(track.id).trim()
-    if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(idUrlVideoId)) return idUrlVideoId
-
-    if (!youtubeBacked) return ""
-    return sequenceOf(track.counterpartVideoId, track.id)
-        .map(String::trim)
-        .firstOrNull(YOUTUBE_ENGAGEMENT_VIDEO_ID::matches)
-        .orEmpty()
-}
-
-
-internal const val MAX_LIVE_CHAT_ITEMS = 500
-internal const val LIVE_CHAT_POLL_INTERVAL_MS = 2_000L
-internal const val MAX_LIVE_CHAT_POLL_INTERVAL_MS = 60_000L
-internal const val MAX_YOUTUBE_COMMENT_CONTINUATIONS = 512
-
-internal fun youtubeLiveChatPollIntervalMs(serverDelayMs: Long): Long =
-    serverDelayMs.coerceIn(LIVE_CHAT_POLL_INTERVAL_MS, MAX_LIVE_CHAT_POLL_INTERVAL_MS)
-
-internal fun nextYoutubeCommentsToken(
-    requestedToken: String,
-    candidateToken: String,
-    successfulTokens: Set<String>
-): String {
-    val requested = requestedToken.trim()
-    val candidate = candidateToken.trim()
-    if (candidate.isBlank() || candidate == requested || candidate in successfulTokens) return ""
-    return candidate
-}
-
-internal fun isYoutubeCommentsRequestCurrent(
-    videoId: String,
-    generation: Long,
-    currentGeneration: Long,
-    state: LevyraUiState
-): Boolean = generation == currentGeneration && state.youtubeEngagement.videoId == videoId
-
-internal fun LevyraUiState.withYoutubeCommentsResultIfCurrent(
-    videoId: String,
-    generation: Long,
-    currentGeneration: Long,
-    result: YoutubeCommentsResult
-): LevyraUiState {
-    if (!isYoutubeCommentsRequestCurrent(videoId, generation, currentGeneration, this)) return this
-    val visible = youtubeEngagement.comments.visible
-    val comments = when (result) {
-        is YoutubeCommentsResult.Available -> YoutubeCommentsState(
-            videoId = videoId,
-            visible = visible,
-            loaded = true,
-            loading = false,
-            loadingMore = false,
-            disabled = result.page.commentsDisabled,
-            countText = result.page.countText,
-            items = result.page.items.distinctBy(YoutubeComment::id),
-            nextToken = result.page.nextToken,
-            nextPageUrl = result.page.nextPageUrl,
-            nextPollDelayMs = result.page.nextPollDelayMs,
-            liveChat = result.page.liveChat,
-            error = null
-        )
-        YoutubeCommentsResult.Disabled -> YoutubeCommentsState(
-            videoId = videoId,
-            visible = visible,
-            loaded = true,
-            loading = false,
-            disabled = true
-        )
-        is YoutubeCommentsResult.Failed -> youtubeEngagement.comments.copy(
-            videoId = videoId,
-            loading = false,
-            loaded = false,
-            error = "unavailable"
-        )
-    }
-    return copy(youtubeEngagement = youtubeEngagement.copy(comments = comments))
-}
-
-internal fun CoroutineScope.replaceHomeResonanceCommentsJob(
-    currentJob: Job?,
-    block: suspend CoroutineScope.() -> Unit
-): Job {
-    currentJob?.cancel()
-    return launch(Dispatchers.IO, block = block)
-}
-
-internal fun homeResonanceCommentVideoIds(tracks: List<Track>): List<String> = tracks.asSequence()
-    .map(Track::id)
-    .filter { it.length == 11 }
-    .distinct()
-    .toList()
-
-internal fun homeResonanceCommentsToRefresh(
-    tracks: List<Track>,
-    comments: Map<String, ResonanceCommentSnippet>,
-    nowMs: Long,
-    ttlMs: Long
-): List<Track> = tracks.asSequence()
-    .filter { it.id.length == 11 }
-    .distinctBy(Track::id)
-    .filter { track ->
-        val updatedAtMs = comments[track.id]?.updatedAtMs ?: 0L
-        val ageMs = nowMs - updatedAtMs
-        updatedAtMs <= 0L || ageMs < 0L || ageMs >= ttlMs
-    }
-    .toList()
-
-internal fun LevyraUiState.withHomeResonanceComment(
-    requestVideoIds: List<String>,
-    videoId: String,
-    transform: (ResonanceCommentSnippet?) -> ResonanceCommentSnippet
-): LevyraUiState {
-    if (requestVideoIds != homeResonanceCommentVideoIds(homeResonanceTracks) || videoId !in requestVideoIds) {
-        return this
-    }
-    val comments = LinkedHashMap(resonanceCommentsForTracks(homeResonanceTracks, homeResonanceComments))
-    comments[videoId] = transform(comments[videoId])
-    return copy(homeResonanceComments = resonanceCommentsForTracks(homeResonanceTracks, comments))
-}
-
-internal fun isCurrentLyricsRequest(
-    requestGeneration: Long,
-    currentGeneration: Long,
-    requestedTrackIdentity: String,
-    currentTrackIdentity: String?
-): Boolean = requestGeneration == currentGeneration && requestedTrackIdentity == currentTrackIdentity
-
-private fun isYoutubeBackedTrack(track: Track): Boolean {
-    val sourceMarker = "${track.source} ${track.metadataProvider}".lowercase()
-    return sourceMarker.contains("youtube") ||
-        track.videoType.isNotBlank() ||
-        track.videoUrl.contains("youtube.com", ignoreCase = true) ||
-        track.videoUrl.contains("youtu.be", ignoreCase = true)
-}
-
-private val YOUTUBE_VIDEO_ID_PATTERNS = listOf(
-    Regex("[?&]v=([^&?/]+)"),
-    Regex("youtu\\.be/([^?&/]+)"),
-    Regex("/shorts/([^?&/]+)"),
-    Regex("/embed/([^?&/]+)")
-)
-
-private fun youtubeVideoId(url: String): String {
-    if (url.isBlank()) return ""
-    return YOUTUBE_VIDEO_ID_PATTERNS.firstNotNullOfOrNull { pattern ->
-        pattern.find(url)?.groupValues?.getOrNull(1)
-    }.orEmpty()
-}
 
 private const val ONBOARDING_DISCOVERY_SEED_ARTISTS = 4
 private const val CHART_DISCOVERY_SEEDS = 8
