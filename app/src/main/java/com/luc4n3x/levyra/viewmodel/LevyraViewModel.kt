@@ -467,7 +467,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 private const val EXPLORE_VIDEOS_LIMIT = 40
 
@@ -508,7 +507,6 @@ private const val DISCOVERY_MATCH_DURATION_TOLERANCE_MS = 20_000L
 private const val DISCOVERY_MATCH_MIN_SCORE = 160
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
-private const val REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT = 300
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
 private const val DOWNLOAD_QUALITY_PROBE_TTL_MS = 5L * 60L * 1_000L
 
@@ -559,7 +557,6 @@ private const val MIX_CHAPTERS_LOAD_DELAY_MS = 1_500L
 
 
 private const val MAX_DEARROW_VIDEOS = 30
-private const val MAX_IMPORT_FILE_BYTES = 8L * 1024 * 1024
 private const val DEARROW_CONCURRENCY = 4
 
 
@@ -624,11 +621,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         override fun openPlaylist(playlistId: String) = this@LevyraViewModel.openPlaylist(playlistId)
     }
-    private val playlistImportEngineDelegate = lazy {
+    private val playlistImportEngineDelegate: Lazy<PlaylistImportEngine> = lazy {
         PlaylistImportEngine.get(getApplication<Application>()).also { it.attach(playlistImportHost) }
     }
     private val playlistImportEngine by playlistImportEngineDelegate
-    private val playlistImportCatalog get() = playlistImportEngine.catalog
     val playlistImport: PlaylistImportController get() = playlistImportEngine.controller
     val playlistExport: PlaylistExportController by lazy {
         PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext, listenBrainzLibrary)
@@ -694,14 +690,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val smartOfflineSettingsMutationMutex = Mutex()
-    private var pendingLyricsStudioWrites = 0
-    private var lyricsStudioMutationGeneration = 0L
-    private var pendingHomeStudioWrites = 0
-    private var homeStudioMutationGeneration = 0L
-    private var pendingMiniPlayerStudioWrites = 0
-    private var miniPlayerStudioMutationGeneration = 0L
-    private var pendingNavigationStudioWrites = 0
-    private var navigationStudioMutationGeneration = 0L
     private val smartOfflineSettingsMutationId = AtomicLong()
     @Volatile private var pendingSmartOfflineSettings: LevyraSmartOfflineSettings? = null
     private val recommendationFeedbackMutationMutex = Mutex()
@@ -936,7 +924,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     )
-    private var replacementSearchJob: Job? = null
     private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
     private var sharedMediaJob: Job? = null
     private val musicRecognition = MusicRecognitionUiController(
@@ -985,14 +972,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartArtworkJob: Job? = null
     private var orbitArtworkJob: Job? = null
     private var appleTrendingJob: Job? = null
-    private var motionArtworkJob: Job? = null
-    @Volatile private var motionArtworkRequestKey: String? = null
-    @Volatile private var motionArtworkRequestGeneration: Long = 0L
-    private val motionArtworkRequestToken = AtomicLong(0L)
-    private var motionArtworkPrefetchJob: Job? = null
-    private var motionPosterJob: Job? = null
-    @Volatile private var motionArtworkPrefetchKey: String? = null
-    @Volatile private var motionArtworkPrefetchToken = 0L
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
@@ -1003,8 +982,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sponsorJob: Job? = null
     private var sectionLoopJob: Job? = null
     private var listPrefetchJob: Job? = null
-    private var updateJob: Job? = null
-    private var sessionDismissedUpdateVersion: String? = null
+    private val appUpdates = AppUpdateController(viewModelScope, _state, appUpdateRepository)
     private val artistProfiles = ArtistProfileController(
         viewModelScope,
         _state,
@@ -1033,12 +1011,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         clearTrackDislikes = ::clearTrackDislikes,
         refreshForgottenFavorites = ::refreshForgottenFavorites
     )
-    private var playlistHitJob: Job? = null
+    private val playlistLibrary = PlaylistLibraryController(
+        scope = viewModelScope,
+        context = levyraContext,
+        uiState = _state,
+        playlistStore = playlistStore,
+        savedPlaylistsStore = savedPlaylistsStore,
+        savedPlaylists = savedPlaylists,
+        providerRouter = providerRouter,
+        importEngine = playlistImportEngineDelegate,
+        playlistSyncProvider = { playlistSync },
+        carryFavorite = { original, replacement -> carryFavorite(original, replacement) },
+        removeSpeedDialPin = { key -> removeSpeedDialPin(key) },
+        mutateSpeedDial = { transform -> mutateSpeedDial(transform) },
+        clearPlayerReturnDetail = { playerReturnDetail = null }
+    )
     private var likeAllJob: Job? = null
-    private var artistMotionJob: Job? = null
-    private var artistMotionRequest: ArtistMotionRequest? = null
-    private var artistMotionPublished = false
-    private var albumMotionJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
     private var homeArtistsJob: Job? = null
@@ -1185,6 +1173,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsNetworkProfile = ::lyricsNetworkProfile
     )
     val lyricsPhraseSearch: StateFlow<LyricsPhraseSearchUiState> = lyricsController.phraseSearch
+    private val motionArtwork = MotionArtworkController(
+        scope = viewModelScope,
+        uiState = _state,
+        context = application,
+        motionArtworkEngine = motionArtworkEngine,
+        playbackGeneration = playbackGeneration,
+        queueEngine = queueEngine,
+        isLocalPlaybackTrack = ::isLocalPlaybackTrack,
+        samePlayableTrack = ::samePlayableTrack
+    )
     private val playRequestId: Long
         get() = playbackGeneration.currentGeneration
     private var streamTransitionId: Long = 0L
@@ -1405,14 +1403,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         afterRestore = { refreshAfterRestore() }
     )
     val vaultSyncFile: StateFlow<VaultSyncFileState> = backupVault.syncFile
-    private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
-    val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
-    private val _navigationStudio = MutableStateFlow(NavigationStudioState(settings = startupSettings.navigationStudioSettings))
-    val navigationStudio: StateFlow<NavigationStudioState> = _navigationStudio.asStateFlow()
-    private val _customThemes = MutableStateFlow(
-        LevyraCustomThemes.normalized(startupSettings.customThemes).also(LevyraThemes::setCustomThemes)
-    )
-    val customThemes: StateFlow<List<LevyraCustomTheme>> = _customThemes.asStateFlow()
+    private val appearance = AppearanceSettingsController(viewModelScope, _state, preferences, startupSettings)
+    val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = appearance.miniPlayerStudio
+    val navigationStudio: StateFlow<NavigationStudioState> = appearance.navigationStudio
+    val customThemes: StateFlow<List<LevyraCustomTheme>> = appearance.customThemes
     private val _onboardingArtwork = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val onboardingArtwork: StateFlow<Map<String, List<String>>> = _onboardingArtwork.asStateFlow()
     private val onboardingArtworkJobs = mutableMapOf<String, Job>()
@@ -1438,43 +1432,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { state -> state.copy(lyricsLatencyProfiles = profiles) }
             }
         }
-        viewModelScope.launch {
-            preferences.lyricsStudioSettingsFlow.collect { settings ->
-                if (pendingLyricsStudioWrites == 0 && settings == preferences.lyricsStudioSettings()) {
-                    _state.update { state -> state.copy(lyricsStudioSettings = settings) }
-                }
-            }
-        }
-        viewModelScope.launch {
-            preferences.customThemesFlow.collect { themes ->
-                val normalized = LevyraCustomThemes.normalized(themes)
-                if (normalized != _customThemes.value) {
-                    LevyraThemes.setCustomThemes(normalized)
-                    _customThemes.value = normalized
-                }
-            }
-        }
-        viewModelScope.launch {
-            preferences.homeStudioSettingsFlow.collect { settings ->
-                if (pendingHomeStudioWrites == 0 && settings == preferences.homeStudioSettings()) {
-                    _state.update { state -> state.copy(homeStudioSettings = settings) }
-                }
-            }
-        }
-        viewModelScope.launch {
-            preferences.miniPlayerStudioSettingsFlow.collect { settings ->
-                if (pendingMiniPlayerStudioWrites == 0 && settings == preferences.miniPlayerStudioSettings()) {
-                    _miniPlayerStudio.update { it.copy(settings = settings) }
-                }
-            }
-        }
-        viewModelScope.launch {
-            preferences.navigationStudioSettingsFlow.collect { settings ->
-                if (pendingNavigationStudioWrites == 0 && settings == preferences.navigationStudioSettings()) {
-                    _navigationStudio.update { it.copy(settings = settings) }
-                }
-            }
-        }
+        appearance.observePreferences()
         viewModelScope.launch {
             preferences.lyricsProviderOrderingFlow.collect { ordering ->
                 _state.update { state -> state.copy(lyricsProviderOrdering = ordering) }
@@ -2811,90 +2769,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(flow, flow.first(), loopOnCompletion = true)
     }
 
-    fun setThemePreset(value: String) {
-        val normalized = LevyraThemes.normalize(value)
-        preferences.setThemePreset(normalized)
-        _state.update { it.copy(themePreset = normalized) }
-    }
+    fun setThemePreset(value: String) = appearance.setThemePreset(value)
 
-    fun setThemeAccent(value: Int) {
-        if (_state.value.themeAccent == value) return
-        preferences.setThemeAccent(value)
-        _state.update { it.copy(themeAccent = value) }
-    }
+    fun setThemeAccent(value: Int) = appearance.setThemeAccent(value)
 
-    fun saveCustomTheme(theme: LevyraCustomTheme, apply: Boolean) {
-        updateCustomThemes(LevyraCustomThemes.upsert(_customThemes.value, theme))
-        if (apply) setThemePreset(theme.id)
-    }
+    fun saveCustomTheme(theme: LevyraCustomTheme, apply: Boolean) = appearance.saveCustomTheme(theme, apply)
 
-    fun duplicateCustomTheme(id: String, suffix: String) {
-        updateCustomThemes(LevyraCustomThemes.duplicate(_customThemes.value, id, suffix))
-    }
+    fun duplicateCustomTheme(id: String, suffix: String) = appearance.duplicateCustomTheme(id, suffix)
 
-    fun deleteCustomTheme(id: String) {
-        updateCustomThemes(LevyraCustomThemes.remove(_customThemes.value, id))
-        if (_state.value.themePreset == id) setThemePreset(LevyraThemes.defaultPresetId)
-    }
+    fun deleteCustomTheme(id: String) = appearance.deleteCustomTheme(id)
 
-    fun restoreDefaultTheme() {
-        setThemeAccent(0)
-        setThemePreset(LevyraThemes.defaultPresetId)
-    }
+    fun restoreDefaultTheme() = appearance.restoreDefaultTheme()
 
-    private fun updateCustomThemes(themes: List<LevyraCustomTheme>) {
-        val normalized = LevyraCustomThemes.normalized(themes)
-        if (normalized == _customThemes.value) return
-        LevyraThemes.setCustomThemes(normalized)
-        _customThemes.value = normalized
-        preferences.setCustomThemes(normalized)
-    }
+    fun openThemeStudio() = appearance.openThemeStudio()
 
-    fun openThemeStudio() {
-        _state.update { it.copy(showThemeStudio = true) }
-    }
+    fun closeThemeStudio() = appearance.closeThemeStudio()
 
-    fun closeThemeStudio() {
-        _state.update { it.copy(showThemeStudio = false) }
-    }
+    fun openLyricsStudio() = appearance.openLyricsStudio()
 
-    fun openLyricsStudio() {
-        _state.update { it.copy(showLyricsStudio = true) }
-    }
+    fun closeLyricsStudio() = appearance.closeLyricsStudio()
 
-    fun closeLyricsStudio() {
-        _state.update { it.copy(showLyricsStudio = false) }
-    }
+    fun setLyricsStudioSettings(settings: LevyraLyricsStudioSettings) = appearance.setLyricsStudioSettings(settings)
 
-    fun setLyricsStudioSettings(settings: LevyraLyricsStudioSettings) {
-        val normalized = settings.normalized()
-        val generation = ++lyricsStudioMutationGeneration
-        pendingLyricsStudioWrites += 1
-        _state.update { it.copy(lyricsStudioSettings = normalized) }
-        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-            try {
-                val saved = preferences.setLyricsStudioSettings(normalized)
-                if (generation == lyricsStudioMutationGeneration) {
-                    val resolved = if (saved) normalized else preferences.lyricsStudioSettings()
-                    _state.update { it.copy(lyricsStudioSettings = resolved) }
-                }
-            } finally {
-                pendingLyricsStudioWrites -= 1
-            }
-        }
-    }
+    fun resetLyricsStudioSettings() = appearance.resetLyricsStudioSettings()
 
-    fun resetLyricsStudioSettings() {
-        setLyricsStudioSettings(LevyraLyricsStudioSettings())
-    }
+    fun openHomeStudio() = appearance.openHomeStudio()
 
-    fun openHomeStudio() {
-        _state.update { it.copy(showHomeStudio = true) }
-    }
-
-    fun closeHomeStudio() {
-        _state.update { it.copy(showHomeStudio = false) }
-    }
+    fun closeHomeStudio() = appearance.closeHomeStudio()
 
     private val _homeComposition = MutableStateFlow(preferences.homeCompositionSettings())
     val homeComposition: StateFlow<com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings> = _homeComposition.asStateFlow()
@@ -2917,86 +2818,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         resolver.setPreferredAudioLanguage(normalized)
     }
 
-    fun setHomeStudioSettings(settings: LevyraHomeStudioSettings) {
-        val normalized = settings.normalized()
-        if (normalized == _state.value.homeStudioSettings) return
-        val generation = ++homeStudioMutationGeneration
-        pendingHomeStudioWrites += 1
-        _state.update { it.copy(homeStudioSettings = normalized) }
-        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-            try {
-                val saved = preferences.setHomeStudioSettings(normalized)
-                if (generation == homeStudioMutationGeneration) {
-                    val resolved = if (saved) normalized else preferences.homeStudioSettings()
-                    _state.update { it.copy(homeStudioSettings = resolved) }
-                }
-            } finally {
-                pendingHomeStudioWrites -= 1
-            }
-        }
-    }
+    fun setHomeStudioSettings(settings: LevyraHomeStudioSettings) = appearance.setHomeStudioSettings(settings)
 
-    fun openMiniPlayerStudio() {
-        _miniPlayerStudio.update { it.copy(visible = true) }
-    }
+    fun openMiniPlayerStudio() = appearance.openMiniPlayerStudio()
 
-    fun closeMiniPlayerStudio() {
-        _miniPlayerStudio.update { it.copy(visible = false) }
-    }
+    fun closeMiniPlayerStudio() = appearance.closeMiniPlayerStudio()
 
-    fun setMiniPlayerStudioSettings(settings: LevyraMiniPlayerStudioSettings) {
-        val normalized = settings.normalized()
-        val previous = _miniPlayerStudio.value.settings
-        if (normalized == previous) return
-        val generation = ++miniPlayerStudioMutationGeneration
-        pendingMiniPlayerStudioWrites += 1
-        _miniPlayerStudio.update { it.copy(settings = normalized) }
-        val navigation = _navigationStudio.value.settings
-        val pairedNav = LevyraYtMusicPairing.navStyleFor(previous.style, normalized.style, navigation.style)
-        if (pairedNav != navigation.style) setNavigationStudioSettings(navigation.withStyle(pairedNav))
-        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-            try {
-                val saved = preferences.setMiniPlayerStudioSettings(normalized)
-                if (generation == miniPlayerStudioMutationGeneration) {
-                    val resolved = if (saved) normalized else preferences.miniPlayerStudioSettings()
-                    _miniPlayerStudio.update { it.copy(settings = resolved) }
-                }
-            } finally {
-                pendingMiniPlayerStudioWrites -= 1
-            }
-        }
-    }
+    fun setMiniPlayerStudioSettings(settings: LevyraMiniPlayerStudioSettings) = appearance.setMiniPlayerStudioSettings(settings)
 
-    fun openNavigationStudio() {
-        _navigationStudio.update { it.copy(visible = true) }
-    }
+    fun openNavigationStudio() = appearance.openNavigationStudio()
 
-    fun closeNavigationStudio() {
-        _navigationStudio.update { it.copy(visible = false) }
-    }
+    fun closeNavigationStudio() = appearance.closeNavigationStudio()
 
-    fun setNavigationStudioSettings(settings: LevyraNavigationStudioSettings) {
-        val normalized = settings.normalized()
-        val previous = _navigationStudio.value.settings
-        if (normalized == previous) return
-        val generation = ++navigationStudioMutationGeneration
-        pendingNavigationStudioWrites += 1
-        _navigationStudio.update { it.copy(settings = normalized) }
-        val miniPlayer = _miniPlayerStudio.value.settings
-        val pairedMini = LevyraYtMusicPairing.miniStyleFor(previous.style, normalized.style, miniPlayer.style)
-        if (pairedMini != miniPlayer.style) setMiniPlayerStudioSettings(miniPlayer.withStyle(pairedMini))
-        viewModelScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
-            try {
-                val saved = preferences.setNavigationStudioSettings(normalized)
-                if (generation == navigationStudioMutationGeneration) {
-                    val resolved = if (saved) normalized else preferences.navigationStudioSettings()
-                    _navigationStudio.update { it.copy(settings = resolved) }
-                }
-            } finally {
-                pendingNavigationStudioWrites -= 1
-            }
-        }
-    }
+    fun setNavigationStudioSettings(settings: LevyraNavigationStudioSettings) = appearance.setNavigationStudioSettings(settings)
 
     private fun widgetAccentColor(track: Track?): Int {
         if (track == null) return WIDGET_DEFAULT_ACCENT
@@ -3024,14 +2858,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
-    private fun loadPlaylists() {
-        viewModelScope.launch {
-            val lists = playlistStore.loadAll()
-            val tags = playlistStore.allTags()
-            _state.update { it.copy(playlists = lists, playlistTags = tags) }
-            playlistSync.onPlaylistsChanged()
-        }
-    }
+    private fun loadPlaylists() = playlistLibrary.loadPlaylists()
 
     private fun loadExcludedArtists() {
         val loadGeneration = excludedArtistsGeneration
@@ -3176,56 +3003,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun setPlaylistHidden(playlistId: String, hidden: Boolean) {
-        if (playlistId.isBlank()) return
-        viewModelScope.launch {
-            playlistStore.setHidden(playlistId, hidden)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun setPlaylistHidden(playlistId: String, hidden: Boolean) = playlistLibrary.setPlaylistHidden(playlistId, hidden)
 
-    fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) {
-        if (!isValidPlaylistTagName(name)) return
-        viewModelScope.launch {
-            val tag = playlistStore.createTag(name) ?: return@launch
-            if (!assignToPlaylistId.isNullOrBlank()) {
-                val existing = playlistStore.load(assignToPlaylistId)?.tags?.map { it.id }.orEmpty()
-                if (tag.id !in existing) {
-                    playlistStore.setPlaylistTags(assignToPlaylistId, existing + tag.id)
-                }
-            }
-            loadPlaylists()
-            assignToPlaylistId?.let { refreshOpenPlaylist(it) }
-        }
-    }
+    fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) =
+        playlistLibrary.createPlaylistTag(name, assignToPlaylistId)
 
-    fun renamePlaylistTag(tagId: String, name: String) {
-        if (tagId.isBlank() || !isValidPlaylistTagName(name)) return
-        viewModelScope.launch {
-            playlistStore.renameTag(tagId, name)
-            loadPlaylists()
-            _state.value.openPlaylist?.id?.let { refreshOpenPlaylist(it) }
-        }
-    }
+    fun renamePlaylistTag(tagId: String, name: String) = playlistLibrary.renamePlaylistTag(tagId, name)
 
-    fun deletePlaylistTag(tagId: String) {
-        if (tagId.isBlank()) return
-        viewModelScope.launch {
-            playlistStore.deleteTag(tagId)
-            loadPlaylists()
-            _state.value.openPlaylist?.id?.let { refreshOpenPlaylist(it) }
-        }
-    }
+    fun deletePlaylistTag(tagId: String) = playlistLibrary.deletePlaylistTag(tagId)
 
-    fun setPlaylistTags(playlistId: String, tagIds: List<String>) {
-        if (playlistId.isBlank()) return
-        viewModelScope.launch {
-            playlistStore.setPlaylistTags(playlistId, tagIds)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun setPlaylistTags(playlistId: String, tagIds: List<String>) = playlistLibrary.setPlaylistTags(playlistId, tagIds)
 
     fun openAmbient() {
         if (_state.value.showAmbient) return
@@ -3265,70 +3052,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun createPlaylist(name: String, firstTrack: Track? = null) {
-        viewModelScope.launch {
-            playlistStore.create(name, firstTrack)
-            loadPlaylists()
-        }
-    }
+    fun createPlaylist(name: String, firstTrack: Track? = null) = playlistLibrary.createPlaylist(name, firstTrack)
 
     fun refreshYoutubeMusicImports() {
         loadPlaylists()
     }
 
-    fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
-        viewModelScope.launch {
-            val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
-            if (cleanTracks.isEmpty()) {
-                _state.update { it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).queueEmpty) }
-                return@launch
-            }
-            val playlist = runCatchingPreservingCancellation {
-                playlistStore.createWithTracks(name, cleanTracks.map { it.copy(streamUrl = "") })
-            }.onFailure { error ->
-                Timber.w(error, "Playlist batch create failed")
-            }.getOrNull()
-            if (playlist == null) {
-                _state.update {
-                    it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveFailed)
-                }
-                return@launch
-            }
-            loadPlaylists()
-            _state.update {
-                it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveSuccess)
-            }
-        }
-    }
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) = playlistLibrary.createPlaylistWithTracks(name, tracks)
 
     fun openPlaylistImport(prefill: String? = null) = playlistImport.open(prefill)
 
-    fun importPlaylistFile(uri: android.net.Uri) {
-        viewModelScope.launch {
-            val appContext = getApplication<Application>().applicationContext
-            val (text, name, failure) = withContext(Dispatchers.IO) { readImportDocument(appContext, uri) }
-            playlistImport.loadFile(text, name, failure)
-        }
-    }
+    fun importPlaylistFile(uri: android.net.Uri) = playlistLibrary.importPlaylistFile(uri)
 
-    fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) {
-        viewModelScope.launch {
-            val equivalent = withContext(Dispatchers.Default) {
-                original.withEquivalentPlaybackSource(replacement)
-            }
-            val entry = equivalent ?: replacement
-            val replaced = playlistStore.replaceTrack(playlistId, original.id, entry)
-            if (replaced) {
-                if (equivalent != null && original.id in _state.value.favoriteIds) carryFavorite(original, entry)
-                loadPlaylists()
-                refreshOpenPlaylist(playlistId)
-            } else {
-                _state.update { current ->
-                    current.copy(offlineExportMessage = playlistImportHubCopy(current.languageCode).changeMatchConflict)
-                }
-            }
-        }
-    }
+    fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) =
+        playlistLibrary.replacePlaylistTrack(playlistId, original, replacement)
 
     private suspend fun carryFavorite(original: Track, replacement: Track) {
         favoriteMutationMutex.withLock {
@@ -3351,45 +3088,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         query: String,
         origin: com.luc4n3x.levyra.nexus.playlistimport.CandidateOrigin,
         onResult: (List<Pair<com.luc4n3x.levyra.nexus.playlistimport.MatchEvaluation, Track>>) -> Unit
-    ) {
-        replacementSearchJob?.cancel()
-        replacementSearchJob = viewModelScope.launch {
-            val identity = reference.toImportIdentity(0)
-            val results = withContext(Dispatchers.IO) {
-                playlistImportCatalog.search(query, origin)
-                    .filter { it.candidate.id != reference.id }
-                    .map { com.luc4n3x.levyra.nexus.playlistimport.PlaylistMatchEngine.evaluate(identity, it.candidate) to it.track }
-                    .sortedByDescending { it.first.score }
-            }
-            onResult(results)
-        }
-    }
+    ) = playlistLibrary.searchPlaylistReplacements(reference, query, origin, onResult)
 
-    private fun readImportDocument(
-        context: android.content.Context,
-        uri: android.net.Uri
-    ): Triple<String?, String, PlaylistImportFailureKind> {
-        val name = runCatching {
-            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "playlist"
-        val read = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                com.luc4n3x.levyra.data.readUtf8Bounded(stream, MAX_IMPORT_FILE_BYTES)
-            }
-        }.onFailure { Timber.w(it, "Unable to read playlist import file") }
-        val failure = if (read.isSuccess) PlaylistImportFailureKind.TOO_LARGE else PlaylistImportFailureKind.FILE_MALFORMED
-        return Triple(read.getOrNull(), name, failure)
-    }
-
-    fun playlistShareLink(playlist: com.luc4n3x.levyra.domain.Playlist): String? =
-        LevyraPlaylistShareCodec.encodeLink(
-            title = playlist.name,
-            tracks = playlist.tracks.map { track ->
-                LevyraSharedTrack(id = track.id, title = track.title, artist = track.artist)
-            }
-        )
+    fun playlistShareLink(playlist: com.luc4n3x.levyra.domain.Playlist): String? = playlistLibrary.playlistShareLink(playlist)
 
     fun importSharedPlaylist() {
         val preview = _state.value.sharedMediaPreview ?: return
@@ -3774,156 +3475,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(networkTestOutcome = null, networkErrors = emptyList()) }
     }
 
-    fun renamePlaylist(playlistId: String, name: String) {
-        viewModelScope.launch {
-            playlistStore.rename(playlistId, name)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun renamePlaylist(playlistId: String, name: String) = playlistLibrary.renamePlaylist(playlistId, name)
 
-    fun deletePlaylist(playlistId: String) {
-        SpeedDial.playlistKey(playlistId)?.let(::removeSpeedDialPin)
-        viewModelScope.launch {
-            playlistSync.withPlaylistLock(playlistId) { playlistStore.delete(playlistId) }
-            _state.update { if (it.openPlaylist?.id == playlistId) it.copy(openPlaylist = null) else it }
-            loadPlaylists()
-        }
-    }
+    fun deletePlaylist(playlistId: String) = playlistLibrary.deletePlaylist(playlistId)
 
-    fun deletePlaylists(playlistIds: Collection<String>) {
-        val uniqueIds = playlistIds.filter(String::isNotBlank).toSet()
-        if (uniqueIds.isEmpty()) return
-        val pinKeys = uniqueIds.mapNotNullTo(HashSet()) { SpeedDial.playlistKey(it) }
-        if (pinKeys.isNotEmpty()) {
-            mutateSpeedDial { pins -> pins.filterNot { it.key in pinKeys } }
-        }
-        viewModelScope.launch {
-            uniqueIds.forEach { id -> playlistSync.withPlaylistLock(id) { playlistStore.delete(id) } }
-            _state.update { current ->
-                if (current.openPlaylist?.id in uniqueIds) current.copy(openPlaylist = null) else current
-            }
-            loadPlaylists()
-            _state.update { it.copy(offlineExportMessage = "Playlist eliminate: ${uniqueIds.size}") }
-        }
-    }
+    fun deletePlaylists(playlistIds: Collection<String>) = playlistLibrary.deletePlaylists(playlistIds)
 
-    fun addToPlaylist(playlistId: String, track: Track) {
-        viewModelScope.launch {
-            playlistStore.addTrack(playlistId, track.copy(streamUrl = ""))
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun addToPlaylist(playlistId: String, track: Track) = playlistLibrary.addToPlaylist(playlistId, track)
 
-    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) {
-        val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
-        if (cleanTracks.isEmpty()) return
-        viewModelScope.launch {
-            val saved = runCatchingPreservingCancellation {
-                playlistStore.addTracks(playlistId, cleanTracks.map { it.copy(streamUrl = "") })
-            }.onFailure { error ->
-                Timber.w(error, "Playlist batch add failed")
-            }.isSuccess
-            if (!saved) {
-                _state.update {
-                    it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveFailed)
-                }
-                return@launch
-            }
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-            _state.update {
-                it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).mixLabSaveSuccess)
-            }
-        }
-    }
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = playlistLibrary.addTracksToPlaylist(playlistId, tracks)
 
-    fun addAlbumToPlaylist(playlistId: String, album: AlbumHit, tracks: List<Track>) {
-        if (tracks.isEmpty()) return
-        viewModelScope.launch {
-            val result = runCatchingPreservingCancellation {
-                playlistStore.addAlbum(playlistId, album, tracks.map { it.copy(streamUrl = "") })
-            }.onFailure { Timber.w(it, "Playlist album add failed") }
-                .getOrDefault(com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Unavailable)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-            _state.update {
-                val copy = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode)
-                val playlistName = it.playlists.firstOrNull { playlist -> playlist.id == playlistId }?.name.orEmpty()
-                it.copy(
-                    offlineExportMessage = when (result) {
-                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Added -> copy.addedTo(playlistName)
-                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.AlreadyPresent -> copy.alreadyInPlaylist
-                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Unavailable -> copy.addFailed
-                    }
-                )
-            }
-        }
-    }
+    fun addAlbumToPlaylist(playlistId: String, album: AlbumHit, tracks: List<Track>) =
+        playlistLibrary.addAlbumToPlaylist(playlistId, album, tracks)
 
-    fun createPlaylistWithAlbum(name: String, album: AlbumHit, tracks: List<Track>) {
-        if (tracks.isEmpty() || name.isBlank()) return
-        viewModelScope.launch {
-            val created = runCatchingPreservingCancellation {
-                playlistStore.createWithAlbum(name, album, tracks.map { it.copy(streamUrl = "") })
-            }.onFailure { Timber.w(it, "Playlist creation with album failed") }.getOrNull()
-            loadPlaylists()
-            _state.update {
-                val copy = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode)
-                it.copy(offlineExportMessage = if (created != null) copy.addedTo(created.name) else copy.addFailed)
-            }
-        }
-    }
+    fun createPlaylistWithAlbum(name: String, album: AlbumHit, tracks: List<Track>) =
+        playlistLibrary.createPlaylistWithAlbum(name, album, tracks)
 
-    fun removePlaylistItems(playlistId: String, items: List<com.luc4n3x.levyra.domain.PlaylistItem>) {
-        val trackEntryIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>()
-            .mapNotNull { it.track.playlistEntryId.takeIf(String::isNotBlank) }
-            .toSet()
-        val albumEntryIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Album>()
-            .mapTo(hashSetOf()) { it.entry.entryId }
-        val legacyTrackIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>()
-            .filter { it.track.playlistEntryId.isBlank() }
-            .map { it.track.id }
-            .filter(String::isNotBlank)
-            .toSet()
-        if (trackEntryIds.isEmpty() && albumEntryIds.isEmpty() && legacyTrackIds.isEmpty()) return
-        viewModelScope.launch {
-            playlistStore.removeEntries(playlistId, trackEntryIds, albumEntryIds)
-            if (legacyTrackIds.isNotEmpty()) playlistStore.removeTracks(playlistId, legacyTrackIds)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun removePlaylistItems(playlistId: String, items: List<com.luc4n3x.levyra.domain.PlaylistItem>) =
+        playlistLibrary.removePlaylistItems(playlistId, items)
 
-    fun reorderPlaylistItems(playlistId: String, orderedItems: List<com.luc4n3x.levyra.domain.PlaylistItem>) {
-        val slots = orderedItems.map { item ->
-            when (item) {
-                is com.luc4n3x.levyra.domain.PlaylistItem.Song ->
-                    com.luc4n3x.levyra.domain.PlaylistLayoutSlot(item.track.playlistEntryId, isAlbum = false)
-                is com.luc4n3x.levyra.domain.PlaylistItem.Album ->
-                    com.luc4n3x.levyra.domain.PlaylistLayoutSlot(item.entry.entryId, isAlbum = true)
-            }
-        }
-        viewModelScope.launch {
-            var saved = slots.none { it.entryId.isBlank() } && playlistStore.reorderItems(playlistId, slots)
-            if (!saved && orderedItems.none { it is com.luc4n3x.levyra.domain.PlaylistItem.Album }) {
-                playlistStore.reorder(
-                    playlistId,
-                    orderedItems.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>().map { it.track }
-                )
-                saved = true
-            }
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-            _state.update {
-                it.copy(
-                    offlineExportMessage = if (saved) "Ordine playlist salvato"
-                    else LevyraStrings.forCode(it.languageCode).mixLabSaveFailed
-                )
-            }
-        }
-    }
+    fun reorderPlaylistItems(playlistId: String, orderedItems: List<com.luc4n3x.levyra.domain.PlaylistItem>) =
+        playlistLibrary.reorderPlaylistItems(playlistId, orderedItems)
 
     fun openPlaylistAlbum(entry: com.luc4n3x.levyra.domain.PlaylistAlbumEntry) {
         val playlistId = _state.value.openPlaylist?.id
@@ -3931,45 +3503,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         openAlbumInternal(entry.album, DetailReturnTarget.None)
     }
 
-    fun removeFromPlaylist(playlistId: String, trackId: String) {
-        viewModelScope.launch {
-            playlistStore.removeTrack(playlistId, trackId)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-        }
-    }
+    fun removeFromPlaylist(playlistId: String, trackId: String) = playlistLibrary.removeFromPlaylist(playlistId, trackId)
 
-    fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) {
-        val trackIds = tracks.map { it.id }.filter(String::isNotBlank).toSet()
-        if (trackIds.isEmpty()) return
-        viewModelScope.launch {
-            playlistStore.removeTracks(playlistId, trackIds)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-            _state.update { it.copy(offlineExportMessage = "Rimossi ${trackIds.size} brani dalla playlist") }
-        }
-    }
+    fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = playlistLibrary.removeTracksFromPlaylist(playlistId, tracks)
 
-    fun reorderPlaylist(playlistId: String, orderedTracks: List<Track>) {
-        viewModelScope.launch {
-            playlistStore.reorder(playlistId, orderedTracks)
-            loadPlaylists()
-            refreshOpenPlaylist(playlistId)
-            _state.update { it.copy(offlineExportMessage = "Ordine playlist salvato") }
-        }
-    }
+    fun reorderPlaylist(playlistId: String, orderedTracks: List<Track>) = playlistLibrary.reorderPlaylist(playlistId, orderedTracks)
 
-    fun openPlaylist(playlistId: String) {
-        playerReturnDetail = null
-        viewModelScope.launch {
-            val pl = playlistStore.load(playlistId)
-            _state.update { it.copy(openPlaylist = pl) }
-        }
-    }
+    fun openPlaylist(playlistId: String) = playlistLibrary.openPlaylist(playlistId)
 
-    fun closePlaylist() {
-        _state.update { it.copy(openPlaylist = null) }
-    }
+    fun closePlaylist() = playlistLibrary.closePlaylist()
 
     fun openPlaylistStudio(playlistId: String? = null) {
         val snapshot = _state.value
@@ -4099,40 +3641,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(plan.tracks, start, loopOnCompletion = true)
     }
 
-    private suspend fun withPlayableAlbums(playlist: Playlist): Playlist {
-        val missing = playlist.albums.filter { it.tracks.isEmpty() }
-        if (missing.isEmpty()) return playlist
-        val languageCode = _state.value.languageCode
-        val recovered = coroutineScope {
-            missing.map { entry ->
-                async {
-                    val tracks = withTimeoutOrNull(PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS) {
-                        runCatchingPreservingCancellation { providerRouter.albumDetail(entry.album, languageCode) }
-                            .onFailure { Timber.w(it, "Playlist album recovery failed") }
-                            .getOrNull()?.tracks
-                    }.orEmpty()
-                    if (tracks.isNotEmpty()) playlistStore.refreshAlbumTracks(playlist.id, entry.entryId, tracks)
-                    entry.entryId to tracks
-                }
-            }.awaitAll().toMap()
-        }
-        if (recovered.values.any { it.isEmpty() }) {
-            _state.update {
-                it.copy(offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode).albumUnavailable)
-            }
-        }
-        return playlist.copy(
-            albums = playlist.albums.map { entry ->
-                recovered[entry.entryId]?.takeIf(List<Track>::isNotEmpty)?.let { entry.copy(tracks = it) } ?: entry
-            }
-        )
-    }
+    private suspend fun withPlayableAlbums(playlist: Playlist): Playlist = playlistLibrary.withPlayableAlbums(playlist)
 
-    private suspend fun refreshOpenPlaylist(playlistId: String) {
-        if (_state.value.openPlaylist?.id != playlistId) return
-        val pl = playlistStore.load(playlistId)
-        _state.update { it.copy(openPlaylist = pl) }
-    }
+    private suspend fun refreshOpenPlaylist(playlistId: String) = playlistLibrary.refreshOpenPlaylist(playlistId)
 
     private fun observeDownloads() {
         viewModelScope.launch {
@@ -4357,9 +3868,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 if (targetMode) {
-                    motionArtworkJob?.cancel()
-                    motionArtworkPrefetchJob?.cancel()
-                    motionArtworkRequestKey = null
+                    motionArtwork.cancelRequests()
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
@@ -4386,9 +3895,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 if (sourceMode) {
-                    motionArtworkJob?.cancel()
-                    motionArtworkPrefetchJob?.cancel()
-                    motionArtworkRequestKey = null
+                    motionArtwork.cancelRequests()
                 } else {
                     refreshMotionArtworkAround(track)
                 }
@@ -4647,9 +4154,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 if (videoMode) {
-                    motionArtworkJob?.cancel()
-                    motionArtworkPrefetchJob?.cancel()
-                    motionArtworkRequestKey = null
+                    motionArtwork.cancelRequests()
                     val sourceKey = videoSourceKey(videoSourceSeed(failedTrack))
                     val recoveredVideoId = youtubeVideoId(resolved.videoUrl)
                     _videoSources.update { if (it.trackKey == sourceKey) it.copy(activeVideoId = recoveredVideoId) else it }
@@ -6097,51 +5602,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showSettings = false) }
     }
 
-    fun checkForUpdates(silent: Boolean = false) {
-        if (!BuildConfig.UPSTREAM_UPDATES_ENABLED) return
-        if (updateJob?.isActive == true) return
-        updateJob = viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isCheckingUpdates = true,
-                    updateMessage = if (silent) it.updateMessage else null
-                )
-            }
-            val result = runCatching { appUpdateRepository.latest() }
-            result.onSuccess { info ->
-                val dismissed = sessionDismissedUpdateVersion
-                _state.update {
-                    it.copy(
-                        updateInfo = info,
-                        isCheckingUpdates = false,
-                        showUpdatePrompt = info.isNewer && (!silent || dismissed != info.latestVersionName),
-                        updateMessage = when {
-                            silent -> null
-                            info.isNewer -> LevyraStrings.forCode(it.languageCode).appUpdateAvailable(info.latestVersionName)
-                            else -> LevyraStrings.forCode(it.languageCode).appUpToDate
-                        }
-                    )
-                }
-            }.onFailure { error ->
-                if (error is CancellationException) throw error
-                _state.update {
-                    it.copy(
-                        isCheckingUpdates = false,
-                        updateMessage = if (silent) null else LevyraStrings.forCode(it.languageCode).appUpdateCheckFailed
-                    )
-                }
-            }
-        }
-    }
+    fun checkForUpdates(silent: Boolean = false) = appUpdates.checkForUpdates(silent)
 
-    fun dismissUpdatePrompt() {
-        sessionDismissedUpdateVersion = _state.value.updateInfo?.latestVersionName
-        _state.update { it.copy(showUpdatePrompt = false) }
-    }
+    fun dismissUpdatePrompt() = appUpdates.dismissUpdatePrompt()
 
-    fun clearUpdateMessage() {
-        _state.update { it.copy(updateMessage = null) }
-    }
+    fun clearUpdateMessage() = appUpdates.clearUpdateMessage()
 
     fun setAnimationsEnabled(value: Boolean) {
         preferences.setAnimationsEnabled(value)
@@ -6159,9 +5624,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
             refreshPageMotionArtwork()
         } else {
-            motionArtworkJob?.cancel()
-            motionArtworkRequestKey = null
-            motionArtworkPrefetchJob?.cancel()
+            motionArtwork.cancelResolution()
             cancelPageMotion()
         }
     }
@@ -6181,9 +5644,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
             refreshPageMotionArtwork()
         } else {
-            motionArtworkJob?.cancel()
-            motionArtworkRequestKey = null
-            motionArtworkPrefetchJob?.cancel()
+            motionArtwork.cancelResolution()
             cancelPageMotion()
         }
     }
@@ -6211,9 +5672,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeResonanceCommentsGeneration.incrementAndGet()
         }
         if (shouldRefreshMotionArtworkOwnership(previous, normalized)) {
-            motionArtworkJob?.cancel()
-            motionArtworkRequestKey = null
-            motionArtworkPrefetchJob?.cancel()
+            motionArtwork.cancelResolution()
             cancelPageMotion()
             _state.update {
                 it.copy(
@@ -6382,9 +5841,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val restoredTrack = snapshot.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
         val restoredAnimationsEnabled = snapshot.animationsEnabled &&
             !adaptivePlaybackPolicy.current(videoMode = false).lowRam
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = null
-        motionArtworkPrefetchJob?.cancel()
+        motionArtwork.cancelResolution()
         com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy.updateWifiOnly(
             snapshot.interfaceSettings.motionArtworkWifiOnly
         )
@@ -7154,37 +6611,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun setPlaylistCover(playlistId: String, source: Uri, crop: PlaylistCoverCrop) {
-        viewModelScope.launch {
-            try {
-                playlistStore.setCustomCover(playlistId, source, crop)
-                loadPlaylists()
-                refreshOpenPlaylist(playlistId)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Playlist cover update failed")
-                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
-                _state.update { it.copy(offlineExportMessage = message) }
-            }
-        }
-    }
+    fun setPlaylistCover(playlistId: String, source: Uri, crop: PlaylistCoverCrop) =
+        playlistLibrary.setPlaylistCover(playlistId, source, crop)
 
-    fun resetPlaylistCover(playlistId: String) {
-        viewModelScope.launch {
-            try {
-                playlistStore.resetCover(playlistId)
-                loadPlaylists()
-                refreshOpenPlaylist(playlistId)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Playlist cover reset failed")
-                val message = LevyraStrings.forCode(_state.value.languageCode).playlistProCopy().coverUpdateFailed
-                _state.update { it.copy(offlineExportMessage = message) }
-            }
-        }
-    }
+    fun resetPlaylistCover(playlistId: String) = playlistLibrary.resetPlaylistCover(playlistId)
 
     fun playTracksNext(tracks: List<Track>) {
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
@@ -8210,7 +7640,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!isNavigableArtistName(clean)) return
         val requestedArtistListStateKey = nextArtistListStateKey(normalizedBrowseId)
         artistProfiles.cancelRequests()
-        artistMotionJob?.cancel()
+        motionArtwork.cancelArtist()
         val previous = _state.value
         val previousProfileMatches = previous.artistProfile?.let { profile ->
             if (normalizedBrowseId.isNotBlank()) {
@@ -8238,7 +7668,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeArtist() {
         artistProfiles.cancelRequests()
-        artistMotionJob?.cancel()
+        motionArtwork.cancelArtist()
         if (restoreDetailPage()) return
         _state.update {
             it.copy(
@@ -8268,10 +7698,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         playerReturnDetail = null
         albumDetailController.cancelLoad()
-        albumMotionJob?.cancel()
+        motionArtwork.cancelAlbum()
         if (returnTarget != DetailReturnTarget.Artist) {
             artistProfiles.cancelRequests()
-            artistMotionJob?.cancel()
+            motionArtwork.cancelArtist()
         }
         val previous = _state.value
         val current = previous.albumDetail
@@ -8309,7 +7739,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeAlbum() {
         albumDetailController.cancelLoad()
-        albumMotionJob?.cancel()
+        motionArtwork.cancelAlbum()
         val current = _state.value
         if (current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist) {
             _state.update {
@@ -8340,7 +7770,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlayerScreen() {
         playerReturnDetail = playerReturnDetailOf(_state.value)
         albumDetailController.cancelLoad()
-        playlistHitJob?.cancel()
+        playlistLibrary.cancelPlaylistHit()
         artistProfiles.cancelRequests()
         cancelPageMotion()
         detailBackStack.clear()
@@ -8520,84 +7950,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun openPlaylistHit(playlist: PlaylistHit) {
-        playerReturnDetail = null
-        val playlistId = playlist.playlistId.ifBlank { return }
-        if (com.luc4n3x.levyra.data.apple.AppleCatalogIds.playlist(playlistId) != null) {
-            openApplePlaylist(playlist, ChartsCatalog.region(_state.value.selectedChartId).country)
-            return
-        }
-        playlistHitJob?.cancel()
-        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
-        playlistHitJob = viewModelScope.launch {
-            val detail = runCatchingPreservingCancellation {
-                providerRouter.playlist(playlistId, _state.value.languageCode, REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT)
-            }.onFailure { Timber.w(it, "playlist preview lookup failed") }.getOrNull()
-            val tracks = detail?.tracks.orEmpty()
-            _state.update { current ->
-                val resolved = current.playlistHitPreview?.resolvedWith(
-                    playlistId = playlistId,
-                    author = detail?.author.orEmpty(),
-                    thumbnailUrl = detail?.thumbnailUrl.orEmpty(),
-                    tracks = tracks,
-                    description = detail?.description.orEmpty(),
-                    stats = detail?.stats.orEmpty()
-                )
-                if (resolved == null) current else current.copy(playlistHitPreview = resolved)
-            }
-        }
-    }
+    fun openPlaylistHit(playlist: PlaylistHit) = playlistLibrary.openPlaylistHit(playlist)
 
-    fun openApplePlaylist(playlist: PlaylistHit, storefront: String) {
-        playerReturnDetail = null
-        val playlistId = playlist.playlistId.ifBlank { return }
-        playlistHitJob?.cancel()
-        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist, appleStorefront = storefront)) }
-        playlistHitJob = viewModelScope.launch {
-            val collection = runCatchingPreservingCancellation {
-                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
-                    .playlist(storefront, playlistId, _state.value.languageCode)
-            }.onFailure { Timber.w(it, "Apple playlist preview lookup failed") }.getOrNull()
-            _state.update { current ->
-                val resolved = current.playlistHitPreview?.resolvedWith(
-                    playlistId = playlistId,
-                    author = collection?.curator.orEmpty(),
-                    thumbnailUrl = collection?.artworkUrl.orEmpty(),
-                    tracks = collection?.tracks.orEmpty()
-                )
-                if (resolved == null) current else current.copy(playlistHitPreview = resolved)
-            }
-        }
-    }
+    fun openApplePlaylist(playlist: PlaylistHit, storefront: String) = playlistLibrary.openApplePlaylist(playlist, storefront)
 
-    fun toggleSaveOpenPlaylistHit() {
-        val preview = _state.value.playlistHitPreview ?: return
-        val key = preview.savedPlaylistKey
-        val alreadySaved = savedPlaylists.value.any { it.key == key }
-        if (!alreadySaved && !preview.canBeSaved) return
-        viewModelScope.launch {
-            runCatchingPreservingCancellation {
-                savedPlaylistsStore.toggle(com.luc4n3x.levyra.domain.SavedPlaylist(preview.hit, preview.appleStorefront))
-            }.onFailure { Timber.w(it, "Saved playlist toggle failed") }
-        }
-    }
+    fun toggleSaveOpenPlaylistHit() = playlistLibrary.toggleSaveOpenPlaylistHit()
 
-    fun removeSavedPlaylist(key: String) {
-        viewModelScope.launch {
-            runCatchingPreservingCancellation { savedPlaylistsStore.remove(key) }
-                .onFailure { Timber.w(it, "Saved playlist removal failed") }
-        }
-    }
+    fun removeSavedPlaylist(key: String) = playlistLibrary.removeSavedPlaylist(key)
 
-    fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) {
-        if (saved.appleStorefront.isBlank()) openPlaylistHit(saved.hit) else openApplePlaylist(saved.hit, saved.appleStorefront)
-    }
+    fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) = playlistLibrary.openSavedPlaylist(saved)
 
-    fun closePlaylistHit() {
-        playlistHitJob?.cancel()
-        playlistHitJob = null
-        _state.update { it.copy(playlistHitPreview = null) }
-    }
+    fun closePlaylistHit() = playlistLibrary.closePlaylistHit()
 
     fun playOpenPlaylistHit(from: Track? = null, shuffled: Boolean = false) {
         val tracks = _state.value.playlistHitPreview?.tracks.orEmpty()
@@ -10738,9 +10101,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         if (session.videoMode) {
-            motionArtworkJob?.cancel()
-            motionArtworkPrefetchJob?.cancel()
-            motionArtworkRequestKey = null
+            motionArtwork.cancelRequests()
         } else {
             refreshMotionArtworkAround(restoredTrack)
         }
@@ -10789,11 +10150,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = null
-        if (preserveMotionPrefetchKey == null || motionArtworkPrefetchKey != preserveMotionPrefetchKey) {
-            motionArtworkPrefetchJob?.cancel()
-        }
+        motionArtwork.cancelResolution(preserveMotionPrefetchKey)
         youtubeDislikeJob?.cancel()
         youtubeComments.cancelRequests()
         youtubeEngagementGeneration.incrementAndGet()
@@ -12354,7 +11711,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.clearPreparedQueueNextIfStale()
         val current = _state.value.currentTrack
         if (current != null && !isLocalPlaybackTrack(current)) lyricsController.prefetchAround(current)
-        if (current != null && !isLocalPlaybackTrack(current) && !_state.value.isVideoMode) prefetchNextMotionArtwork(current)
+        if (current != null && !isLocalPlaybackTrack(current) && !_state.value.isVideoMode) motionArtwork.prefetchNext(current)
         if (
             _state.value.isPlaying &&
             current != null &&
@@ -12367,351 +11724,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun canRefreshCurrentMotionArtwork(
-        snapshot: LevyraUiState,
-        current: Track
-    ): Boolean {
-        if (!snapshot.animationsEnabled || !snapshot.motionArtworkEnabled || snapshot.isVideoMode) {
-            return false
-        }
-        return !current.isLiveRadio() && !isLocalPlaybackTrack(current)
-    }
+    fun refreshCurrentMotionArtwork() = motionArtwork.refreshCurrent()
 
-    private fun canPublishMotionArtworkForRequest(
-        state: LevyraUiState,
-        ticket: PlaybackTicket,
-        expectedKey: String,
-        requestToken: Long
-    ): Boolean {
-        val visualStateAllowsMotion =
-            state.animationsEnabled && state.motionArtworkEnabled && !state.isVideoMode
-        val requestMatches =
-            motionArtworkRequestToken.get() == requestToken && playbackGeneration.isCurrent(ticket)
-        val identityMatches = state.currentTrack
-            ?.let { activeTrack -> MotionArtworkIdentityKey.create(activeTrack) == expectedKey }
-            ?: false
-        return visualStateAllowsMotion && requestMatches && identityMatches
-    }
+    private fun refreshMotionArtworkAround(current: Track) = motionArtwork.refreshAround(current)
 
-    fun refreshCurrentMotionArtwork() {
-        val snapshot = _state.value
-        val current = snapshot.currentTrack ?: return
-        if (!canRefreshCurrentMotionArtwork(snapshot, current)) return
+    private fun cancelPageMotion() = motionArtwork.cancelPageMotion()
 
-        val expectedKey = MotionArtworkIdentityKey.create(current)
-        val ticket = playbackGeneration.current()
-        val source = snapshot.interfaceSettings.canvasSource
-        val cachedIdentityKey = snapshot.motionArtwork?.identityKey
-        motionArtworkJob?.cancel()
-        motionArtworkPrefetchJob?.cancel()
-        motionArtworkRequestToken.incrementAndGet()
-        motionArtworkRequestKey = null
-        _state.update { state ->
-            val activeTrack = state.currentTrack
-            if (
-                activeTrack != null &&
-                playbackGeneration.isCurrent(ticket) &&
-                MotionArtworkIdentityKey.create(activeTrack) == expectedKey
-            ) {
-                state.copy(motionArtwork = null, motionArtworkLoading = true)
-            } else {
-                state
-            }
-        }
+    private fun refreshPageMotionArtwork() = motionArtwork.refreshPage()
 
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    motionArtworkEngine.invalidate(
-                        track = current,
-                        source = source,
-                        cachedIdentityKey = cachedIdentityKey
-                    )
-                }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Throwable) {
-                Timber.d(error, "Motion artwork selective refresh invalidation failed for %s", current.id)
-            }
+    private fun refreshArtistMotionArtwork(profile: ArtistProfile, keepCurrent: Boolean = false) =
+        motionArtwork.refreshArtist(profile, keepCurrent)
 
-            if (!isActive || !playbackGeneration.isCurrent(ticket)) return@launch
-            val activeTrack = _state.value.currentTrack ?: return@launch
-            if (
-                _state.value.isVideoMode ||
-                MotionArtworkIdentityKey.create(activeTrack) != expectedKey
-            ) {
-                return@launch
-            }
-            refreshMotionArtworkAround(activeTrack)
-        }
-    }
-
-    private fun refreshMotionArtworkAround(current: Track) {
-        if (
-            !_state.value.animationsEnabled ||
-            !_state.value.motionArtworkEnabled ||
-            _state.value.isVideoMode ||
-            current.isPersonalCollectionTrack()
-        ) {
-            motionArtworkJob?.cancel()
-            motionArtworkPrefetchJob?.cancel()
-            motionArtworkRequestToken.incrementAndGet()
-            motionArtworkRequestKey = null
-            _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
-            return
-        }
-        val expectedKey = MotionArtworkIdentityKey.create(current)
-        val ticket = playbackGeneration.current()
-        val previousGeneration = motionArtworkRequestGeneration
-        if (
-            _state.value.motionArtwork != null &&
-            previousGeneration != ticket.generation
-        ) {
-            _state.update { state ->
-                state.copy(motionArtwork = null, motionArtworkLoading = true)
-            }
-        }
-        if (
-            motionArtworkJob?.isActive == true &&
-            motionArtworkRequestKey == expectedKey &&
-            motionArtworkRequestGeneration == ticket.generation
-        ) {
-            return
-        }
-        val requestToken = motionArtworkRequestToken.incrementAndGet()
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = expectedKey
-        motionArtworkRequestGeneration = ticket.generation
-        launchMotionArtworkResolution(current, expectedKey, ticket, requestToken)
-    }
-
-    private fun publishMotionArtworkForRequest(
-        artwork: MotionArtwork?,
-        ticket: PlaybackTicket,
-        expectedKey: String,
-        requestToken: Long
-    ) {
-        _state.update { current ->
-            if (canPublishMotionArtworkForRequest(current, ticket, expectedKey, requestToken)) {
-                current.copy(
-                    motionArtwork = artwork,
-                    motionArtworkLoading = false
-                )
-            } else {
-                current
-            }
-        }
-        val published = artwork?.takeIf { it.identityKey == _state.value.motionArtwork?.identityKey } ?: return
-        if (com.luc4n3x.levyra.feature.motion.MotionPosterCache.posterKey(published) == null) return
-        motionPosterJob?.cancel()
-        motionPosterJob = viewModelScope.launch {
-            com.luc4n3x.levyra.feature.motion.MotionPosterCache.warm(getApplication(), published)
-        }
-    }
-
-    private fun launchMotionArtworkResolution(
-        current: Track,
-        expectedKey: String,
-        ticket: PlaybackTicket,
-        requestToken: Long
-    ) {
-        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            try {
-                var stabilized: MotionArtwork? = null
-                runCatching {
-                    motionArtworkEngine
-                        .resolveProgressive(current, _state.value.interfaceSettings.canvasSource)
-                        .collect { artwork ->
-                            stabilized = artwork
-                            publishMotionArtworkForRequest(artwork, ticket, expectedKey, requestToken)
-                        }
-                }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Motion artwork resolve failed for %s", current.id)
-                    }
-                if (!isActive) return@launch
-                publishMotionArtworkForRequest(stabilized, ticket, expectedKey, requestToken)
-                prefetchNextMotionArtwork(current)
-            } finally {
-                if (
-                    motionArtworkRequestToken.get() == requestToken &&
-                    motionArtworkRequestKey == expectedKey
-                ) {
-                    motionArtworkRequestKey = null
-                }
-            }
-        }
-    }
-
-    private fun prefetchNextMotionArtwork(current: Track) {
-        motionArtworkPrefetchJob?.cancel()
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) return
-        val generation = queueEngine.state.value.generation
-        val currentKey = MotionArtworkIdentityKey.create(current)
-        val next = queueEngine.upcoming(2)
-            .firstOrNull { !samePlayableTrack(it, current) && !it.isPersonalCollectionTrack() }
-            ?: return
-        val nextKey = MotionArtworkIdentityKey.create(next)
-        val prefetchToken = ++motionArtworkPrefetchToken
-        motionArtworkPrefetchKey = nextKey
-        motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            try {
-                delay(180L)
-                if (!isActive || _state.value.isVideoMode) return@launch
-                val active = _state.value.currentTrack ?: return@launch
-                if (
-                    !shouldContinueMotionPrefetch(
-                        activeKey = MotionArtworkIdentityKey.create(active),
-                        currentKey = currentKey,
-                        nextKey = nextKey,
-                        queueChanged = queueEngine.state.value.generation != generation
-                    )
-                ) {
-                    return@launch
-                }
-                runCatching {
-                    motionArtworkEngine.prefetchNext(next, _state.value.interfaceSettings.canvasSource)
-                }
-                    .onFailure { error ->
-                        if (error is CancellationException) throw error
-                        Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
-                    }
-            } finally {
-                if (motionArtworkPrefetchToken == prefetchToken) motionArtworkPrefetchKey = null
-            }
-        }
-    }
-
-    private fun cancelPageMotion() {
-        artistMotionJob?.cancel()
-        albumMotionJob?.cancel()
-    }
-
-    private fun refreshPageMotionArtwork() {
-        val state = _state.value
-        if (state.showArtist) state.artistProfile?.let(::refreshArtistMotionArtwork)
-        if (state.showAlbum) state.albumDetail?.let(::refreshAlbumMotionArtwork)
-    }
-
-    private fun refreshArtistMotionArtwork(profile: ArtistProfile, keepCurrent: Boolean = false) {
-        val seeds = selectArtistMotionSeeds(
-            profileName = profile.name,
-            tracks = profile.topSongs,
-            isLocal = ::isLocalPlaybackTrack
-        )
-        val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
-        if (keepCurrent && request.identity == artistMotionRequest?.identity) {
-            val published = _state.value.artistMotionArtwork != null && artistMotionPublished
-            val sameWorkInFlight = artistMotionJob?.isActive == true &&
-                (request == artistMotionRequest || artistMotionRequest?.seedIdentities?.isNotEmpty() == true)
-            if (published || sameWorkInFlight) return
-        }
-        artistMotionJob?.cancel()
-        artistMotionRequest = request
-        artistMotionPublished = false
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-        if (profile.name.isBlank() && seeds.isEmpty()) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-        artistMotionJob = viewModelScope.launch(Dispatchers.IO) {
-            val canvasSource = _state.value.interfaceSettings.canvasSource
-            val attempts = buildList<suspend () -> MotionArtwork?> {
-                if (profile.name.isNotBlank()) {
-                    add {
-                        runCatchingPreservingCancellation {
-                            motionArtworkEngine.awaitArtist(profile.name, profile.browseId, canvasSource)
-                        }.onFailure { error ->
-                            Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
-                        }.getOrNull()
-                    }
-                }
-                seeds.forEach { track ->
-                    add {
-                        runCatchingPreservingCancellation {
-                            motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto)
-                        }.onFailure { error ->
-                            Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
-                        }.getOrNull()
-                    }
-                }
-            }
-            val resolved = firstAvailableMotionArtwork(attempts)
-            Timber.d(
-                "Artist hero motion %s artist=%s provider=%s",
-                if (resolved == null) "NONE" else "ASSIGNED",
-                profile.name,
-                resolved?.provider.orEmpty()
-            )
-            if (!isActive) return@launch
-            val visible = _state.value.artistProfile ?: return@launch
-            if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
-            withContext(Dispatchers.Main) {
-                if (artistMotionRequest != request) return@withContext
-                artistMotionPublished = resolved != null
-                _state.update { it.copy(artistMotionArtwork = resolved) }
-            }
-        }
-    }
-
-    private data class ArtistMotionRequest(
-        val identity: String,
-        val seedIdentities: List<String>
-    )
-
-    private fun artistMotionIdentity(profile: ArtistProfile): String =
-        profile.browseId.trim().lowercase(Locale.ROOT).ifBlank { profile.name.trim().lowercase(Locale.ROOT) }
-
-    private fun refreshAlbumMotionArtwork(detail: AlbumDetail) {
-        albumMotionJob?.cancel()
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
-            _state.update { it.copy(albumMotionArtwork = null) }
-            return
-        }
-        val seed = selectAlbumMotionSeed(detail, ::isLocalPlaybackTrack)
-        if (seed == null) {
-            _state.update { it.copy(albumMotionArtwork = null) }
-            return
-        }
-        albumMotionJob = viewModelScope.launch(Dispatchers.IO) {
-            val publishForVisibleAlbum: (MotionArtwork?) -> Unit = { artwork ->
-                _state.update { current ->
-                    if (
-                        canPublishAlbumMotionArtwork(
-                            visible = current.albumDetail,
-                            expected = detail,
-                            albumVisible = current.showAlbum,
-                            animationsEnabled = current.animationsEnabled,
-                            motionArtworkEnabled = current.motionArtworkEnabled
-                        )
-                    ) {
-                        current.copy(albumMotionArtwork = artwork)
-                    } else {
-                        current
-                    }
-                }
-            }
-            var published = false
-            runCatching {
-                motionArtworkEngine
-                    .resolveAppleAlbumProgressive(seed)
-                    .collect { artwork ->
-                        published = true
-                        publishForVisibleAlbum(artwork)
-                    }
-            }
-                .onFailure { error ->
-                    if (error is CancellationException) throw error
-                    Timber.d(error, "Album motion artwork resolve failed for %s", seed.album)
-                }
-            if (!isActive) return@launch
-            if (!published) publishForVisibleAlbum(null)
-        }
-    }
+    private fun refreshAlbumMotionArtwork(detail: AlbumDetail) = motionArtwork.refreshAlbum(detail)
 
     private fun lyricsNetworkProfile(): LyricsNetworkProfile {
         val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
@@ -13548,9 +12572,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeComments.cancelRequests()
         youtubeEngagementGeneration.incrementAndGet()
         prefetchJob?.cancel()
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = null
-        motionArtworkPrefetchJob?.cancel()
+        motionArtwork.cancelResolution()
         lyricsController.cancelRequests()
         sponsorJob?.cancel()
         radioJob?.cancel()
@@ -14785,7 +13807,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         radioJob?.cancel()
         if (!exitingApplication) queueEngine.updatePosition(player.positionMs)
         player.release()
-        replacementSearchJob?.cancel()
+        playlistLibrary.cancelReplacementSearch()
         homeFeedJob?.cancel()
         homeAlbumsJob?.cancel()
         homeArtistsJob?.cancel()
@@ -14798,10 +13820,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeSnapshotJob?.cancel()
         musicVideosJob?.cancel()
         videoMetadataJob?.cancel()
-        cancelPageMotion()
-        motionArtworkJob?.cancel()
-        motionArtworkPrefetchJob?.cancel()
-        motionArtworkEngine.close()
+        motionArtwork.close()
         if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
         levyraMixJob?.cancel()
         listeningDnaJob?.cancel()
