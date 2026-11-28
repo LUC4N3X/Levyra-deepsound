@@ -471,9 +471,7 @@ private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 private const val EXPLORE_VIDEOS_LIMIT = 40
 
-private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
-private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
 private const val FRESH_DISCOVERY_LOG_TAG = "FreshDiscovery"
@@ -712,10 +710,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val speedDialLoaded = CompletableDeferred<Unit>()
     private val speedDialArtworkAttempted = HashSet<String>()
     private var speedDialArtworkJob: Job? = null
-    private var artistQueueExtensionJob: Job? = null
-    @Volatile private var artistAllSongsCache: Pair<String, List<Track>>? = null
-    private val artistCatalogLoadLock = Any()
-    private var artistCatalogLoad: Pair<String, Deferred<List<Track>?>>? = null
     private val batchEnqueueJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
     private val selectionEnqueueJobs: MutableSet<Job> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
@@ -1011,12 +1005,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var sessionDismissedUpdateVersion: String? = null
-    private var artistJob: Job? = null
-    @Volatile private var artistPlaceholder: ArtistProfile? = null
-    private var artistLoreJob: Job? = null
-    private var albumJob: Job? = null
+    private val artistProfiles = ArtistProfileController(
+        viewModelScope,
+        _state,
+        levyraContext,
+        artistRepository,
+        queueEngine,
+        followedArtistsStore,
+        refreshArtistMotion = { profile, keepCurrent -> refreshArtistMotionArtwork(profile, keepCurrent) },
+        refreshQueuePrefetch = { refreshQueuePrefetch() },
+        applyFollowedArtists = { artists -> applyFollowedArtists(artists) },
+        loadReleaseRadar = { loadReleaseRadar() }
+    )
+    private val albumDetailController = AlbumDetailController(
+        scope = viewModelScope,
+        uiState = _state,
+        application = application,
+        repository = repository,
+        artistRepository = artistRepository,
+        favoritesStore = favoritesStore,
+        favoriteMutationMutex = favoriteMutationMutex,
+        hasInternetCapableNetwork = ::hasInternetCapableNetwork,
+        mergeTracks = ::mergeTracks,
+        refreshAlbumMotionArtwork = ::refreshAlbumMotionArtwork,
+        recordSmartAlbumOpen = ::recordSmartAlbumOpen,
+        refreshOfficialMetadataBatch = { tracks, limit -> refreshOfficialMetadataBatch(tracks, limit) },
+        clearTrackDislikes = ::clearTrackDislikes,
+        refreshForgottenFavorites = ::refreshForgottenFavorites
+    )
     private var playlistHitJob: Job? = null
-    private var albumFavoriteJob: Job? = null
     private var likeAllJob: Job? = null
     private var artistMotionJob: Job? = null
     private var artistMotionRequest: ArtistMotionRequest? = null
@@ -1035,10 +1052,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
     private var releaseNotificationSettingsJob: Job? = null
-    private var followedArtistsJob: Job? = null
     private var forgottenFavoritesJob: Job? = null
     private var excludedArtistsGeneration = 0L
-    private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
     private val radioSession = AtomicReference<RadioSession?>(null)
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -1124,7 +1139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 refreshArtistMotionArtwork(page.profile)
-                startArtistLore(page.profile)
+                artistProfiles.startArtistLore(page.profile)
             }
             is DetailPage.PlaylistPage -> {
                 val cached = _state.value.playlists.firstOrNull { it.id == page.playlistId }
@@ -1862,11 +1877,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             backfillSpeedDialArtistArtwork()
         }
-        val followedLoadGeneration = followedArtistsGeneration
+        val followedLoadGeneration = artistProfiles.followedArtistsGeneration
         viewModelScope.launch(Dispatchers.IO) {
             val followed = followedArtistsStore.load()
             withContext(Dispatchers.Main) {
-                if (followedArtistsGeneration == followedLoadGeneration) applyFollowedArtists(followed)
+                if (artistProfiles.followedArtistsGeneration == followedLoadGeneration) applyFollowedArtists(followed)
             }
         }
         startTicker()
@@ -2060,76 +2075,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFollowArtist() {
         val profile = _state.value.artistProfile ?: return
-        toggleFollowArtist(profile.browseId, profile.name, profile.thumbnailUrl)
+        artistProfiles.toggleFollowArtist(profile.browseId, profile.name, profile.thumbnailUrl)
     }
 
-    fun toggleFollowArtist(artist: ArtistHit) = toggleFollowArtist(artist.browseId, artist.name, artist.thumbnailUrl)
-
-    private fun toggleFollowArtist(artistBrowseId: String, artistName: String, thumbnailUrl: String) {
-        val browseId = artistBrowseId.trim()
-        if (browseId.isBlank()) return
-        val name = artistName.trim()
-        if (name.isBlank()) return
-        val current = _state.value.followedArtists
-        val exists = current.any { sameArtist(it, browseId, name) }
-        val updated = if (exists) {
-            current.filterNot { sameArtist(it, browseId, name) }
-        } else {
-            listOf(FollowedArtist(browseId, name, thumbnailUrl, System.currentTimeMillis())) +
-                current.filterNot { it.browseId.isBlank() && it.name.equals(name, ignoreCase = true) }
-        }
-        followedArtistsGeneration++
-        val mutationGeneration = followedArtistsGeneration
-        applyFollowedArtists(updated)
-        followedArtistsJob?.cancel()
-        followedArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            persistFollowedArtistMutation(updated, current, exists, browseId, name, mutationGeneration)
-        }
-    }
-
-    private suspend fun persistFollowedArtistMutation(
-        updated: List<FollowedArtist>,
-        previous: List<FollowedArtist>,
-        wasFollowing: Boolean,
-        browseId: String,
-        name: String,
-        mutationGeneration: Long
-    ) {
-        followedArtistsStore.save(updated)
-        if (mutationGeneration != followedArtistsGeneration) return
-        if (wasFollowing) {
-            previous.filter { sameArtist(it, browseId, name) }
-                .forEach { followedArtistsStore.clearKnownReleases(it.key) }
-        } else if (_state.value.interfaceSettings.releaseNotificationsEnabled) {
-            seedFollowedArtistReleaseBaseline(browseId, name, mutationGeneration)
-        }
-        if (mutationGeneration != followedArtistsGeneration) return
-        if (updated.isEmpty() || !_state.value.interfaceSettings.releaseNotificationsEnabled) {
-            ReleaseRadarWorker.cancel(levyraContext)
-        } else {
-            ReleaseRadarWorker.schedule(levyraContext)
-        }
-        withContext(Dispatchers.Main) { loadReleaseRadar() }
-    }
-
-    private suspend fun seedFollowedArtistReleaseBaseline(browseId: String, name: String, mutationGeneration: Long) {
-        val currentProfile = try {
-            artistRepository.profile(browseId, name)
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            Timber.w(error, "Release radar baseline fetch failed for %s", name)
-            null
-        }
-        if (currentProfile != null && mutationGeneration == followedArtistsGeneration) {
-            val baseline = (currentProfile.albums + currentProfile.singles)
-                .flatMapTo(linkedSetOf(), ReleaseRadarPolicy::identityKeys)
-            followedArtistsStore.saveKnownReleases(browseId, baseline)
-        }
-    }
-
-    private fun sameArtist(artist: FollowedArtist, browseId: String, name: String): Boolean =
-        artist.browseId == browseId || (artist.browseId.isBlank() && artist.name.equals(name, ignoreCase = true))
+    fun toggleFollowArtist(artist: ArtistHit) = artistProfiles.toggleFollowArtist(artist.browseId, artist.name, artist.thumbnailUrl)
 
     private fun scheduleColdStartRefresh(initialTracks: List<Track>) {
         val appContext = getApplication<Application>().applicationContext
@@ -6523,7 +6472,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
         applyLanguageContent(normalizedLanguage, refreshRemote = true, followNewLanguage = true)
-        _state.value.artistProfile?.takeIf { _state.value.showArtist }?.let(::startArtistLore)
+        _state.value.artistProfile?.takeIf { _state.value.showArtist }?.let(artistProfiles::startArtistLore)
         _state.value.currentTrack?.let { track ->
             lyricsController.fetch(track)
             lyricsController.prefetchAround(track)
@@ -8000,31 +7949,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun toggleCurrentAlbumFavorite() {
-        val tracks = _state.value.albumDetail?.tracks.orEmpty()
-        if (tracks.isEmpty() || albumFavoriteJob?.isActive == true) return
-        albumFavoriteJob = viewModelScope.launch {
-            val updated = favoriteMutationMutex.withLock {
-                favoritesStore.toggleFavorites(tracks).also { favorites ->
-                    val timestamps = favoritesStore.loadTimestampsSuspending()
-                    _state.update { state ->
-                        state.copy(
-                            favorites = favorites,
-                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
-                            favoriteTimestamps = timestamps
-                        )
-                    }
-                }
-            }
-            clearTrackDislikes(tracks.filter { track -> areAllFavoriteTracks(updated, listOf(track)) })
-            refreshForgottenFavorites()
-            LevyraArtworkCache.preloadPriority(
-                getApplication<Application>().applicationContext,
-                updated,
-                6
-            )
-        }
-    }
+    fun toggleCurrentAlbumFavorite() = albumDetailController.toggleFavorite()
 
     fun toggleFavorites(tracks: List<Track>) {
         val cleanTracks = tracks
@@ -8284,8 +8209,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalizedBrowseId = browseId.trim()
         if (!isNavigableArtistName(clean)) return
         val requestedArtistListStateKey = nextArtistListStateKey(normalizedBrowseId)
-        artistJob?.cancel()
-        artistLoreJob?.cancel()
+        artistProfiles.cancelRequests()
         artistMotionJob?.cancel()
         val previous = _state.value
         val previousProfileMatches = previous.artistProfile?.let { profile ->
@@ -8309,171 +8233,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             )
         }
-        val placeholder = artistPlaceholder(normalizedBrowseId, clean, artworkHint)
-        artistPlaceholder = placeholder
-        _state.update { current ->
-            val sameProfile = current.artistProfile?.let { profile ->
-                if (normalizedBrowseId.isNotBlank()) {
-                    profile.browseId.equals(normalizedBrowseId, ignoreCase = true)
-                } else {
-                    profile.name.equals(clean, ignoreCase = true)
-                }
-            } == true
-            current.copy(
-                showAlbum = false,
-                showArtist = true,
-                artistLoading = true,
-                artistError = null,
-                artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio } ?: placeholder,
-                artistMotionArtwork = current.artistMotionArtwork.takeIf { sameProfile },
-                artistListStateKey = requestedArtistListStateKey,
-                artistRequestName = clean,
-                openPlaylist = null,
-                detailReturnTarget = DetailReturnTarget.None
-            )
-        }
-        placeholder?.let(::refreshArtistMotionArtwork)
-        artistJob = viewModelScope.launch {
-            coroutineScope {
-                val biographyDeferred = async {
-                    runCatchingPreservingCancellation { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
-                }
-                val appleStorefront = ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country
-                val appleBiographyDeferred = async {
-                    runCatchingPreservingCancellation { artistRepository.appleBiographyFor(clean, appleStorefront) }.getOrNull()
-                }
-                val profileDeferred = async {
-                    resolveArtistProfileReference(
-                        browseId = normalizedBrowseId,
-                        name = clean,
-                        isActive = { isActive },
-                        profileByBrowseId = { id, fallbackName ->
-                            artistRepository.profile(id, fallbackName) { preview ->
-                                publishArtistPreview(preview, requestedArtistListStateKey, biographyDeferred.completedOrNull())
-                            }
-                        },
-                        profileByName = artistRepository::profileFor
-                    )
-                }
-                val profile = profileDeferred.await()
-                if (!isActive) return@coroutineScope
-                if (profile == null) {
-                    biographyDeferred.cancel()
-                    appleBiographyDeferred.cancel()
-                    _state.update {
-                        it.copy(
-                            artistLoading = false,
-                            artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
-                            artistProfile = null
-                        )
-                    }
-                    return@coroutineScope
-                }
-                val initialBiography = biographyDeferred.completedOrNull()
-                    ?: withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) { biographyDeferred.await() }
-                val initialProfile = listOfNotNull(initialBiography, appleBiographyDeferred.completedOrNull())
-                    .fold(profile, artistRepository::mergeBiography)
-                _state.update {
-                    it.copy(
-                        artistLoading = false,
-                        artistError = null,
-                        artistProfile = initialProfile
-                    )
-                }
-                refreshArtistMotionArtwork(initialProfile, keepCurrent = true)
-                initialBiography?.let {
-                    startArtistLore(initialProfile)
-                } ?: run {
-                    artistLoreJob?.cancel()
-                    artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
-                }
-                appleBiographyDeferred.await()?.let { biography -> mergeVisibleArtistBiography(profile, biography) }
-            }
-        }
-    }
-
-    private fun mergeVisibleArtistBiography(profile: ArtistProfile, biography: ArtistBiography) {
-        _state.update { current ->
-            val visible = current.artistProfile ?: return@update current
-            if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
-            current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
-        }
-    }
-
-    private fun artistPlaceholder(browseId: String, name: String, artworkUrl: String): ArtistProfile? {
-        if (browseId.isBlank()) return null
-        val artwork = artworkUrl.trim()
-        val accent = artistRepository.accentFor(browseId, name)
-        return ArtistProfile(
-            browseId = browseId,
-            name = name,
-            subscribers = "",
-            monthlyListeners = "",
-            thumbnailUrl = artwork,
-            bannerUrl = artwork,
-            topSongs = emptyList(),
-            albums = emptyList(),
-            singles = emptyList(),
-            accentStart = accent.first,
-            accentEnd = accent.second
-        )
-    }
-
-    private fun publishArtistPreview(preview: ArtistProfile, requestKey: String, biography: ArtistBiography?) {
-        var published = false
-        _state.update { current ->
-            published = false
-            if (!current.showArtist || !current.artistLoading || current.artistListStateKey != requestKey) return@update current
-            val shown = current.artistProfile
-            if (shown != null && shown !== artistPlaceholder && !(shown.browseId == preview.browseId && shown.topSongs.size <= preview.topSongs.size)) {
-                return@update current
-            }
-            published = true
-            current.copy(artistProfile = biography?.let { artistRepository.mergeBiography(preview, it) } ?: preview)
-        }
-        if (published && preview.topSongs.isNotEmpty()) {
-            viewModelScope.launch { refreshArtistMotionArtwork(preview, keepCurrent = true) }
-        }
-    }
-
-    private fun launchArtistLoreAwait(
-        profile: ArtistProfile,
-        biographyDeferred: Deferred<ArtistBiography?>
-    ): Job {
-        return viewModelScope.launch {
-            runCatchingPreservingCancellation { biographyDeferred.await() }.getOrNull()?.let { biography ->
-                mergeVisibleArtistBiography(profile, biography)
-            }
-            val visible = _state.value.artistProfile ?: return@launch
-            if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
-            artistLoreJob = launchArtistLoreCollection(visible)
-        }
-    }
-
-    private fun startArtistLore(profile: ArtistProfile) {
-        artistLoreJob?.cancel()
-        artistLoreJob = launchArtistLoreCollection(profile)
-    }
-
-    private fun launchArtistLoreCollection(profile: ArtistProfile): Job {
-        return viewModelScope.launch {
-            artistRepository.observeBiography(profile).collectLatest { biography ->
-                mergeVisibleArtistBiography(profile, biography)
-            }
-        }
-    }
-
-    private fun sameArtistProfile(left: ArtistProfile, right: ArtistProfile): Boolean {
-        return if (right.browseId.isNotBlank()) {
-            left.browseId.equals(right.browseId, ignoreCase = true)
-        } else {
-            left.name.equals(right.name, ignoreCase = true)
-        }
+        artistProfiles.load(clean, normalizedBrowseId, artworkHint, requestedArtistListStateKey)
     }
 
     fun closeArtist() {
-        artistJob?.cancel()
-        artistLoreJob?.cancel()
+        artistProfiles.cancelRequests()
         artistMotionJob?.cancel()
         if (restoreDetailPage()) return
         _state.update {
@@ -8503,11 +8267,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         playerReturnDetail = null
-        albumJob?.cancel()
+        albumDetailController.cancelLoad()
         albumMotionJob?.cancel()
         if (returnTarget != DetailReturnTarget.Artist) {
-            artistJob?.cancel()
-            artistLoreJob?.cancel()
+            artistProfiles.cancelRequests()
             artistMotionJob?.cancel()
         }
         val previous = _state.value
@@ -8541,143 +8304,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 detailReturnTarget = if (keepArtistParent) DetailReturnTarget.Artist else DetailReturnTarget.None
             )
         }
-        albumJob = viewModelScope.launch {
-            val languageCode = _state.value.languageCode
-            val providerResult = runCatchingPreservingCancellation { repository.albumDetail(album, languageCode) }
-                .onFailure { Timber.w(it, "Album detail lookup failed") }
-            val providerDetail = providerResult.getOrNull()
-            if (!isActive) return@launch
-            val detail = if (providerDetail?.tracks.isNullOrEmpty()) {
-                appleCatalogAlbumDetail(album, languageCode) ?: providerDetail
-            } else {
-                providerDetail
-            }
-            if (!isActive) return@launch
-            if (detail == null || detail.tracks.isEmpty()) {
-                val transientFailure = providerResult.isFailure || !hasInternetCapableNetwork()
-                _state.update {
-                    val strings = LevyraStrings.forCode(it.languageCode)
-                    it.copy(
-                        albumLoading = false,
-                        albumError = if (transientFailure) strings.albumTracksLoadFailed else strings.albumTracksUnavailable,
-                        albumDetail = detail ?: AlbumDetail(album, "", emptyList())
-                    )
-                }
-                return@launch
-            }
-            _state.update {
-                it.copy(
-                    albumLoading = false,
-                    albumError = null,
-                    albumDetail = detail,
-                    tracks = mergeTracks(detail.tracks, it.tracks),
-                    searchResults = detail.tracks.take(12),
-                    cacheReport = repository.cacheReport()
-                )
-            }
-            refreshAlbumMotionArtwork(detail)
-            if (detail === providerDetail && albumSuggestionsSupported) launch { refreshAlbumSuggestions(detail, languageCode) }
-            launch {
-                val description = runCatching {
-                    repository.resolveAlbumDescription(detail, languageCode)
-                }.getOrNull()?.trim().orEmpty()
-                if (!isActive || description.isBlank() || description == detail.description) return@launch
-                _state.update { currentState ->
-                    val shownDetail = currentState.albumDetail ?: return@update currentState
-                    val sameBrowseId = detail.album.browseId.isNotBlank() &&
-                        shownDetail.album.browseId.equals(detail.album.browseId, ignoreCase = true)
-                    val sameIdentity = shownDetail.album.title.equals(detail.album.title, ignoreCase = true) &&
-                        shownDetail.album.artist.equals(detail.album.artist, ignoreCase = true)
-                    if (!currentState.showAlbum || (!sameBrowseId && !sameIdentity)) currentState
-                    else currentState.copy(albumDetail = shownDetail.copy(description = description))
-                }
-            }
-            recordSmartAlbumOpen(detail.album)
-            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
-            refreshOfficialMetadataBatch(detail.tracks, 12)
-        }
-    }
-
-    private suspend fun refreshAlbumSuggestions(detail: AlbumDetail, languageCode: String) {
-        val album = detail.album
-        val strings = LevyraStrings.forCode(languageCode)
-        val (profile, similar) = coroutineScope {
-            val profile = async {
-                album.artistBrowseId.takeIf { it.isNotBlank() }?.let { browseId ->
-                    runCatchingPreservingCancellation { artistRepository.profile(browseId, album.artist) }.getOrNull()
-                }
-            }
-            val similar = async {
-                runCatchingPreservingCancellation { lastFmSimilarAlbums.similarAlbums(primaryArtistSegment(album.artist).ifBlank { album.artist }) }
-                    .getOrNull().orEmpty()
-            }
-            profile.await() to similar.await()
-        }
-        val artistName = profile?.name?.ifBlank { null } ?: album.artist
-        val releases = profile?.let { it.albums + it.singles }.orEmpty().map { release ->
-            AlbumHit(
-                title = release.title,
-                artist = artistName,
-                year = release.year,
-                thumbnailUrl = release.thumbnailUrl,
-                query = listOf(release.title, artistName).filter { it.isNotBlank() }.joinToString(" "),
-                browseId = release.browseId,
-                artistBrowseId = profile?.browseId.orEmpty(),
-                explicit = release.explicit,
-                releaseType = release.releaseType
-            )
-        }
-        val similarAlbums = similar.map { item ->
-            AlbumHit(title = item.title, artist = item.artist, year = "", thumbnailUrl = item.imageUrl, query = "${item.title} ${item.artist}")
-        }
-        val shelves = buildAlbumSuggestionShelves(
-            current = album,
-            moreByTitle = moreByArtist(languageCode, artistName),
-            artistReleases = releases,
-            youtubeShelves = detail.suggestionShelves,
-            similarTitle = strings.youMightAlsoLike,
-            similarAlbums = similarAlbums
-        )
-        if (!currentCoroutineContext().isActive) return
-        _state.update { current ->
-            val shown = current.albumDetail ?: return@update current
-            val sameAlbum = if (album.browseId.isNotBlank()) shown.album.browseId.equals(album.browseId, ignoreCase = true)
-            else shown.album.title.equals(album.title, ignoreCase = true) && shown.album.artist.equals(album.artist, ignoreCase = true)
-            if (!current.showAlbum || !sameAlbum) current
-            else current.copy(albumDetail = shown.copy(suggestionShelves = shelves))
-        }
-    }
-
-    private suspend fun appleCatalogAlbumDetail(album: AlbumHit, languageCode: String): AlbumDetail? {
-        val (storefront, albumId) = com.luc4n3x.levyra.data.apple.AppleCatalogIds.albumFromUrl(album.canonicalUrl) ?: return null
-        val collection = com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
-            .album(storefront, albumId, languageCode) ?: return null
-        val tracks = collection.tracks.map { track -> track.copy(album = track.album.ifBlank { album.title }) }
-        return AlbumDetail(
-            album = album.copy(thumbnailUrl = album.thumbnailUrl.ifBlank { collection.artworkUrl }),
-            description = collection.description,
-            tracks = tracks,
-            footer = collection.footer,
-            relatedShelves = collection.related.map { shelf ->
-                com.luc4n3x.levyra.domain.AlbumRelatedShelf(
-                    title = shelf.title,
-                    items = shelf.items.filter { it.url.isNotBlank() && it.title.isNotBlank() }.map { item ->
-                        com.luc4n3x.levyra.domain.AlbumRelatedItem(
-                            id = item.id,
-                            title = item.title,
-                            subtitle = item.subtitle,
-                            artworkUrl = item.artworkUrl(APPLE_RELATED_ARTWORK_SIZE),
-                            url = item.url,
-                            playlist = item.kind == com.luc4n3x.levyra.data.apple.AppleCatalogItemKind.Playlist
-                        )
-                    }
-                )
-            }.filter { it.items.isNotEmpty() }
-        )
+        albumDetailController.load(album)
     }
 
     fun closeAlbum() {
-        albumJob?.cancel()
+        albumDetailController.cancelLoad()
         albumMotionJob?.cancel()
         val current = _state.value
         if (current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist) {
@@ -8708,10 +8339,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openPlayerScreen() {
         playerReturnDetail = playerReturnDetailOf(_state.value)
-        albumJob?.cancel()
+        albumDetailController.cancelLoad()
         playlistHitJob?.cancel()
-        artistJob?.cancel()
-        artistLoreJob?.cancel()
+        artistProfiles.cancelRequests()
         cancelPageMotion()
         detailBackStack.clear()
         _state.update {
@@ -8783,7 +8413,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (saved.flags.artistLoading) {
                     openArtistReference(profile.name, profile.browseId, profile.thumbnailUrl)
                 } else {
-                    startArtistLore(profile)
+                    artistProfiles.startArtistLore(profile)
                 }
             }
         }
@@ -9160,7 +8790,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
         playFrom(profile.topSongs, track)
-        extendArtistQueue(profile)
+        artistProfiles.extendArtistQueue(profile)
     }
 
     fun playAllArtistSongs(shuffled: Boolean = false) {
@@ -9172,13 +8802,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!queueEngine.state.value.shuffleEnabled) queueEngine.setShuffle(true)
         }
         playFrom(songs, autoplayStartTrack(songs, random = shuffled))
-        extendArtistQueue(profile)
+        artistProfiles.extendArtistQueue(profile)
     }
 
     fun downloadAllArtistSongs() {
         val profile = _state.value.artistProfile ?: return
         viewModelScope.launch {
-            val songs = allArtistSongs(profile)
+            val songs = artistProfiles.allArtistSongs(profile)
             if (songs.isEmpty()) {
                 _state.update { it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).playlistEmpty) }
                 return@launch
@@ -9191,35 +8821,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 tracks = songs
             )
         }
-    }
-
-    private fun extendArtistQueue(profile: ArtistProfile) {
-        if (_state.value.jam.isActive) return
-        val initialQueue = queueEngine.state.value.tracks
-        artistQueueExtensionJob?.cancel()
-        artistQueueExtensionJob = viewModelScope.launch {
-            val catalog = allArtistSongs(profile)
-            val tail = artistQueueTail(queueEngine.state.value.tracks, initialQueue, catalog)
-            if (tail.isEmpty() || _state.value.jam.isActive) return@launch
-            queueEngine.addLast(tail)
-            refreshQueuePrefetch()
-        }
-    }
-
-    private suspend fun allArtistSongs(profile: ArtistProfile): List<Track> {
-        artistAllSongsCache?.takeIf { it.first == profile.browseId }?.let { return it.second }
-        val load = synchronized(artistCatalogLoadLock) {
-            artistCatalogLoad?.takeIf { it.first == profile.browseId && it.second.isActive }?.second
-                ?: viewModelScope.async(Dispatchers.IO) {
-                    runCatchingPreservingCancellation { artistRepository.allSongs(profile.songsBrowseId, profile.name) }
-                        .onFailure { Timber.w(it, "artist catalog lookup failed") }
-                        .getOrNull()
-                }.also { artistCatalogLoad = profile.browseId to it }
-        }
-        val catalog = load.await()
-        val songs = mergeArtistSongs(profile.topSongs, catalog.orEmpty(), ARTIST_ALL_SONGS_LIMIT)
-        if (catalog != null && catalog.isNotEmpty()) artistAllSongsCache = profile.browseId to songs
-        return songs
     }
 
     private fun tryPromoteSmartDownload(track: Track): Boolean {
@@ -11388,7 +10989,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val exploreGenreChart: StateFlow<ExploreGenreChartState> = _exploreGenreChart.asStateFlow()
     private var exploreGenreChartJob: Job? = null
     private val lastFmGenreDiscovery by lazy { LastFmGenreDiscoveryRepository(getApplication()) }
-    private val lastFmSimilarAlbums by lazy { com.luc4n3x.levyra.data.lastfm.LastFmSimilarAlbumsRepository(getApplication()) }
     private val _exploreGenreDiscovery = MutableStateFlow(ExploreGenreDiscoveryState())
     val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> = _exploreGenreDiscovery.asStateFlow()
     private var exploreGenreDiscoveryJob: Job? = null
@@ -15091,7 +14691,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
-        const val APPLE_RELATED_ARTWORK_SIZE = 400
         private const val RESUME_SHORTCUT_RESTORE_TIMEOUT_MS = 3_000L
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
@@ -15181,8 +14780,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sleepTimerCollectorJob?.cancel()
         lyricsController.cancelRequests()
         sponsorJob?.cancel()
-        artistJob?.cancel()
-        artistLoreJob?.cancel()
+        artistProfiles.cancelRequests()
         radarJob?.cancel()
         radioJob?.cancel()
         if (!exitingApplication) queueEngine.updatePosition(player.positionMs)
