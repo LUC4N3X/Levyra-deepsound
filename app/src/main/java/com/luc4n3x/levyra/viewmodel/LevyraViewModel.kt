@@ -480,7 +480,6 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
-private const val VAULT_SYNC_FILE_ACCESS = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 private const val EXPLORE_VIDEOS_LIMIT = 40
 
@@ -1413,8 +1412,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val _customLyricsDraft = MutableStateFlow<CustomLyricsDraft?>(null)
     private var customLyricsSession = 0L
     val customLyricsDraft: StateFlow<CustomLyricsDraft?> = _customLyricsDraft.asStateFlow()
-    private val _vaultSyncFile = MutableStateFlow(VaultSyncFileState())
-    val vaultSyncFile: StateFlow<VaultSyncFileState> = _vaultSyncFile.asStateFlow()
+    private val backupVault = BackupVaultController(
+        viewModelScope,
+        levyraContext,
+        preferences,
+        backupManager,
+        _state,
+        cleanUserError = { error -> cleanUserError(error) },
+        afterRestore = { refreshAfterRestore() }
+    )
+    val vaultSyncFile: StateFlow<VaultSyncFileState> = backupVault.syncFile
     private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
     val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
     private val _navigationStudio = MutableStateFlow(NavigationStudioState(settings = startupSettings.navigationStudioSettings))
@@ -6626,12 +6633,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         SmartOfflineScheduler.refresh(levyraContext, _state.value.smartOfflineSettings)
     }
 
-    fun setBackupSettings(value: LevyraBackupSettings) {
-        val normalized = value.normalized()
-        preferences.setBackupSettings(normalized)
-        AutomaticBackupScheduler.schedule(getApplication<Application>().applicationContext, normalized)
-        _state.update { it.copy(backupSettings = normalized) }
-    }
+    fun setBackupSettings(value: LevyraBackupSettings) = backupVault.setBackupSettings(value)
 
     fun pauseDownload(taskKey: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -6654,333 +6656,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun createBackup(uri: Uri) {
-        viewModelScope.launch {
-            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
-            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
-            try {
-                val result = backupManager.exportTo(uri)
-                _state.update {
-                    it.copy(
-                        backupMessage = result.message,
-                        vaultStatus = LevyraVaultStatus.Completed,
-                        lastBackupAtMs = System.currentTimeMillis()
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
-                throw cancelled
-            } catch (error: Throwable) {
-                _state.update {
-                    it.copy(
-                        backupMessage = "Backup non riuscito: ${cleanUserError(error)}",
-                        vaultStatus = LevyraVaultStatus.Error
-                    )
-                }
-            }
-        }
-    }
+    fun createBackup(uri: Uri) = backupVault.createBackup(uri)
 
-    fun backupNow() {
-        viewModelScope.launch {
-            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
-            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
-            try {
-                val result = backupManager.exportAutomatic(_state.value.backupSettings.retentionCount)
-                val syncFailure = try {
-                    val synced = backupManager.exportToSyncFile()
-                    val expected = preferences.vaultSyncFileUri().isNotBlank() && preferences.vaultSyncFileWritesEnabled()
-                    if (!synced && expected) vaultSyncCopy().backupSavedNotSynced else null
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Throwable) {
-                    Timber.w(error, "Vault sync file not updated")
-                    vaultSyncCopy().backupSavedNotSynced
-                }
-                refreshVaultSyncFile()
-                _state.update {
-                    it.copy(
-                        backupMessage = syncFailure ?: result.message,
-                        vaultStatus = LevyraVaultStatus.Completed,
-                        lastBackupAtMs = System.currentTimeMillis()
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
-                throw cancelled
-            } catch (error: Throwable) {
-                _state.update {
-                    it.copy(
-                        backupMessage = "Backup non riuscito: ${cleanUserError(error)}",
-                        vaultStatus = LevyraVaultStatus.Error
-                    )
-                }
-            }
-        }
-    }
+    fun backupNow() = backupVault.backupNow()
 
-    fun previewRestore(uri: Uri) {
-        viewModelScope.launch {
-            try {
-                val preview = backupManager.inspect(uri)
-                _state.update { it.copy(backupPreview = preview, pendingRestoreUri = uri) }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                _state.update { it.copy(backupMessage = "Backup non valido: ${cleanUserError(error)}") }
-            }
-        }
-    }
+    fun previewRestore(uri: Uri) = backupVault.previewRestore(uri)
 
-    fun dismissRestorePreview() {
-        _state.update { it.copy(backupPreview = null, pendingRestoreUri = null) }
-    }
+    fun dismissRestorePreview() = backupVault.dismissRestorePreview()
 
-    fun confirmRestore() {
-        val uri = _state.value.pendingRestoreUri ?: return
-        val preview = _state.value.backupPreview
-        if (preview != null && !preview.compatible) {
-            _state.update {
-                it.copy(backupMessage = "Backup non compatibile con questa versione di Levyra", backupPreview = null, pendingRestoreUri = null)
-            }
-            return
-        }
-        viewModelScope.launch {
-            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
-            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running, backupPreview = null, pendingRestoreUri = null) }
-            try {
-                val result = backupManager.restoreFrom(uri)
-                if (uri.toString() == preferences.vaultSyncFileUri()) {
-                    preferences.setVaultSyncFileWritesEnabled(true)
-                    refreshVaultSyncFile()
-                }
-                refreshAfterRestore()
-                _state.update {
-                    it.copy(
-                        backupMessage = result.message,
-                        vaultStatus = LevyraVaultStatus.Completed
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
-                throw cancelled
-            } catch (error: Throwable) {
-                _state.update {
-                    it.copy(
-                        backupMessage = "Ripristino non riuscito: ${cleanUserError(error)}",
-                        vaultStatus = LevyraVaultStatus.Error
-                    )
-                }
-            }
-        }
-    }
+    fun confirmRestore() = backupVault.confirmRestore()
 
-    fun clearBackupMessage() {
-        _state.update { it.copy(backupMessage = null) }
-    }
+    fun clearBackupMessage() = backupVault.clearBackupMessage()
 
-    fun setBackupLocation(uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val resolver = getApplication<Application>().contentResolver
-                val newUri = uri.toString()
-                val previous = preferences.backupTreeUri().takeIf { it.isNotBlank() }
-                resolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-                try {
-                    preferences.persistBackupTreeUri(newUri)
-                } catch (persistError: Throwable) {
-                    if (persistError is CancellationException) throw persistError
-                    if (previous != newUri) {
-                        runCatching {
-                            resolver.releasePersistableUriPermission(
-                                uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            )
-                        }.onFailure { releaseError ->
-                            if (releaseError is CancellationException) throw releaseError
-                            Timber.w(releaseError, "Unable to release backup location permission after persistence failure")
-                        }
-                    }
-                    _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
-                    return@launch
-                }
-                _state.update { it.copy(backupLocationUri = newUri) }
-                if (previous != null && previous != newUri) {
-                    runCatching {
-                        resolver.releasePersistableUriPermission(
-                            Uri.parse(previous),
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                        )
-                    }.onFailure { releaseError ->
-                        if (releaseError is CancellationException) throw releaseError
-                        Timber.w(releaseError, "Unable to release previous backup location permission")
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
-            }
-        }
-    }
+    fun setBackupLocation(uri: Uri) = backupVault.setBackupLocation(uri)
 
-    fun clearBackupLocation() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val raw = _state.value.backupLocationUri ?: return@launch
-            try {
-                val resolver = getApplication<Application>().contentResolver
-                try {
-                    resolver.releasePersistableUriPermission(
-                        Uri.parse(raw),
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    )
-                } catch (releaseError: Throwable) {
-                    if (releaseError is CancellationException) throw releaseError
-                    Timber.w(releaseError, "Unable to release backup location permission")
-                }
-                preferences.setBackupTreeUri("")
-                _state.update { it.copy(backupLocationUri = null) }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                Timber.w(error, "Unable to clear backup location")
-            }
-        }
-    }
+    fun clearBackupLocation() = backupVault.clearBackupLocation()
 
-    private fun vaultSyncCopy() = LevyraStrings.forCode(_state.value.languageCode).vaultSyncFileCopy()
+    fun loadVaultSyncFile() = backupVault.loadSyncFile()
 
-    fun loadVaultSyncFile() {
-        viewModelScope.launch { refreshVaultSyncFile() }
-    }
+    fun createVaultSyncFile(uri: Uri) = backupVault.createSyncFile(uri)
 
-    private suspend fun refreshVaultSyncFile() = withContext(Dispatchers.IO) {
-        val raw = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() }
-        if (raw == null) {
-            _vaultSyncFile.value = VaultSyncFileState()
-            return@withContext
-        }
-        val uri = Uri.parse(raw)
-        val accessLost = !backupManager.hasPersistedAccess(uri)
-        val displayName = if (accessLost) {
-            ""
-        } else {
-            runCatching {
-                getApplication<Application>().contentResolver
-                    .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-                    ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-            }.getOrNull().orEmpty()
-        }
-        if (preferences.vaultSyncFileUri() != raw) return@withContext
-        _vaultSyncFile.value = VaultSyncFileState(
-            uri = raw,
-            displayName = displayName,
-            lastWriteAtMs = preferences.vaultSyncFileLastWriteAt(),
-            writesEnabled = preferences.vaultSyncFileWritesEnabled(),
-            accessLost = accessLost
-        )
-    }
+    fun useExistingVaultSyncFile(uri: Uri) = backupVault.useExistingSyncFile(uri)
 
-    fun createVaultSyncFile(uri: Uri) = linkVaultSyncFile(uri, writesEnabled = true)
+    fun updateVaultSyncFile() = backupVault.updateSyncFile()
 
-    fun useExistingVaultSyncFile(uri: Uri) = linkVaultSyncFile(uri, writesEnabled = false)
+    fun restoreVaultSyncFile() = backupVault.restoreSyncFile()
 
-    private fun linkVaultSyncFile(uri: Uri, writesEnabled: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val copy = vaultSyncCopy()
-            val newUri = uri.toString()
-            val previous = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() }
-            try {
-                getApplication<Application>().contentResolver.takePersistableUriPermission(uri, VAULT_SYNC_FILE_ACCESS)
-            } catch (refused: SecurityException) {
-                Timber.w(refused, "Sync file location refused persistable access")
-                _state.update { it.copy(backupMessage = copy.accessRefused) }
-                return@launch
-            }
-            val relinked = previous == newUri
-            try {
-                preferences.persistVaultSyncFile(newUri, writesEnabled || (relinked && preferences.vaultSyncFileWritesEnabled()))
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (persistError: Throwable) {
-                Timber.w(persistError, "Unable to persist the sync file link")
-                if (!relinked) releaseVaultSyncFileAccess(uri)
-                _state.update { it.copy(backupMessage = copy.linkFailed) }
-                return@launch
-            }
-            if (previous != null && !relinked) releaseVaultSyncFileAccess(Uri.parse(previous))
-            refreshVaultSyncFile()
-            when {
-                writesEnabled -> updateVaultSyncFile()
-                !relinked -> previewRestore(uri)
-            }
-        }
-    }
+    fun unlinkVaultSyncFile() = backupVault.unlinkSyncFile()
 
-    private fun releaseVaultSyncFileAccess(uri: Uri) {
-        runCatching {
-            getApplication<Application>().contentResolver.releasePersistableUriPermission(uri, VAULT_SYNC_FILE_ACCESS)
-        }.onFailure { error -> Timber.w(error, "Unable to release sync file permission") }
-    }
-
-    fun updateVaultSyncFile() {
-        viewModelScope.launch {
-            if (_state.value.vaultStatus == LevyraVaultStatus.Running) {
-                _state.update { it.copy(backupMessage = vaultSyncCopy().updateFailed) }
-                return@launch
-            }
-            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
-            val copy = vaultSyncCopy()
-            val written = try {
-                preferences.setVaultSyncFileWritesEnabled(true)
-                backupManager.exportToSyncFile()
-            } catch (cancelled: CancellationException) {
-                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
-                throw cancelled
-            } catch (error: Throwable) {
-                Timber.w(error, "Vault sync file not updated")
-                null
-            }
-            refreshVaultSyncFile()
-            _state.update {
-                it.copy(
-                    backupMessage = when (written) {
-                        true -> copy.updateDone
-                        false -> copy.accessLost
-                        null -> copy.updateFailed
-                    },
-                    vaultStatus = if (written == true) LevyraVaultStatus.Completed else LevyraVaultStatus.Error
-                )
-            }
-        }
-    }
-
-    fun restoreVaultSyncFile() {
-        _vaultSyncFile.value.uri?.let { previewRestore(Uri.parse(it)) }
-    }
-
-    fun unlinkVaultSyncFile() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val raw = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() } ?: return@launch
-            try {
-                preferences.persistVaultSyncFile("", writesEnabled = false)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                Timber.w(error, "Unable to unlink the sync file")
-                return@launch
-            }
-            releaseVaultSyncFileAccess(Uri.parse(raw))
-            refreshVaultSyncFile()
-        }
-    }
-
-    fun setPreUpdateBackupFailed(value: Boolean) {
-        _state.update { it.copy(preUpdateBackupFailed = value) }
-    }
+    fun setPreUpdateBackupFailed(value: Boolean) = backupVault.setPreUpdateBackupFailed(value)
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private var playbackDiagnosticsReader: com.luc4n3x.levyra.player.PlaybackDiagnosticsReader? = null
