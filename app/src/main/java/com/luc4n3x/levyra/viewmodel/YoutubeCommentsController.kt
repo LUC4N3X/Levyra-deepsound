@@ -126,10 +126,10 @@ internal class YoutubeCommentsController(
         val engagement = uiState.value.youtubeEngagement
         val comments = engagement.comments
         val videoId = engagement.videoId
-        val token = comments.nextToken
+        val pageToken = comments.nextToken
         if (
             videoId.isBlank() ||
-            token.isBlank() ||
+            pageToken.isBlank() ||
             comments.loadingMore ||
             (!forceRefresh && comments.error != null)
         ) return
@@ -152,7 +152,7 @@ internal class YoutubeCommentsController(
             }
             val result = repository.more(
                 videoId = videoId,
-                continuationToken = token,
+                continuationToken = pageToken,
                 pageUrl = comments.nextPageUrl,
                 forceRefresh = forceRefresh
             )
@@ -171,7 +171,7 @@ internal class YoutubeCommentsController(
                 val currentComments = state.youtubeEngagement.comments
                 val updated = when (result) {
                     is YoutubeCommentsResult.Available -> {
-                        rememberContinuation(token)
+                        rememberContinuation(pageToken)
                         val combined = (currentComments.items + result.page.items)
                             .distinctBy(YoutubeComment::id)
                         val merged = if (result.page.liveChat) {
@@ -180,7 +180,7 @@ internal class YoutubeCommentsController(
                             combined
                         }
                         val nextToken = nextYoutubeCommentsToken(
-                            requestedToken = token,
+                            requestedToken = pageToken,
                             candidateToken = result.page.nextToken,
                             successfulTokens = continuationHistory
                         )
