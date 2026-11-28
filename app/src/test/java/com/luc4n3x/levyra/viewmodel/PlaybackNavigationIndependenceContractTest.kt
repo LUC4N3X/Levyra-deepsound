@@ -89,9 +89,9 @@ class PlaybackNavigationIndependenceContractTest {
     }
 
     private fun functionBody(source: String, signature: String): String {
-        val start = source.indexOf(signature)
+        val start = source.indexOf("\n    $signature")
         assertTrue("Missing $signature", start >= 0)
-        val rest = source.substring(start + signature.length)
+        val rest = source.substring(start + 5 + signature.length)
         val end = NextMember.find(rest)?.range?.first ?: rest.length
         return rest.substring(0, end)
     }
