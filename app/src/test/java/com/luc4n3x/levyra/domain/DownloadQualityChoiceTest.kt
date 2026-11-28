@@ -55,7 +55,7 @@ class DownloadQualityChoiceTest {
 
     @Test
     fun automaticAndBatchDownloadsBypassThePicker() {
-        val viewModel = source("viewmodel/LevyraViewModel.kt")
+        val viewModel = source("viewmodel/OfflineDownloadsController.kt")
         assertTrue(viewModel.contains("withDownloadQualityChoice(TrackPayloadCodec.encode(track), qualityChoice)"))
         assertEquals(3, Regex("""startTrackDownload\(track, null\)""").findAll(viewModel).count())
         assertTrue(viewModel.contains("openDownloadQualityPicker(track, downloadKey)"))

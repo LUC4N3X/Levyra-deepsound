@@ -195,7 +195,7 @@ class AppUpdateProgressTest {
         val buildFile = repositoryFile("app/build.gradle.kts")
         val installer = repositoryFile("app/src/main/java/com/luc4n3x/levyra/update/AppUpdateInstaller.kt")
         val activity = repositoryFile("app/src/main/java/com/luc4n3x/levyra/MainActivity.kt")
-        val viewModel = repositoryFile("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        val viewModel = repositoryFile("app/src/main/java/com/luc4n3x/levyra/viewmodel/AppUpdateController.kt")
 
         assertTrue(
             Files.readString(buildFile)

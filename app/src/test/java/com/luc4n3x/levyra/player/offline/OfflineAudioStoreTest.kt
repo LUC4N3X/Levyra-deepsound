@@ -257,10 +257,22 @@ class OfflineAudioStoreTest {
     }
 
     @Test
+    fun offlinePlaybackQueueKeepsTheDownloadArtwork() {
+        val controller = read("java/com/luc4n3x/levyra/viewmodel/OfflineDownloadsController.kt")
+        val builder = controller
+            .substringAfter("private fun offlinePlaybackTrack(download: DownloadedTrack): Track =")
+            .substringBefore("source = \"Offline\"")
+        assertTrue(controller.contains("host.playOfflineQueue(listOf(offlinePlaybackTrack(download)), 0)"))
+        assertTrue(controller.contains("downloads.filter { it.uri.isNotBlank() }.map(::offlinePlaybackTrack)"))
+        assertTrue(builder.contains("thumbnailUrl = downloadArtworkModel(download.uri, download.artworkUrl),"))
+        assertFalse(builder.contains("thumbnailUrl = \"\""))
+    }
+
+    @Test
     fun storageFullFailureKeepsItsLocalizedMessage() {
-        val viewModel = read("java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
-        assertFalse(viewModel.contains("offlineExportMessage = cleanUserError(message)"))
-        assertTrue(viewModel.contains("offlineExportMessage = message ?: cleanUserError(null)"))
+        val viewModel = read("java/com/luc4n3x/levyra/viewmodel/OfflineDownloadsController.kt")
+        assertFalse(viewModel.contains("offlineExportMessage = host.cleanUserError(message)"))
+        assertTrue(viewModel.contains("offlineExportMessage = message ?: host.cleanUserError(null)"))
 
         val italian = com.luc4n3x.levyra.ui.i18n.LevyraStrings.forCode("it")
         assertEquals(italian.offlineStorageFull, italian.localizeUserError(OFFLINE_STORAGE_FULL))
@@ -346,7 +358,7 @@ class OfflineAudioStoreTest {
     @Test
     fun legacyDeletionAndLocalLibraryRecognitionRemainIntact() {
         val coordinator = read("java/com/luc4n3x/levyra/ui/library/OfflineDeleteCoordinator.kt")
-        val viewModel = read("java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        val viewModel = read("java/com/luc4n3x/levyra/viewmodel/OfflineDownloadsController.kt")
         val backup = read("java/com/luc4n3x/levyra/data/LevyraBackupManager.kt")
         val metadata = read("java/com/luc4n3x/levyra/data/locallibrary/LocalMediaMetadata.kt")
         val access = read("java/com/luc4n3x/levyra/data/DownloadFolderAccess.kt")

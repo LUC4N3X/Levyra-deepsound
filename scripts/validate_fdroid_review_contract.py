@@ -271,10 +271,12 @@ def collect_violations(
         "generic MPEG matching would incorrectly accept MP3 as MPEG-4",
     )
 
-    viewmodel_path = (
-        "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
+    viewmodel_path = "app/src/main/java/com/luc4n3x/levyra/viewmodel"
+    viewmodel_files = sorted(
+        {path.relative_to(root).as_posix() for path in (root / viewmodel_path).rglob("*.kt")}
+        | {relative for relative in overrides if relative.startswith(viewmodel_path + "/")}
     )
-    viewmodel = read(viewmodel_path)
+    viewmodel = "\n".join(read(relative) for relative in viewmodel_files)
     for forbidden in (
         'offlineExportMessage = "Salvato in',
         'title = "Caricamento playlist"',
