@@ -89,31 +89,42 @@ internal fun playbackCandidateScore(
     val titleTokens = playbackTokens(targetTitle)
     val artistTokens = playbackArtistTokens(target.artist)
     var score = 0
-    when {
-        candidateTitle == targetTitle -> score += 140
-        ImportTransliteration.sameRomanized(targetTitle, candidateTitle) -> score += 120
-        candidateTitle.isNotBlank() && (candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle)) -> score += 95
-        titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.split(' ').contains(it) } -> score += 70
-    }
-    when {
-        targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
-        targetArtist.isNotBlank() && ImportTransliteration.sameRomanized(targetArtist, candidateArtist) -> score += 70
-        targetArtist.isNotBlank() && candidateArtist.isNotBlank() &&
-            (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
-        artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.split(' ').contains(it) } -> score += 35
-    }
+    score += playbackTitleScore(targetTitle, candidateTitle, titleTokens, candidateBlob)
+    score += playbackArtistScore(targetArtist, candidateArtist, artistTokens, candidateBlob)
     if (PLAYBACK_PENALTY_TERMS.any { candidateBlob.contains(it) } && PLAYBACK_PENALTY_TERMS.none { targetTitle.contains(it) }) score -= 60
     if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
     if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
-    if (scoreDuration && candidate.durationMs > 0L && target.durationMs > 0L) {
-        val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
-        if (delta <= 5_000L) {
-            score += 30
-        } else if (delta > 35_000L) {
-            score -= 25
-        }
-    }
+    if (scoreDuration) score += playbackDurationScore(target, candidate)
     return score
+}
+
+private fun playbackTitleScore(targetTitle: String, candidateTitle: String, titleTokens: List<String>, candidateBlob: String): Int =
+    when {
+        candidateTitle == targetTitle -> 140
+        ImportTransliteration.sameRomanized(targetTitle, candidateTitle) -> 120
+        candidateTitle.isNotBlank() && (candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle)) -> 95
+        titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.split(' ').contains(it) } -> 70
+        else -> 0
+    }
+
+private fun playbackArtistScore(targetArtist: String, candidateArtist: String, artistTokens: List<String>, candidateBlob: String): Int =
+    when {
+        targetArtist.isNotBlank() && candidateArtist == targetArtist -> 80
+        targetArtist.isNotBlank() && ImportTransliteration.sameRomanized(targetArtist, candidateArtist) -> 70
+        targetArtist.isNotBlank() && candidateArtist.isNotBlank() &&
+            (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> 55
+        artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.split(' ').contains(it) } -> 35
+        else -> 0
+    }
+
+private fun playbackDurationScore(target: Track, candidate: Track): Int {
+    if (candidate.durationMs <= 0L || target.durationMs <= 0L) return 0
+    val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
+    return when {
+        delta <= 5_000L -> 30
+        delta > 35_000L -> -25
+        else -> 0
+    }
 }
 
 internal val PLAYBACK_AUDIO_ONLY_MARKER = Regex(

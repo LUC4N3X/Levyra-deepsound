@@ -66,15 +66,7 @@ internal class AlbumDetailController(
             }
             if (!isActive) return@launch
             if (detail == null || detail.tracks.isEmpty()) {
-                val transientFailure = providerResult.isFailure || !hasInternetCapableNetwork()
-                uiState.update {
-                    val strings = LevyraStrings.forCode(it.languageCode)
-                    it.copy(
-                        albumLoading = false,
-                        albumError = if (transientFailure) strings.albumTracksLoadFailed else strings.albumTracksUnavailable,
-                        albumDetail = detail ?: AlbumDetail(album, "", emptyList())
-                    )
-                }
+                publishAlbumUnavailable(album, detail, providerResult.isFailure)
                 return@launch
             }
             uiState.update {
@@ -89,25 +81,41 @@ internal class AlbumDetailController(
             }
             refreshAlbumMotionArtwork(detail)
             if (detail === providerDetail && albumSuggestionsSupported) launch { refreshAlbumSuggestions(detail, languageCode) }
-            launch {
-                val description = runCatching {
-                    repository.resolveAlbumDescription(detail, languageCode)
-                }.getOrNull()?.trim().orEmpty()
-                if (!isActive || description.isBlank() || description == detail.description) return@launch
-                uiState.update { currentState ->
-                    val shownDetail = currentState.albumDetail ?: return@update currentState
-                    val sameBrowseId = detail.album.browseId.isNotBlank() &&
-                        shownDetail.album.browseId.equals(detail.album.browseId, ignoreCase = true)
-                    val sameIdentity = shownDetail.album.title.equals(detail.album.title, ignoreCase = true) &&
-                        shownDetail.album.artist.equals(detail.album.artist, ignoreCase = true)
-                    if (!currentState.showAlbum || (!sameBrowseId && !sameIdentity)) currentState
-                    else currentState.copy(albumDetail = shownDetail.copy(description = description))
-                }
-            }
+            launch { applyAlbumDescription(detail, languageCode) }
             recordSmartAlbumOpen(detail.album)
             LevyraArtworkCache.preloadPriority(application.applicationContext, detail.tracks, 8)
             refreshOfficialMetadataBatch(detail.tracks, 12)
         }
+    }
+
+    private fun publishAlbumUnavailable(album: AlbumHit, detail: AlbumDetail?, providerFailed: Boolean) {
+        val transientFailure = providerFailed || !hasInternetCapableNetwork()
+        uiState.update {
+            val strings = LevyraStrings.forCode(it.languageCode)
+            it.copy(
+                albumLoading = false,
+                albumError = if (transientFailure) strings.albumTracksLoadFailed else strings.albumTracksUnavailable,
+                albumDetail = detail ?: AlbumDetail(album, "", emptyList())
+            )
+        }
+    }
+
+    private suspend fun CoroutineScope.applyAlbumDescription(detail: AlbumDetail, languageCode: String) {
+        val description = runCatching {
+            repository.resolveAlbumDescription(detail, languageCode)
+        }.getOrNull()?.trim().orEmpty()
+        if (!isActive || description.isBlank() || description == detail.description) return
+        uiState.update { currentState -> withAlbumDescription(currentState, detail, description) }
+    }
+
+    private fun withAlbumDescription(currentState: LevyraUiState, detail: AlbumDetail, description: String): LevyraUiState {
+        val shownDetail = currentState.albumDetail ?: return currentState
+        val sameBrowseId = detail.album.browseId.isNotBlank() &&
+            shownDetail.album.browseId.equals(detail.album.browseId, ignoreCase = true)
+        val sameIdentity = shownDetail.album.title.equals(detail.album.title, ignoreCase = true) &&
+            shownDetail.album.artist.equals(detail.album.artist, ignoreCase = true)
+        return if (!currentState.showAlbum || (!sameBrowseId && !sameIdentity)) currentState
+        else currentState.copy(albumDetail = shownDetail.copy(description = description))
     }
 
     fun toggleFavorite() {
