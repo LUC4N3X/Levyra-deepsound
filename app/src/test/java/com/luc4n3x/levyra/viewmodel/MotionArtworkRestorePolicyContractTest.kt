@@ -39,7 +39,7 @@ class MotionArtworkRestorePolicyContractTest {
 
     @Test
     fun `apple artwork wins over spotify and other covers and is never replaced`() {
-        val apply = readSource("viewmodel/LevyraViewModel.kt")
+        val apply = readSource("viewmodel/OfficialMetadataController.kt")
             .substringAfter("private suspend fun applyOfficialOrbitArtworkBatch(")
             .substringBefore("fun normalizedMetadataText(")
             .filterNot(Char::isWhitespace)
@@ -47,7 +47,7 @@ class MotionArtworkRestorePolicyContractTest {
 
         assertTrue(lookup >= 0)
         assertTrue(apply.contains("valkeepsArtwork=LevyraPersonalOrbit.hasSquareAlbumArtwork(item)&&artworkPreference(item.thumbnailUrl)>=artworkPreference(enriched.thumbnailUrl)"))
-        val preference = readSource("viewmodel/LevyraViewModel.kt")
+        val preference = readSource("viewmodel/OfficialMetadataController.kt")
             .substringAfter("private fun artworkPreference(")
             .substringBefore("}")
             .filterNot(Char::isWhitespace)
