@@ -215,8 +215,6 @@ import com.luc4n3x.levyra.domain.SpeedDialPin
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
-import com.luc4n3x.levyra.domain.LevyraAudioPresets
-import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.queuePrefetchAllowed
@@ -266,7 +264,6 @@ import com.luc4n3x.levyra.domain.recap.TopTrackStat
 import com.luc4n3x.levyra.domain.ListeningInsightsTrack
 import com.luc4n3x.levyra.domain.recap.TopArtistStat
 import com.luc4n3x.levyra.data.recap.ListeningRecapRepository
-import com.luc4n3x.levyra.data.AutoEqCatalogRepository
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.LyricsTranslationState
@@ -323,7 +320,6 @@ import com.luc4n3x.levyra.feature.dearrow.DEARROW_VIDEO_ID_PATTERN
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadata
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadataEnhancer
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
-import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
 import com.luc4n3x.levyra.data.network.LevyraNetworkIntelligence
 import com.luc4n3x.levyra.data.network.LevyraNetworkStore
@@ -341,14 +337,9 @@ import com.luc4n3x.levyra.feature.jam.JamRole
 import com.luc4n3x.levyra.feature.jam.JamSessionState
 import com.luc4n3x.levyra.feature.jam.JamTrack
 import com.luc4n3x.levyra.feature.jam.JamUiState
-import com.luc4n3x.levyra.feature.recognition.RecognitionCatalogMatcher
-import com.luc4n3x.levyra.feature.recognition.RecognitionErrorKind
 import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
-import com.luc4n3x.levyra.feature.recognition.RecognitionProjectionActivity
 import com.luc4n3x.levyra.feature.recognition.RecognitionResult
-import com.luc4n3x.levyra.feature.recognition.MusicRecognitionController
 import com.luc4n3x.levyra.feature.recognition.RecognitionSearchQuery
-import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.feature.sharedmedia.LevyraPlaylistShareCodec
 import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedTrack
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
@@ -656,15 +647,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
     private val levyraContext: Context get() = getApplication<Application>().applicationContext
-    private val recognitionController: MusicRecognitionController
-        get() = LevyraRecognitionCenter.get(levyraContext)
-    private val recognitionCatalogMatcher by lazy { RecognitionCatalogMatcher(repository) }
     private val networkStore by lazy { LevyraNetworkStore(levyraContext) }
-    private val autoEqCatalogDelegate = lazy {
-        AutoEqCatalogController(viewModelScope, AutoEqCatalogRepository(levyraContext))
-    }
-    private val autoEqCatalogController by autoEqCatalogDelegate
-    val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = autoEqCatalogController.state
+    val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = equalizer.autoEqCatalog
     private val mixChaptersRepository = MixChaptersRepository()
     private val _sectionLoop = MutableStateFlow<SectionLoopState>(SectionLoopState.Off)
     val sectionLoop: StateFlow<SectionLoopState> = _sectionLoop.asStateFlow()
@@ -945,6 +929,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             exploreCategoryArtwork = startupExploreDiscovery?.artwork.orEmpty()
         )
     )
+    private val equalizer = EqualizerController(viewModelScope, levyraContext, _state) { updateAudioSettings(it) }
     private val _smartListening = MutableStateFlow(
         SmartListeningUiState(
             motionControlSettings = startupSettings.motionControlSettings,
@@ -985,10 +970,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var replacementSearchJob: Job? = null
     private val automationMutationMutex = kotlinx.coroutines.sync.Mutex()
     private var sharedMediaJob: Job? = null
-    private var recognitionCollectorJob: Job? = null
-    private var recognitionHistoryJob: Job? = null
+    private val musicRecognition = MusicRecognitionUiController(
+        viewModelScope,
+        _state,
+        levyraContext,
+        repository
+    )
     private var favoriteStoreJob: Job? = null
-    private var recognitionMatchJob: Job? = null
     private var jamStateJob: Job? = null
     private var networkTestJob: Job? = null
     private var videoMetadataJob: Job? = null
@@ -1514,7 +1502,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.restoreAudD(
                 getApplication<Application>().applicationContext
             )
-            resetRecognitionCollector()
+            musicRecognition.resetCollector()
             val audDConfigured = LevyraRecognitionCenter.isFallbackConfigured
             val storedNetwork = networkStore.settings()
             val hasProxyPassword = networkStore.hasProxyPassword()
@@ -1533,7 +1521,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
-        observeRecognitionHistory()
+        musicRecognition.observeHistory()
         observeFavoriteStore()
         observeJamState()
         observeSimilarSongsSeed()
@@ -3538,60 +3526,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun startMusicRecognition() {
-        ensureRecognitionCollector()
-        _state.update { it.copy(showRecognition = true, recognitionMatch = null) }
-        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-            levyraContext,
-            android.Manifest.permission.RECORD_AUDIO
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) {
-            _state.update { it.copy(recognitionState = RecognitionState.Error(RecognitionErrorKind.PermissionDenied)) }
-            return
-        }
-        runCatching {
-            androidx.core.content.ContextCompat.startForegroundService(
-                levyraContext,
-                MusicRecognitionService.microphoneIntent(levyraContext)
-            )
-        }.onFailure { Timber.w(it, "Microphone recognition service could not start") }
-    }
+    fun startMusicRecognition() = musicRecognition.startMicrophone()
 
-    fun startDeviceRecognition() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        ensureRecognitionCollector()
-        _state.update { it.copy(showRecognition = true, recognitionMatch = null) }
-        runCatching { levyraContext.startActivity(RecognitionProjectionActivity.intent(levyraContext)) }
-            .onFailure { Timber.w(it, "Device playback recognition could not start") }
-    }
+    fun startDeviceRecognition() = musicRecognition.startDevice()
 
-    fun openRecognition() {
-        ensureRecognitionCollector()
-        _state.update { it.copy(showRecognition = true) }
-    }
+    fun openRecognition() = musicRecognition.open()
 
-    fun closeRecognition() {
-        _state.update { it.copy(showRecognition = false) }
-    }
+    fun closeRecognition() = musicRecognition.close()
 
-    fun deleteRecognitionEntry(id: String) {
-        viewModelScope.launch { LevyraRecognitionCenter.history(levyraContext).delete(id) }
-    }
+    fun deleteRecognitionEntry(id: String) = musicRecognition.deleteEntry(id)
 
-    fun clearRecognitionHistory() {
-        viewModelScope.launch { LevyraRecognitionCenter.history(levyraContext).clear() }
-    }
+    fun clearRecognitionHistory() = musicRecognition.clearHistory()
 
-    fun openRecognitionResult(entry: RecognitionHistoryEntry) {
-        _state.update {
-            it.copy(
-                showRecognition = true,
-                recognitionState = RecognitionState.Result(entry.result),
-                recognitionMatch = null
-            )
-        }
-        matchRecognitionResult(entry.result)
-    }
+    fun openRecognitionResult(entry: RecognitionHistoryEntry) = musicRecognition.openResult(entry)
 
     fun playRecognitionMatch() {
         val track = _state.value.recognitionMatch ?: return
@@ -3605,18 +3552,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showRecognition = false) }
         setQuery(query)
         searchNow(query)
-    }
-
-    private fun ensureRecognitionCollector() {
-        if (recognitionCollectorJob != null) return
-        recognitionCollectorJob = viewModelScope.launch {
-            recognitionController.state.collect { recognitionState ->
-                _state.update { it.copy(recognitionState = recognitionState) }
-                if (recognitionState is RecognitionState.Result) {
-                    matchRecognitionResult(recognitionState.result)
-                }
-            }
-        }
     }
 
     private fun observeFavoriteStore() {
@@ -3651,52 +3586,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun observeRecognitionHistory() {
-        recognitionHistoryJob?.cancel()
-        recognitionHistoryJob = viewModelScope.launch {
-            LevyraRecognitionCenter.observeHistory(levyraContext).collect { entries ->
-                _state.update { it.copy(recognitionHistory = entries) }
-            }
-        }
-    }
-
-    private fun matchRecognitionResult(result: RecognitionResult) {
-        recognitionMatchJob?.cancel()
-        _state.update { it.copy(recognitionMatching = true, recognitionMatch = null) }
-        recognitionMatchJob = viewModelScope.launch(Dispatchers.IO) {
-            val match = runCatching {
-                recognitionCatalogMatcher.match(result, _state.value.languageCode)
-            }.getOrNull()
-            _state.update { it.copy(recognitionMatching = false, recognitionMatch = match) }
-        }
-    }
-
-    private fun resetRecognitionCollector() {
-        recognitionCollectorJob?.cancel()
-        recognitionCollectorJob = null
-        recognitionMatchJob?.cancel()
-        recognitionMatchJob = null
-        _state.update {
-            it.copy(
-                recognitionState = RecognitionState.Idle,
-                recognitionMatch = null,
-                recognitionMatching = false
-            )
-        }
-    }
-
-    fun cancelMusicRecognition() {
-        recognitionController.cancel()
-        recognitionMatchJob?.cancel()
-        recognitionMatchJob = null
-        _state.update {
-            it.copy(
-                recognitionState = RecognitionState.Idle,
-                recognitionMatch = null,
-                recognitionMatching = false
-            )
-        }
-    }
+    fun cancelMusicRecognition() = musicRecognition.cancel()
 
     fun openJam() {
         _state.update { it.copy(showJam = true) }
@@ -4987,140 +4877,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(playbackSpeed = next))
     }
 
-    fun setEqualizerEnabled(value: Boolean) {
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = value,
-                parametricEqualizerEnabled = if (value) false else _state.value.audioSettings.parametricEqualizerEnabled
-            )
-        )
-    }
+    fun setEqualizerEnabled(value: Boolean) = equalizer.setEqualizerEnabled(value)
 
-    fun setEqualizerPreset(presetId: String) {
-        val custom = _state.value.audioSettings.customPresets.firstOrNull { it.id == presetId }
-        if (custom != null) {
-            updateAudioSettings(
-                _state.value.audioSettings.copy(
-                    equalizerEnabled = true,
-                    presetId = custom.id,
-                    bandLevels = custom.levels,
-                    bassBoost = custom.bassBoost,
-                    virtualizer = custom.virtualizer,
-                    preampDb = custom.preampDb,
-                    parametricEqualizerEnabled = false
-                )
-            )
-            return
-        }
-        val preset = LevyraAudioPresets.preset(presetId)
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                presetId = preset.id,
-                bandLevels = preset.levels,
-                bassBoost = preset.bassBoost,
-                virtualizer = preset.virtualizer,
-                parametricEqualizerEnabled = false
-            )
-        )
-    }
+    fun setEqualizerPreset(presetId: String) = equalizer.setEqualizerPreset(presetId)
 
-    fun applyAutoEqImport(profile: AutoEqImporter.ImportedProfile) {
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                presetId = LevyraAudioPresets.FLAT,
-                bandLevels = profile.bandLevels,
-                bassBoost = 0,
-                virtualizer = 0,
-                preampDb = profile.preampDb,
-                parametricEqualizerEnabled = false
-            )
-        )
-    }
+    fun applyAutoEqImport(profile: AutoEqImporter.ImportedProfile) = equalizer.applyAutoEqImport(profile)
 
-    fun openAutoEqCatalog() {
-        autoEqCatalogController.open()
-    }
+    fun openAutoEqCatalog() = equalizer.openAutoEqCatalog()
 
-    fun updateAutoEqCatalogQuery(query: String) {
-        autoEqCatalogController.updateQuery(query)
-    }
+    fun updateAutoEqCatalogQuery(query: String) = equalizer.updateAutoEqCatalogQuery(query)
 
-    fun selectAutoEqCatalogEntry(entry: AutoEqCatalogEntry) {
-        autoEqCatalogController.select(entry)
-    }
+    fun selectAutoEqCatalogEntry(entry: AutoEqCatalogEntry) = equalizer.selectAutoEqCatalogEntry(entry)
 
-    fun dismissAutoEqCatalogProfile() {
-        autoEqCatalogController.dismissSelection()
-    }
+    fun dismissAutoEqCatalogProfile() = equalizer.dismissAutoEqCatalogProfile()
 
-    fun closeAutoEqCatalog() {
-        if (autoEqCatalogDelegate.isInitialized()) autoEqCatalogController.close()
-    }
+    fun closeAutoEqCatalog() = equalizer.closeAutoEqCatalog()
 
-    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile): Boolean {
-        val cleanName = name.trim().take(ParametricEqualizer.MAX_NAME_CHARS)
-        if (cleanName.isBlank()) return false
-        val preset = LevyraAudioPreset(
-            id = AutoEqImporter.customPresetId(cleanName, profile),
-            fallbackLabel = cleanName,
-            levels = profile.bandLevels,
-            bassBoost = 0,
-            virtualizer = 0,
-            preampDb = profile.preampDb
-        )
-        val existing = _state.value.audioSettings.customPresets
-        if (existing.none { it.id == preset.id } && existing.size >= LevyraAudioPresets.MAX_CUSTOM_PRESETS) return false
-        val customPresets = existing.filterNot { it.id == preset.id } + preset
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                presetId = preset.id,
-                bandLevels = preset.levels,
-                bassBoost = preset.bassBoost,
-                virtualizer = preset.virtualizer,
-                preampDb = preset.preampDb,
-                customPresets = customPresets,
-                parametricEqualizerEnabled = false
-            )
-        )
-        return true
-    }
+    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile): Boolean =
+        equalizer.saveAutoEqCustomPreset(name, profile)
 
-    fun setParametricEqualizerEnabled(value: Boolean) {
-        val settings = _state.value.audioSettings
-        updateAudioSettings(
-            settings.copy(
-                equalizerEnabled = if (value) false else settings.equalizerEnabled,
-                parametricEqualizerEnabled = value,
-                activeParametricProfile = settings.activeParametricProfile ?: ParametricEqualizer.defaultProfile
-            )
-        )
-    }
+    fun setParametricEqualizerEnabled(value: Boolean) = equalizer.setParametricEqualizerEnabled(value)
 
-    fun applyParametricAutoEq(profile: ParametricEqProfile) {
-        val normalized = profile.normalized() ?: return
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = false,
-                parametricEqualizerEnabled = true,
-                activeParametricProfile = normalized
-            )
-        )
-    }
+    fun applyParametricAutoEq(profile: ParametricEqProfile) = equalizer.applyParametricAutoEq(profile)
 
-    fun applyOrbitEqualizer(profile: ParametricEqProfile, layout: OrbitLayout) {
-        val normalized = profile.normalized() ?: return
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = false,
-                parametricEqualizerEnabled = true,
-                activeParametricProfile = normalized,
-                orbitLayout = layout
-            )
-        )
-    }
+    fun applyOrbitEqualizer(profile: ParametricEqProfile, layout: OrbitLayout) = equalizer.applyOrbitEqualizer(profile, layout)
 
     fun selectParametricProfile(profileId: String) {
         val profile = _state.value.audioSettings.customParametricProfiles.firstOrNull { it.id == profileId } ?: return
@@ -5221,9 +5001,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPremiumAudioSettings(effective, _state.value.audioNormalization)
     }
 
-    fun resetParametricEqualizer() {
-        updateAudioSettings(_state.value.audioSettings.withNeutralParametricEqualizer())
-    }
+    fun resetParametricEqualizer() = equalizer.resetParametricEqualizer()
 
     fun setBassBoost(value: Int) {
         updateAudioSettings(
@@ -5235,24 +5013,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    fun setEqualizerBand(index: Int, value: Int) {
-        if (index !in 0 until LevyraAudioPresets.bandCount) return
-        val levels = _state.value.audioSettings.bandLevels.toMutableList()
-        if (levels.size != LevyraAudioPresets.bandCount) return
-        levels[index] = value.coerceIn(-100, 100)
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                parametricEqualizerEnabled = false,
-                presetId = LevyraAudioPresets.FLAT,
-                bandLevels = levels
-            )
-        )
-    }
+    fun setEqualizerBand(index: Int, value: Int) = equalizer.setEqualizerBand(index, value)
 
-    fun resetEqualizer() {
-        updateAudioSettings(_state.value.audioSettings.withNeutralEqualizer())
-    }
+    fun resetEqualizer() = equalizer.resetEqualizer()
 
     fun setPreampDb(value: Float) {
         updateAudioSettings(_state.value.audioSettings.copy(preampDb = value))
@@ -14628,7 +14391,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             selectedPositionMs = queueEngine.state.value.positionMs,
             isResolving = _state.value.isResolving
         )
-        recognitionController.cancel()
+        musicRecognition.cancelRecognizer()
         if (jamControllerDelegate.isInitialized()) jamController.close()
         viewModelScope.launch {
             lastPlaybackSaveJob?.join()
@@ -15511,7 +15274,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun saveAudDToken(token: String) {
         viewModelScope.launch(Dispatchers.IO) {
             LevyraRecognitionCenter.configureAudD(levyraContext, token)
-            resetRecognitionCollector()
+            musicRecognition.resetCollector()
             _state.update { it.copy(audDConfigured = LevyraRecognitionCenter.isFallbackConfigured) }
         }
     }
@@ -15519,7 +15282,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun clearAudDToken() {
         viewModelScope.launch(Dispatchers.IO) {
             LevyraRecognitionCenter.clearAudD(levyraContext)
-            resetRecognitionCollector()
+            musicRecognition.resetCollector()
             _state.update { it.copy(audDConfigured = false) }
         }
     }
@@ -15750,12 +15513,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         LevyraWidgetBridge.clear()
         PlaybackService.isSectionLoopActive = false
-        if (recognitionCollectorJob != null) {
-            recognitionCollectorJob?.cancel()
-            recognitionController.cancel()
-        }
-        recognitionHistoryJob?.cancel()
-        recognitionMatchJob?.cancel()
+        musicRecognition.release()
         networkTestJob?.cancel()
         jamStateJob?.cancel()
         if (jamControllerDelegate.isInitialized()) jamController.close()
