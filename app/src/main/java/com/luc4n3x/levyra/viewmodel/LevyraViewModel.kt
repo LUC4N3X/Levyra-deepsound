@@ -468,47 +468,23 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
-private const val EXPLORE_VIDEOS_LIMIT = 40
 
 private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
-private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
-private const val RADIO_MIX_LIMIT = 15
 private const val FRESH_DISCOVERY_LOG_TAG = "FreshDiscovery"
-private const val RADIO_START_TRACKS = 20
-private const val RADIO_START_FETCH = 30
 private const val EXPLORE_SHORTS_FEED_LIMIT = 60
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
 private const val ONBOARDING_ARTWORK_TIMEOUT_MS = 10_000L
 private const val HOME_PULL_REFRESH_TIMEOUT_MS = 12_000L
-private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
-private const val EXPLORE_EDITORIAL_MIN_TRACKS = 10
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
 private const val RELATED_CANDIDATE_CACHE_SEEDS = 6
-private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
-private const val DISCOVERY_PLAYLIST_SIGNAL_LIMIT = 300
-private const val DISCOVERY_SOURCE_LIMIT = 16
 private const val APPLE_TRENDING_SEARCH_LIMIT = 8
-private const val DISCOVERY_REGIONAL_LIMIT = 30
-private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
-private const val DISCOVERY_ARTIST_LIMIT = 8
-private const val DISCOVERY_SCENE_LANGUAGE = "en"
 private const val MOOD_JOURNEY_EDITORIAL_LANGUAGE = "en"
 private const val MOOD_JOURNEY_APPLE_STOREFRONT = "us"
 private const val MOOD_JOURNEY_PLAYLIST_LIMIT = 400
 private const val MOOD_JOURNEY_PREFERENCES = "levyra_mood_journey"
-private const val DISCOVERY_SCENE_PLAYLISTS = 2
-private const val DISCOVERY_SCOUT_PAGES = 5
-private const val DISCOVERY_SCOUT_PAGE = 40
-private const val DISCOVERY_SCOUT_ARTISTS = 10
-private const val DISCOVERY_RESOLVE_TIMEOUT_MS = 12_000L
-private const val DISCOVERY_MATCH_SEARCH_LIMIT = 8
-private const val DISCOVERY_MATCH_DURATION_TOLERANCE_MS = 20_000L
-private const val DISCOVERY_MATCH_MIN_SCORE = 160
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
-private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
-private const val DOWNLOAD_QUALITY_PROBE_TTL_MS = 5L * 60L * 1_000L
 
 private const val LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT = 600
 private const val SEARCH_LATENCY_LOG_TAG = "LevyraSearch"
@@ -574,9 +550,6 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
 }
 
 
-private const val EXPLORE_GENRE_CHART_FIRST_PAINT = 10
-
-
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
@@ -590,8 +563,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val database = LevyraDatabase.get(application.applicationContext)
     private val downloadedTracksDao = database.downloadedTracksDao()
     private val offlineDownloadTasksDao = database.offlineDownloadTasksDao()
-    private val downloadedMediaSizeCache = ConcurrentHashMap<String, Long>()
-    private val downloadRefreshGeneration = MutableStateFlow(0L)
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
@@ -656,8 +627,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         override suspend fun applyAction(action: JamAction) = applyJamAction(action)
     }
-    private val jamControllerDelegate = lazy { JamController(viewModelScope, jamBridge) }
-    private val jamController by jamControllerDelegate
+    private val jamController: JamController get() = jamSession.jamController
     private val sharedMediaResolver = SharedMediaResolver(
         providerRouter = providerRouter,
         sharedPlaylistTracks = { playlist, languageCode ->
@@ -679,14 +649,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val preferredLocalAudio = PreferredLocalAudio.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val downloadQualityProbe = DownloadQualityProbe(resolver)
-    private val _downloadQualityPicker = MutableStateFlow<DownloadQualityPickerState?>(null)
-    val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = _downloadQualityPicker.asStateFlow()
-    private val _pendingBatchCancel = MutableStateFlow<BatchDownload?>(null)
-    val pendingBatchCancel: StateFlow<BatchDownload?> = _pendingBatchCancel.asStateFlow()
     private val _downloadsFolderRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val downloadsFolderRequests: SharedFlow<Unit> = _downloadsFolderRequests.asSharedFlow()
-    private var downloadQualityProbeJob: Job? = null
-    private var lastDownloadQualityProbe: CachedDownloadQualityProbe? = null
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val smartOfflineSettingsMutationMutex = Mutex()
@@ -698,8 +662,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val speedDialLoaded = CompletableDeferred<Unit>()
     private val speedDialArtworkAttempted = HashSet<String>()
     private var speedDialArtworkJob: Job? = null
-    private val batchEnqueueJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
-    private val selectionEnqueueJobs: MutableSet<Job> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -933,7 +895,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         repository
     )
     private var favoriteStoreJob: Job? = null
-    private var jamStateJob: Job? = null
+    private val jamSession = JamSessionController(viewModelScope, _state, preferences, jamBridge)
     private var networkTestJob: Job? = null
     private var videoMetadataJob: Job? = null
     private var playJob: Job? = null
@@ -975,7 +937,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
-    private var jamSimilarSongJob: Job? = null
     private var similarSongsJob: Job? = null
     private var similarSongsSeedIdentity: String = ""
     private val similarSongsGeneration = AtomicLong(0L)
@@ -1042,8 +1003,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var releaseNotificationSettingsJob: Job? = null
     private var forgottenFavoritesJob: Job? = null
     private var excludedArtistsGeneration = 0L
-    private var radioJob: Job? = null
-    private val radioSession = AtomicReference<RadioSession?>(null)
+    private val radioHost = object : RadioHost {
+        override val smartOrbitPool: SmartOrbitPool get() = this@LevyraViewModel.smartOrbitPool
+
+        override fun isLocalPlaybackTrack(track: Track): Boolean = this@LevyraViewModel.isLocalPlaybackTrack(track)
+
+        override fun lyricsNetworkProfile(): LyricsNetworkProfile = this@LevyraViewModel.lyricsNetworkProfile()
+
+        override fun rememberRelatedCandidates(seed: Track, related: List<Track>) =
+            this@LevyraViewModel.rememberRelatedCandidates(seed, related)
+
+        override suspend fun freshDiscoveryCandidates(
+            candidates: List<Track>,
+            minimumFresh: Int,
+            unavailableIds: () -> Set<String>
+        ): List<Track> = this@LevyraViewModel.freshDiscoveryCandidates(candidates, minimumFresh, unavailableIds)
+
+        override fun smartRankingProfile(bonusScores: Map<String, Int>): ListeningSignalProfile? =
+            this@LevyraViewModel.smartRankingProfile(bonusScores)
+
+        override fun syncAdvancedQueuePrefetch() = this@LevyraViewModel.syncAdvancedQueuePrefetch()
+
+        override fun startResolve(track: Track) = this@LevyraViewModel.startResolve(track)
+
+        override fun rejectGuestLocalMutation(): Boolean = jamController.rejectGuestLocalMutation()
+
+        override fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean) =
+            this@LevyraViewModel.playFrom(list, track, loopOnCompletion = loopOnCompletion)
+    }
+    private val radio = RadioController(viewModelScope, _state, queueEngine, repository, listeningPulseStore, radioHost)
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
     private val tabBackStack = TabBackStack()
@@ -1216,33 +1204,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingResumeJob: Job? = null
     private var exitingApplication = false
     private val queueRestored = CompletableDeferred<Unit>()
-    @Volatile
-    private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
-    @Volatile private var smartOrbitPool: SmartOrbitPool = SmartOrbitPool.Empty
-    @Volatile private var smartOrbitDiscoveries: List<Track> = emptyList()
-    private val smartOrbitMutex = Mutex()
-    private var smartOrbitRefreshJob: Job? = null
-    private val smartOrbitRefreshMutex = Mutex()
-    private var smartOrbitApplied = false
+    private val personalOrbit = PersonalOrbitController(
+        viewModelScope,
+        _state,
+        queueEngine,
+        smartOrbitStore,
+        freshDiscoveryCandidates = { candidates, minimumFresh -> freshDiscoveryCandidates(candidates, minimumFresh) }
+    )
+    private val listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? get() = personalOrbit.listeningSignals
+    private val smartOrbitPool: SmartOrbitPool get() = personalOrbit.smartOrbitPool
+    private val smartOrbitDiscoveries: List<Track> get() = personalOrbit.smartOrbitDiscoveries
     private val relatedCandidateCache = LinkedHashMap<String, List<Track>>(RELATED_CANDIDATE_CACHE_SEEDS * 2, 0.75f, true)
     @Volatile private var freshDiscoveryFavorites: Pair<List<Track>, FavoriteMembership>? = null
-    private var listenSessionSignificant = false
-    private var listenSessionTrack: Track? = null
-    private var listenSessionStartedAt = 0L
-    private var listenSessionAccumulatedMs = 0L
-    private var listenSessionCompleted = false
-    private var listenTickElapsedMs = 0L
-    private var listenSessionPersistedMs = 0L
+    private val listeningSession = ListeningSessionController(
+        viewModelScope,
+        _state,
+        scrobbling,
+        listeningPulseStore,
+        listeningRecapRepository,
+        artistRepository,
+        repository,
+        database,
+        refreshListeningPulse = { refreshListeningPulse() },
+        playFrom = { tracks, track -> playFrom(tracks, track) },
+        playDownloaded = { download -> playDownloaded(download) }
+    )
     private val lastFmAuthorizationLock = Mutex()
-    private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
-    private var listeningRecapJob: Job? = null
     private var lastPlaybackSaveJob: Job? = null
     private var podcastProgressSaveJob: Job? = null
     private var lastListeningPulseRefreshMs = 0L
-    private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-    private val activeDownloadTitles = ConcurrentHashMap<String, String>()
-    private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
+    private val offlineDownloads = OfflineDownloadsController(
+        viewModelScope,
+        levyraContext,
+        _state,
+        _offlineTransfers,
+        downloadedTracksDao,
+        offlineDownloadTasksDao,
+        offlineExporter,
+        downloadQualityProbe,
+        object : OfflineDownloadsHost {
+            override fun cleanUserError(error: Throwable): String = this@LevyraViewModel.cleanUserError(error)
+
+            override fun cleanUserError(message: String?): String = this@LevyraViewModel.cleanUserError(message)
+
+            override fun recordSmartDownload(track: Track) = this@LevyraViewModel.recordSmartDownload(track)
+
+            override fun playOfflineQueue(tracks: List<Track>, startIndex: Int) =
+                this@LevyraViewModel.playOfflineQueue(tracks, startIndex)
+        }
+    )
+    val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = offlineDownloads.downloadQualityPicker
+    val pendingBatchCancel: StateFlow<BatchDownload?> = offlineDownloads.pendingBatchCancel
     private val officialMetadataSignal = Channel<Unit>(Channel.CONFLATED)
     private val officialMetadataPending = ConcurrentHashMap<String, Track>()
     @Volatile private var deferredSearchArtwork: List<Track> = emptyList()
@@ -1476,7 +1489,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         musicRecognition.observeHistory()
         observeFavoriteStore()
-        observeJamState()
+        jamSession.observeJamState()
         observeSimilarSongsSeed()
         observeConnectivity()
         val favorites = favoritesStore.load()
@@ -1845,10 +1858,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startTicker()
         observeQueueSpaces()
         observeLocalLibrary()
-        observeDownloads()
+        offlineDownloads.observeDownloads()
         observeSmartOfflineSettings()
-        observeDownloadTasks()
-        observeDownloadBatches()
+        offlineDownloads.observeDownloadTasks()
+        offlineDownloads.observeDownloadBatches()
         loadPlaylists()
         loadExcludedArtists()
         loadRecommendationFeedback()
@@ -1865,7 +1878,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 if (_state.value.listeningDnaPeriod == ListeningDnaPeriod.AllTime) {
-                    refreshListeningDna(ListeningDnaPeriod.AllTime)
+                    listeningSession.refreshListeningDna(ListeningDnaPeriod.AllTime)
                 }
             }
         }
@@ -1880,69 +1893,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onTrackCompleted = { onTrackCompleted() }
         updateWidget()
         refreshHomeResonanceComments(startupResonanceTracks)
-    }
-
-    private fun observeDownloadBatches() {
-        viewModelScope.launch {
-            offlineDownloadTasksDao.observeBatches().collectLatest { rows ->
-                val batches = rows.map { row ->
-                    BatchDownload(
-                        key = row.batchKey,
-                        kind = batchDownloadKindOf(row.batchKind),
-                        title = row.batchTitle,
-                        artworkUrl = row.batchArtworkUrl,
-                        total = row.total,
-                        completed = row.completed,
-                        failed = row.failed,
-                        active = row.active,
-                        progress = batchDownloadProgress(row.total, row.progressSum),
-                        state = batchDownloadState(row.total, row.completed, row.failed, row.active, row.progressSum)
-                    )
-                }
-                _state.update { it.copy(downloadBatches = batches) }
-            }
-        }
-    }
-
-    private fun observeDownloadTasks() {
-        viewModelScope.launch {
-            offlineDownloadTasksDao.observeLanes().collectLatest { rows ->
-                val lanes = rows.associate { row ->
-                    DownloadOwnership.fromStorage(row.ownership) to OfflineLaneProgress.of(row.total, row.completed, row.progressSum)
-                }
-                _offlineTransfers.update { it.copy(lanes = lanes) }
-            }
-        }
-        viewModelScope.launch {
-            offlineDownloadTasksDao.observeActive().collectLatest { tasks ->
-                val domainTasks = tasks.map { task ->
-                    OfflineDownloadTask(
-                        taskKey = task.taskKey,
-                        trackId = task.trackId,
-                        title = task.title,
-                        artist = task.artist,
-                        state = task.state,
-                        progress = task.progress,
-                        error = task.error,
-                        ownership = DownloadOwnership.fromStorage(task.ownership)
-                    )
-                }
-                val runningTasks = domainTasks.filter { it.state in setOf("QUEUED", "RUNNING", "RETRYING") }
-                val ids = runningTasks.mapTo(linkedSetOf()) { it.taskKey }
-                val progress = runningTasks.associate { it.taskKey to it.progress.coerceIn(0, 99) }
-                val titles = runningTasks.associate { it.taskKey to it.title.ifBlank { "brano" } }
-                _state.update {
-                    it.copy(
-                        downloadQueue = domainTasks,
-                        offlineQueueSize = runningTasks.size,
-                        isOfflineExporting = runningTasks.isNotEmpty(),
-                        downloadingTrackIds = ids,
-                        downloadProgressByTrackId = progress,
-                        downloadTitleByTrackId = titles
-                    )
-                }
-            }
-        }
     }
 
     private fun applyFollowedArtists(artists: List<FollowedArtist>) {
@@ -3218,82 +3168,37 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cancelMusicRecognition() = musicRecognition.cancel()
 
-    fun openJam() {
-        _state.update { it.copy(showJam = true) }
-    }
+    fun openJam() = jamSession.openJam()
 
-    fun closeJam() {
-        _state.update { it.copy(showJam = false) }
-    }
+    fun closeJam() = jamSession.closeJam()
 
-    fun setJamDisplayName(value: String) {
-        val trimmed = value.take(JAM_DISPLAY_NAME_MAX_LENGTH)
-        _state.update { it.copy(jamDisplayName = trimmed) }
-        viewModelScope.launch(Dispatchers.IO) { preferences.setJamDisplayName(trimmed) }
-    }
+    fun setJamDisplayName(value: String) = jamSession.setJamDisplayName(value)
 
-    fun createJam(permission: JamGuestPermission, approvalRequired: Boolean = true) {
-        viewModelScope.launch {
-            jamController.createJam(jamDisplayNameOrDefault(), permission, approvalRequired)
-        }
-    }
+    fun createJam(permission: JamGuestPermission, approvalRequired: Boolean = true) =
+        jamSession.createJam(permission, approvalRequired)
 
-    fun joinJam(code: String) {
-        viewModelScope.launch {
-            val identity = withContext(Dispatchers.IO) { preferences.jamGuestId() }
-            jamController.joinJam(code, jamDisplayNameOrDefault(), identity)
-        }
-    }
+    fun joinJam(code: String) = jamSession.joinJam(code)
 
-    fun leaveJam() {
-        viewModelScope.launch { jamController.leave() }
-    }
+    fun leaveJam() = jamSession.leaveJam()
 
-    fun endJam() {
-        viewModelScope.launch { jamController.endJam() }
-    }
+    fun endJam() = jamSession.endJam()
 
-    fun setJamPermission(permission: JamGuestPermission) {
-        viewModelScope.launch { jamController.setGuestPermission(permission) }
-    }
+    fun setJamPermission(permission: JamGuestPermission) = jamSession.setJamPermission(permission)
 
-    fun removeJamParticipant(participantId: String, ban: Boolean = false) {
-        viewModelScope.launch { jamController.removeParticipant(participantId, ban) }
-    }
+    fun removeJamParticipant(participantId: String, ban: Boolean = false) =
+        jamSession.removeJamParticipant(participantId, ban)
 
-    fun approveJamParticipant(participantId: String) {
-        viewModelScope.launch { jamController.approveParticipant(participantId) }
-    }
+    fun approveJamParticipant(participantId: String) = jamSession.approveJamParticipant(participantId)
 
-    fun rejectJamParticipant(participantId: String) {
-        viewModelScope.launch { jamController.rejectParticipant(participantId) }
-    }
+    fun rejectJamParticipant(participantId: String) = jamSession.rejectJamParticipant(participantId)
 
-    fun setJamSessionLocked(locked: Boolean) {
-        viewModelScope.launch { jamController.setSessionLocked(locked) }
-    }
+    fun setJamSessionLocked(locked: Boolean) = jamSession.setJamSessionLocked(locked)
 
-    fun setJamApprovalRequired(required: Boolean) {
-        viewModelScope.launch { jamController.setApprovalRequired(required) }
-    }
+    fun setJamApprovalRequired(required: Boolean) = jamSession.setJamApprovalRequired(required)
 
-    fun clearJamBans() {
-        viewModelScope.launch { jamController.clearBans() }
-    }
+    fun clearJamBans() = jamSession.clearJamBans()
 
-    fun clearJamFailure() = jamController.clearFailure()
-
-    private fun jamDisplayNameOrDefault(): String {
-        val name = _state.value.jamDisplayName.trim()
-        return name.ifBlank { _state.value.userName.trim().ifBlank { "Levyra" } }
-    }
-
-    private fun observeJamState() {
-        jamStateJob?.cancel()
-        jamStateJob = viewModelScope.launch {
-            jamController.state.collect { jam -> _state.update { it.copy(jam = jam) } }
-        }
-    }
+    fun clearJamFailure() = jamSession.clearJamFailure()
 
     private fun jamPlaybackSnapshot(): JamPlaybackSnapshot {
         val current = _state.value
@@ -3398,39 +3303,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(positionMs = target) }
     }
 
-    private fun routeJamAction(action: JamAction): Boolean {
-        if (!_state.value.jam.isActive) return false
-        viewModelScope.launch { jamController.requestAction(action) }
-        return true
-    }
-
-    private fun toJamTrack(track: Track): JamTrack = JamTrack(
-        id = track.id,
-        title = track.title,
-        artist = track.artist,
-        durationMs = track.durationMs,
-        thumbnailUrl = track.thumbnailUrl
-    )
-
-    private fun fromJamTrack(track: JamTrack): Track = Track(
-        id = track.id,
-        title = track.title,
-        artist = track.artist,
-        album = "",
-        durationMs = track.durationMs,
-        streamUrl = "",
-        videoUrl = "",
-        thumbnailUrl = track.thumbnailUrl,
-        largeThumbnailUrl = track.thumbnailUrl,
-        source = JAM_TRACK_SOURCE,
-        moodTags = emptySet(),
-        energy = 0,
-        vocal = 0,
-        replayScore = 0,
-        cacheScore = 0,
-        accentStart = 0,
-        accentEnd = 0
-    )
+    private fun routeJamAction(action: JamAction): Boolean = jamSession.routeJamAction(action)
 
     fun updateNetworkSettings(settings: LevyraNetworkSettings, proxyPassword: String?) {
         val willHavePassword = when {
@@ -3645,34 +3518,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun refreshOpenPlaylist(playlistId: String) = playlistLibrary.refreshOpenPlaylist(playlistId)
 
-    private fun observeDownloads() {
-        viewModelScope.launch {
-            downloadRefreshGeneration.collectLatest {
-                downloadedMediaSizeCache.keys.removeIf { uri ->
-                    !uri.startsWith("content:", ignoreCase = true) || uri.startsWith("content://${MediaStore.AUTHORITY}/")
-                }
-                downloadedTracksDao.observeAll().collectLatest { entities ->
-                    val mapped = withContext(Dispatchers.IO) {
-                        entities.mapNotNull { entity ->
-                            ensureActive()
-                            downloadedMediaSize(entity.uri)?.let { size -> entity.toDownloadedTrack(size) }
-                        }
-                    }
-                    _state.update {
-                        it.copy(
-                            downloads = mapped,
-                            downloadStorageBytes = mapped.sumOf { item -> item.sizeBytes.coerceAtLeast(0L) },
-                            downloadedTrackIds = mapped.map { item -> item.trackId }.filter(String::isNotBlank).toSet()
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun refreshDownloads() {
-        downloadRefreshGeneration.update { it + 1 }
-    }
+    fun refreshDownloads() = offlineDownloads.refreshDownloads()
 
     private fun observeSmartOfflineSettings() {
         viewModelScope.launch {
@@ -3692,79 +3538,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun DownloadEntity.toDownloadedTrack(sizeBytes: Long): DownloadedTrack = DownloadedTrack(
-        id = id,
-        trackId = trackId,
-        title = title,
-        artist = artist,
-        album = album,
-        durationMs = durationMs,
-        fileName = fileName,
-        uri = uri,
-        mimeType = mimeType,
-        embeddedMetadata = embeddedMetadata,
-        savedAt = savedAt,
-        sizeBytes = sizeBytes,
-        ownership = DownloadOwnership.fromStorage(ownership),
-        artworkUrl = artworkUrl
-    )
-
-    private fun downloadedMediaSize(rawUri: String): Long? {
-        if (rawUri.isBlank()) return 0L
-        downloadedMediaSizeCache[rawUri]?.let { return it }
-        val size = readDownloadedMediaSize(Uri.parse(rawUri), rawUri) ?: return null
-        if (size > 0L && !com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri(rawUri)) downloadedMediaSizeCache[rawUri] = size
-        return size
-    }
-
-    private fun readDownloadedMediaSize(uri: Uri, rawUri: String): Long? =
-        try {
-            when (uri.scheme?.lowercase()) {
-                "content" -> getApplication<Application>().contentResolver
-                    .openAssetFileDescriptor(uri, "r")
-                    ?.use { descriptor -> descriptor.length.coerceAtLeast(0L) }
-                    ?: 0L
-                "file" -> uri.path?.let(::File)?.let(::downloadedFileSize)
-                null -> downloadedFileSize(File(rawUri))
-                else -> 0L
-            }
-        } catch (_: FileNotFoundException) {
-            if (uri.authority == MediaStore.AUTHORITY) null else 0L
-        } catch (_: Exception) {
-            0L
-        }
-
-    private fun downloadedFileSize(file: File): Long? = when {
-        file.isFile -> file.length()
-        file.isAbsolute && Files.notExists(file.toPath()) -> null
-        else -> 0L
-    }
-
-    private fun deleteDownloadedMedia(download: DownloadedTrack): Boolean {
-        if (download.uri.isBlank()) return true
-        return runCatching {
-            val uri = Uri.parse(download.uri)
-            when (uri.scheme?.lowercase()) {
-                "content" -> {
-                    val resolver = getApplication<Application>().contentResolver
-                    val deletedRows = try {
-                        resolver.delete(uri, null, null)
-                    } catch (error: SecurityException) {
-                        if (uri.authority != MediaStore.AUTHORITY) throw error
-                        0
-                    }
-                    deletedRows > 0 || if (uri.authority == MediaStore.AUTHORITY) {
-                        readDownloadedMediaSize(uri, download.uri) == null
-                    } else {
-                        resolver.openAssetFileDescriptor(uri, "r")?.use { false } ?: true
-                    }
-                }
-                "file" -> uri.path?.let(::File)?.let { file -> !file.exists() || file.delete() } ?: true
-                else -> File(download.uri).let { file -> !file.exists() || file.delete() }
-            }
-        }.getOrDefault(false)
-    }
-
     private fun onTrackCompleted() {
         val snapshot = _state.value
         val current = snapshot.currentTrack ?: return
@@ -3781,12 +3554,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (restartSectionLoopOnCompletion(current, snapshot.jam)) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
-        listenSessionCompleted = true
+        listeningSession.listenSessionCompleted = true
         if (samplesPlaybackSession == null) recordSmartCompletion(current)
         val nextTrack = queueEngine.next()
         when {
             nextTrack != null -> startResolve(nextTrack, autoRetryWhenOffline = true)
-            queueEngine.state.value.radioEnabled -> ensureRadioTail(force = true, playWhenReady = true)
+            queueEngine.state.value.radioEnabled -> radio.ensureRadioTail(force = true, playWhenReady = true)
             loopCurrentQueueOnCompletion && queueEngine.firstPlayableIndex() != null -> {
                 val first = queueEngine.firstPlayableIndex()?.let { queueEngine.select(it, rememberCurrent = true) }
                 if (first != null) startResolve(first)
@@ -4672,14 +4445,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalized = LevyraAudioQuality.normalize(value)
         preferences.setAudioQuality(normalized)
         resolver.setAudioQuality(normalized)
-        lastDownloadQualityProbe = null
+        offlineDownloads.lastDownloadQualityProbe = null
         _state.update { it.copy(audioQuality = normalized) }
     }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         preferences.setHighQualityAudioMode(mode)
         resolver.setHighQualityAudioMode(mode)
-        lastDownloadQualityProbe = null
+        offlineDownloads.lastDownloadQualityProbe = null
         _state.update { it.copy(highQualityAudioMode = mode) }
     }
 
@@ -5722,7 +5495,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDownloadSettings(value: LevyraDownloadSettings) {
         val normalized = value.normalized()
         preferences.setDownloadSettings(normalized)
-        lastDownloadQualityProbe = null
+        offlineDownloads.lastDownloadQualityProbe = null
         _state.update { it.copy(downloadSettings = normalized) }
     }
 
@@ -5754,26 +5527,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setBackupSettings(value: LevyraBackupSettings) = backupVault.setBackupSettings(value)
 
-    fun pauseDownload(taskKey: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            OfflineExportWorker.pause(getApplication<Application>().applicationContext, taskKey)
-        }
-    }
+    fun pauseDownload(taskKey: String) = offlineDownloads.pauseDownload(taskKey)
 
-    fun resumeDownload(taskKey: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            OfflineExportWorker.resume(getApplication<Application>().applicationContext, taskKey)
-        }
-    }
+    fun resumeDownload(taskKey: String) = offlineDownloads.resumeDownload(taskKey)
 
-    fun cancelDownload(taskKey: String) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                OfflineExportWorker.cancel(getApplication<Application>().applicationContext, taskKey)
-            }
-            handleOfflineExportStopped(taskKey)
-        }
-    }
+    fun cancelDownload(taskKey: String) = offlineDownloads.cancelDownload(taskKey)
 
     fun createBackup(uri: Uri) = backupVault.createBackup(uri)
 
@@ -6036,21 +5794,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             state = recommendationState,
             limit = HOME_ALBUM_RECOMMENDATION_LIMIT
         ).ifEmpty { localAlbums }
-        exploreCache.clear()
-        exploreJob?.cancel()
-        exploreJob = null
-        exploreCategoriesJob?.cancel()
-        exploreCategoriesJob = null
-        exploreDiscoveryPersistJob?.cancel()
-        exploreDiscoveryPersistJob = null
-        exploreArtworkWarmupJob?.cancel()
-        exploreArtworkWarmupJob = null
-        exploreArtworkWarmupLanguage = ""
-        exploreArtworkWarmupAttempts.clear()
-        val exploreSnapshot = preferences.loadExploreDiscovery(languageCode)
-        exploreCategoriesLoadedLanguage = if (exploreSnapshot != null) languageCode else ""
-        exploreCategoriesCachedAtMs = exploreSnapshot?.savedAtMs ?: 0L
-        exploreCategoryArtworkRequests.clear()
+        val exploreSnapshot = explore.resetForLanguage(languageCode)
         musicVideosJob?.cancel()
         musicVideosJob = null
         musicVideosLoadedLanguage = ""
@@ -6720,34 +6464,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         refreshQueuePrefetch()
     }
 
-    fun toggleContinuousRadio() {
-        if (_state.value.currentTrack?.isLiveRadio() == true) return
-        val enabled = !queueEngine.state.value.radioEnabled
-        queueEngine.setRadioEnabled(enabled)
-        if (enabled) {
-            radioJob?.cancel()
-            beginRadioSession()
-            ensureRadioTail(force = true)
-        } else {
-            radioJob?.cancel()
-            radioSession.set(null)
-        }
-    }
+    fun toggleContinuousRadio() = radio.toggleContinuousRadio()
 
-    fun startSongRadio() {
-        if (_state.value.currentTrack?.isLiveRadio() == true) return
-        if (jamController.rejectGuestLocalMutation()) return
-        if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
-        radioJob?.cancel()
-        beginRadioSession()
-        ensureRadioTail(force = true, insertAfterCurrent = true)
-    }
-
-    private fun beginRadioSession() {
-        val snapshot = queueEngine.state.value
-        val seed = snapshot.currentTrack?.takeUnless { it.isLiveRadio() || isLocalPlaybackTrack(it) }
-        radioSession.set(seed?.let { RadioSession(spaceId = snapshot.spaceId, seed = it) })
-    }
+    fun startSongRadio() = radio.startSongRadio()
 
     fun startSongRadioFrom(track: Track) {
         playFrom(listOf(track), track)
@@ -6774,20 +6493,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             JamSimilarSongAction.SelectExisting -> routeJamAction(JamAction.SelectIndex(existingIndex))
             JamSimilarSongAction.AddOnly -> routeJamAction(JamAction.AddTrack(toJamTrack(track)))
             JamSimilarSongAction.Reject -> jamController.rejectGuestLocalMutation()
-            JamSimilarSongAction.AddThenSelect -> addAndSelectJamTrack(track)
-        }
-    }
-
-    private fun addAndSelectJamTrack(track: Track) {
-        jamSimilarSongJob?.cancel()
-        jamSimilarSongJob = viewModelScope.launch {
-            if (!routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return@launch
-            val index = withTimeoutOrNull(JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS) {
-                jamController.state
-                    .map { jam -> jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1 }
-                    .first { it >= 0 }
-            } ?: return@launch
-            routeJamAction(JamAction.SelectIndex(index))
+            JamSimilarSongAction.AddThenSelect -> jamSession.addAndSelectJamTrack(track)
         }
     }
 
@@ -7338,19 +7044,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun autoDownloadFavorite(track: Track, becameFavorite: Boolean) {
-        val current = _state.value
-        val eligible = com.luc4n3x.levyra.player.PlaybackAutomationPolicy.shouldAutoDownloadFavorite(
-            enabled = current.automationSettings.autoDownloadFavorites,
-            becameFavorite = becameFavorite,
-            trackId = track.id,
-            downloadedTrackIds = current.downloadedTrackIds,
-            downloadingKeys = current.downloadingTrackIds,
-            downloadKey = downloadKeyFor(track)
-        )
-        if (!eligible) return
-        startTrackDownload(track, null)
-    }
+    private fun autoDownloadFavorite(track: Track, becameFavorite: Boolean) =
+        offlineDownloads.autoDownloadFavorite(track, becameFavorite)
 
     fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
@@ -7982,74 +7677,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    fun retryBatchDownload(batchKey: String) {
-        if (batchKey.isBlank()) return
-        viewModelScope.launch {
-            val appContext = getApplication<Application>().applicationContext
-            withContext(Dispatchers.IO) {
-                offlineDownloadTasksDao.batchTasks(batchKey)
-                    .filter { it.state == "FAILED" }
-                    .forEach { task ->
-                        OfflineExportWorker.enqueue(
-                            context = appContext,
-                            trackId = task.taskKey,
-                            trackPayload = task.payload,
-                            batch = OfflineDownloadBatchRef(
-                                key = task.batchKey,
-                                title = task.batchTitle,
-                                kind = task.batchKind,
-                                artworkUrl = task.batchArtworkUrl,
-                                position = task.batchPosition
-                            )
-                        )
-                    }
-            }
-        }
-    }
+    fun retryBatchDownload(batchKey: String) = offlineDownloads.retryBatchDownload(batchKey)
 
-    fun cancelBatchDownload(batchKey: String) {
-        if (batchKey.isBlank()) return
-        viewModelScope.launch {
-            val appContext = getApplication<Application>().applicationContext
-            batchEnqueueJobs.remove(batchKey)?.cancelAndJoin()
-            withContext(Dispatchers.IO) {
-                offlineDownloadTasksDao.batchTasks(batchKey)
-                    .filter { it.state in ACTIVE_DOWNLOAD_STATES }
-                    .forEach { task ->
-                        runCatchingPreservingCancellation { OfflineExportWorker.cancel(appContext, task.taskKey) }
-                            .onFailure { Timber.w(it, "batch child cancel failed") }
-                    }
-                offlineDownloadTasksDao.deleteBatch(batchKey)
-            }
-        }
-    }
+    fun cancelBatchDownload(batchKey: String) = offlineDownloads.cancelBatchDownload(batchKey)
 
     fun openDownloadsFolder() {
         _downloadsFolderRequests.tryEmit(Unit)
     }
 
-    fun cancelAllDownloads() {
-        selectionEnqueueJobs.toList().forEach { it.cancel() }
-        val snapshot = _state.value
-        (snapshot.downloadBatches.filterNot { it.isFinished }.map { it.key } + batchEnqueueJobs.keys)
-            .toSet()
-            .forEach(::cancelBatchDownload)
-        snapshot.downloadQueue
-            .filter { it.state in ACTIVE_DOWNLOAD_STATES }
-            .forEach { cancelDownload(it.taskKey) }
-    }
+    fun cancelAllDownloads() = offlineDownloads.cancelAllDownloads()
 
-    fun dismissBatchCancel() {
-        _pendingBatchCancel.value = null
-    }
+    fun dismissBatchCancel() = offlineDownloads.dismissBatchCancel()
 
-    fun confirmBatchCancel() {
-        val batch = _pendingBatchCancel.value ?: return
-        _pendingBatchCancel.value = null
-        if (activeBatchDownload(_state.value.downloadBatches, batch.key) != null || batchEnqueueJobs[batch.key]?.isActive == true) {
-            cancelBatchDownload(batch.key)
-        }
-    }
+    fun confirmBatchCancel() = offlineDownloads.confirmBatchCancel()
 
     private fun startBatchDownload(
         kind: BatchDownloadKind,
@@ -8057,59 +7697,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         title: String,
         artworkUrl: String,
         tracks: List<Track>
-    ) {
-        val batchKey = batchDownloadKey(kind, canonicalId, title)
-        if (batchKey.isBlank()) {
-            exportTracksSequential(tracks, title)
-            return
-        }
-        val currentState = _state.value
-        activeBatchDownload(currentState.downloadBatches, batchKey)?.let { running ->
-            _pendingBatchCancel.value = running
-            return
-        }
-        val pending = tracks
-            .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
-            .distinctBy { downloadKeyFor(it) }
-            .filterNot { track ->
-                val existing = currentState.downloads.firstOrNull { it.trackId == track.id }
-                existing?.ownership != DownloadOwnership.SMART_OFFLINE &&
-                    currentState.downloadSettings.shouldSkipExistingDownload(
-                    trackId = track.id,
-                    downloadedTrackIds = currentState.downloadedTrackIds
-                )
-            }
-        val strings = LevyraStrings.forCode(currentState.languageCode)
-        if (pending.isEmpty()) {
-            _state.update { it.copy(offlineExportMessage = strings.alreadyOffline) }
-            return
-        }
-        if (batchEnqueueJobs[batchKey]?.isActive == true) return
-        batchEnqueueJobs[batchKey] = viewModelScope.launch {
-            val appContext = getApplication<Application>().applicationContext
-            _state.update { it.copy(offlineExportMessage = strings.artistCatalogCopy().downloadStartedHint) }
-            pending.forEachIndexed { index, track ->
-                val downloadKey = downloadKeyFor(track)
-                val enqueued = runCatchingPreservingCancellation {
-                    withContext(Dispatchers.IO) {
-                        OfflineExportWorker.enqueue(
-                            context = appContext,
-                            trackId = downloadKey,
-                            trackPayload = TrackPayloadCodec.encode(track),
-                            batch = OfflineDownloadBatchRef(
-                                key = batchKey,
-                                title = title,
-                                kind = kind.name,
-                                artworkUrl = artworkUrl,
-                                position = index
-                            )
-                        )
-                    }
-                }.onFailure { error -> Timber.e(error, "batch download enqueue failed") }
-                if (enqueued.isSuccess) recordSmartDownload(track)
-            }
-        }.also { job -> job.invokeOnCompletion { batchEnqueueJobs.remove(batchKey, job) } }
-    }
+    ) = offlineDownloads.startBatchDownload(kind, canonicalId, title, artworkUrl, tracks)
 
     private fun albumBatchUnavailableMessage(): String =
         LevyraStrings.forCode(_state.value.languageCode).albumTracksUnavailable
@@ -8121,34 +7709,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exportTracksSequential(tracks, label)
     }
 
-    private fun exportTracksSequential(tracks: List<Track>, label: String) {
-        val currentState = _state.value
-        val pending = tracks
-            .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
-            .distinctBy { downloadKeyFor(it) }
-            .filterNot { track ->
-                val existing = currentState.downloads.firstOrNull { it.trackId == track.id }
-                existing?.ownership != DownloadOwnership.SMART_OFFLINE &&
-                    currentState.downloadSettings.shouldSkipExistingDownload(
-                    trackId = track.id,
-                    downloadedTrackIds = currentState.downloadedTrackIds
-                )
-            }
-        if (pending.isEmpty()) {
-            _state.update { it.copy(offlineExportMessage = "Già tutto offline") }
-            return
-        }
-        viewModelScope.launch {
-            _state.update { it.copy(offlineExportMessage = "$label in coda: ${pending.size} brani") }
-            pending.forEachIndexed { index, track ->
-                if (index > 0) delay(220L)
-                startTrackDownload(track, null)
-            }
-        }.also { job ->
-            selectionEnqueueJobs += job
-            job.invokeOnCompletion { selectionEnqueueJobs -= job }
-        }
-    }
+    private fun exportTracksSequential(tracks: List<Track>, label: String) =
+        offlineDownloads.exportTracksSequential(tracks, label)
 
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
@@ -8186,285 +7748,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun tryPromoteSmartDownload(track: Track): Boolean {
-        val smartDownload = _state.value.downloads.firstOrNull { download ->
-            download.trackId == track.id && download.ownership == DownloadOwnership.SMART_OFFLINE
-        } ?: return false
-        viewModelScope.launch {
-            val promoted = withContext(Dispatchers.IO) {
-                SmartOfflineOwnershipGate.withLock {
-                    downloadedTracksDao.promoteToManual(smartDownload.id) > 0
-                }
-            }
-            if (promoted) {
-                _state.update { current ->
-                    current.copy(
-                        downloads = current.downloads.map { download ->
-                            if (download.id == smartDownload.id) {
-                                download.copy(ownership = DownloadOwnership.MANUAL)
-                            } else {
-                                download
-                            }
-                        },
-                        offlineExportMessage =
-                            "${LevyraStrings.forCode(current.languageCode).smartOfflineCopy().protectedManual}: ${track.title}"
-                    )
-                }
-            }
-        }
-        return true
-    }
+    fun exportTrack(track: Track) = offlineDownloads.exportTrack(track)
 
-    fun exportTrack(track: Track) {
-        if (tryPromoteSmartDownload(track)) return
-        if (track.isPersonalCollectionTrack()) {
-            startTrackDownload(track, null)
-            return
-        }
-        val downloadKey = downloadKeyFor(track)
-        val currentState = _state.value
-        val strings = LevyraStrings.forCode(currentState.languageCode)
-        if (downloadKey in currentState.downloadingTrackIds || downloadKey in activeDownloadKeys) {
-            _state.update { it.copy(offlineExportMessage = "${strings.downloadInProgress}: ${track.title}") }
-            return
-        }
-        if (currentState.downloadSettings.shouldSkipExistingDownload(track.id, currentState.downloadedTrackIds)) {
-            _state.update { it.copy(offlineExportMessage = "${strings.alreadyOffline}: ${track.title}") }
-            return
-        }
-        openDownloadQualityPicker(track, downloadKey)
-    }
+    fun selectDownloadQuality(choice: DownloadQualityChoice) = offlineDownloads.selectDownloadQuality(choice)
 
-    private fun openDownloadQualityPicker(track: Track, downloadKey: String) {
-        val open = _downloadQualityPicker.value
-        if (open != null && downloadKeyFor(open.track) == downloadKey) return
-        downloadQualityProbeJob?.cancel()
-        val cached = lastDownloadQualityProbe?.takeIf {
-            it.downloadKey == downloadKey &&
-                it.snapshot.options.isNotEmpty() &&
-                System.currentTimeMillis() - it.probedAtMs < DOWNLOAD_QUALITY_PROBE_TTL_MS
-        }
-        val picker = DownloadQualityPickerState(track)
-        _downloadQualityPicker.value = cached?.let { picker.withSnapshot(it.snapshot) } ?: picker
-        if (cached == null) probeDownloadQualities(track, downloadKey)
-    }
+    fun retryDownloadQualityProbe() = offlineDownloads.retryDownloadQualityProbe()
 
-    private fun probeDownloadQualities(track: Track, downloadKey: String) {
-        downloadQualityProbeJob?.cancel()
-        downloadQualityProbeJob = viewModelScope.launch {
-            downloadQualityProbe.probe(track, _state.value.downloadSettings).collect { snapshot ->
-                _downloadQualityPicker.update { picker ->
-                    picker?.takeIf { downloadKeyFor(it.track) == downloadKey }?.withSnapshot(snapshot) ?: picker
-                }
-                if (snapshot.pending == 0 && snapshot.failed == 0) {
-                    lastDownloadQualityProbe = CachedDownloadQualityProbe(downloadKey, snapshot, System.currentTimeMillis())
-                }
-            }
-        }
-    }
+    fun dismissDownloadQualityPicker() = offlineDownloads.dismissDownloadQualityPicker()
 
-    fun selectDownloadQuality(choice: DownloadQualityChoice) {
-        _downloadQualityPicker.update { it?.select(choice) }
-    }
+    fun confirmDownloadQuality() = offlineDownloads.confirmDownloadQuality()
 
-    fun retryDownloadQualityProbe() {
-        val picker = _downloadQualityPicker.value ?: return
-        val downloadKey = downloadKeyFor(picker.track)
-        lastDownloadQualityProbe = null
-        _downloadQualityPicker.value = DownloadQualityPickerState(picker.track)
-        probeDownloadQualities(picker.track, downloadKey)
-    }
+    fun deleteDownload(download: DownloadedTrack) = offlineDownloads.deleteDownload(download)
 
-    fun dismissDownloadQualityPicker() {
-        downloadQualityProbeJob?.cancel()
-        downloadQualityProbeJob = null
-        _downloadQualityPicker.value = null
-    }
+    fun deleteTrackDownload(trackId: String) = offlineDownloads.deleteTrackDownload(trackId)
 
-    fun confirmDownloadQuality() {
-        val picker = _downloadQualityPicker.value ?: return
-        val choice = picker.selected ?: return
-        dismissDownloadQualityPicker()
-        lastDownloadQualityProbe = null
-        startTrackDownload(picker.track, choice)
-    }
-
-    private fun startTrackDownload(track: Track, qualityChoice: DownloadQualityChoice?) {
-        if (tryPromoteSmartDownload(track)) return
-        val downloadKey = downloadKeyFor(track)
-        if (downloadKey in _state.value.downloadingTrackIds || !activeDownloadKeys.add(downloadKey)) {
-            _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
-            return
-        }
-        val currentState = _state.value
-        if (currentState.downloadSettings.shouldSkipExistingDownload(track.id, currentState.downloadedTrackIds)) {
-            activeDownloadKeys.remove(downloadKey)
-            _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
-            return
-        }
-        val downloadTitle = track.title.ifBlank { "brano" }
-        activeDownloadTitles[downloadKey] = downloadTitle
-        activeDownloadTracks[downloadKey] = track
-        _state.update {
-            it.copy(
-                isOfflineExporting = true,
-                offlineExportMessage = null,
-                downloadingTrackIds = it.downloadingTrackIds + downloadKey,
-                downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1),
-                downloadTitleByTrackId = it.downloadTitleByTrackId + (downloadKey to downloadTitle)
-            )
-        }
-        viewModelScope.launch {
-            val result = runCatching {
-                val appContext = getApplication<Application>().applicationContext
-                val payload = withDownloadQualityChoice(TrackPayloadCodec.encode(track), qualityChoice)
-                val workId = withContext(Dispatchers.IO) {
-                    OfflineExportWorker.enqueue(appContext, downloadKey, payload)
-                }
-                val workManager = WorkManager.getInstance(appContext)
-                var finished: WorkInfo? = null
-                while (isActive && finished == null) {
-                    val info = withContext(Dispatchers.IO) { workManager.getWorkInfoById(workId).get() }
-                    if (info != null && info.state.isFinished) {
-                        finished = info
-                    } else {
-                        info?.let { updateDownloadProgress(downloadKey, it.progress.getInt(OfflineExportWorker.KEY_PROGRESS, 0)) }
-                        delay(500L)
-                    }
-                }
-                finished ?: throw CancellationException("Offline export observation cancelled")
-            }
-            result.onSuccess { workInfo ->
-                when (workInfo.state) {
-                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, downloadKey)
-                    WorkInfo.State.FAILED -> {
-                        val reason = workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR)
-                        if (reason == OfflineExportWorker.ERROR_SUPERSEDED) {
-                            handleOfflineExportStopped(downloadKey)
-                        } else {
-                            handleOfflineExportFailure(cleanUserError(reason), downloadKey)
-                        }
-                    }
-                    WorkInfo.State.CANCELLED -> handleOfflineExportStopped(downloadKey)
-                    else -> handleOfflineExportFailure(null, downloadKey)
-                }
-            }.onFailure { error ->
-                if (error is CancellationException) {
-                    activeDownloadKeys.remove(downloadKey)
-                    activeDownloadTracks.remove(downloadKey)
-                    activeDownloadTitles.remove(downloadKey)
-                    _state.update {
-                        it.copy(
-                            downloadingTrackIds = it.downloadingTrackIds - downloadKey,
-                            downloadProgressByTrackId = it.downloadProgressByTrackId - downloadKey,
-                            downloadTitleByTrackId = it.downloadTitleByTrackId - downloadKey
-                        )
-                    }
-                    throw error
-                }
-                Timber.e(error, "Offline export work failed")
-                handleOfflineExportFailure(cleanUserError(error), downloadKey)
-            }
-        }
-    }
-
-    fun deleteDownload(download: DownloadedTrack) {
-        deleteDownloads(listOf(download))
-    }
-
-    fun deleteTrackDownload(trackId: String) {
-        if (trackId.isBlank()) return
-        deleteDownloads(_state.value.downloads.filter { it.trackId == trackId })
-    }
-
-    fun deleteDownloads(downloads: List<DownloadedTrack>) {
-        val uniqueDownloads = downloads.distinctBy { it.id }
-        if (uniqueDownloads.isEmpty()) return
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                var deleted = 0
-                val failed = mutableListOf<String>()
-                uniqueDownloads.forEach { download ->
-                    if (deleteDownloadedMedia(download)) {
-                        runCatching { downloadedTracksDao.deleteById(download.id) }
-                            .onSuccess {
-                                downloadedMediaSizeCache.remove(download.uri)
-                                deleted++
-                            }
-                            .onFailure { failed += download.title }
-                    } else {
-                        failed += download.title
-                    }
-                }
-                deleted to failed
-            }
-            val (deleted, failed) = result
-            _state.update { current ->
-                current.copy(
-                    offlineExportMessage = when {
-                        failed.isEmpty() -> "Eliminati dal dispositivo: $deleted"
-                        deleted > 0 -> "Eliminati $deleted file; ${failed.size} non rimossi"
-                        else -> "Impossibile eliminare i file selezionati"
-                    }
-                )
-            }
-        }
-    }
-
-    private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
-        activeDownloadKeys.remove(trackId)
-        val completedTrack = activeDownloadTracks.remove(trackId)
-        activeDownloadTitles.remove(trackId)
-        val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
-        val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty()
-        val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
-        val strings = LevyraStrings.forCode(_state.value.languageCode)
-        completedTrack?.let { recordSmartDownload(it) }
-        _state.update {
-            it.copy(
-                isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = strings.formatOfflineExportSaved(
-                    fileName = fileName,
-                    embeddedMetadata = embedded,
-                    destination = destinationLabel
-                ),
-                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId,
-                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
-                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
-            )
-        }
-    }
-
-    private fun handleOfflineExportStopped(trackId: String) {
-        activeDownloadKeys.remove(trackId)
-        activeDownloadTracks.remove(trackId)
-        activeDownloadTitles.remove(trackId)
-        _state.update {
-            it.copy(
-                isOfflineExporting = it.downloadingTrackIds.size > 1,
-                downloadingTrackIds = it.downloadingTrackIds - trackId,
-                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
-                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
-            )
-        }
-    }
-
-    private fun handleOfflineExportFailure(message: String?, trackId: String) {
-        activeDownloadKeys.remove(trackId)
-        activeDownloadTracks.remove(trackId)
-        activeDownloadTitles.remove(trackId)
-        _state.update {
-            it.copy(
-                isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = message ?: cleanUserError(null),
-                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId,
-                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
-                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
-            )
-        }
-    }
+    fun deleteDownloads(downloads: List<DownloadedTrack>) = offlineDownloads.deleteDownloads(downloads)
 
 
     private fun cleanPlaybackError(error: Throwable): String {
@@ -8505,24 +7803,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 collectionStrings.error(com.luc4n3x.levyra.data.collections.CollectionSyncError.TooLarge)
             else -> null
         }
-    }
-
-    private fun updateDownloadProgress(trackId: String, progress: Int) {
-        _state.update {
-            if (trackId !in it.downloadingTrackIds) {
-                it
-            } else {
-                val safeProgress = monotonicDownloadProgress(it.downloadProgressByTrackId[trackId], progress)
-                it.copy(
-                    downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress)
-                )
-            }
-        }
-    }
-
-    private fun downloadKeyFor(track: Track): String {
-        val raw = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}:${track.title}" } }
-        return raw.ifBlank { "unknown-${track.hashCode()}" }
     }
 
     fun clearOfflineExportMessage() {
@@ -9756,202 +9036,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(list, track, loopOnCompletion, startPositionMs)
     }
 
-    internal fun discoveryProfile(): com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile {
-        val snapshot = _state.value
-        val market = com.luc4n3x.levyra.domain.LevyraContentLocales.forLanguage(snapshot.languageCode).chartCountry
-        return com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile.from(
-            languageCode = snapshot.languageCode,
-            market = market,
-            recentListens = snapshot.recentListens,
-            favorites = snapshot.favorites,
-            playlistTracks = snapshot.playlists.asSequence().flatMap { it.tracks.asSequence() }.take(DISCOVERY_PLAYLIST_SIGNAL_LIMIT).toList(),
-            followedArtists = snapshot.followedArtists.map { it.name },
-            excludedArtists = snapshot.excludedArtists.map { it.name },
-            similarArtists = snapshot.similarArtists.map { it.name } + OnboardingArtists.selectedNames(preferences.tastes())
-        )
-    }
+    private val discoveryFeed = DiscoveryFeedController(
+        application,
+        _state,
+        preferences,
+        repository,
+        chartsRepository,
+        providerRouter
+    )
 
-    internal suspend fun onboardingDiscoverySeeds(): List<Track> = withContext(Dispatchers.IO) {
-        val language = _state.value.languageCode
-        OnboardingArtists.selectedNames(preferences.tastes())
-            .take(ONBOARDING_DISCOVERY_SEED_ARTISTS)
-            .mapNotNull { artist ->
-                runCatchingPreservingCancellation { repository.search(artist, 1, language).firstOrNull() }.getOrNull()
-            }
-    }
+    internal fun discoveryProfile(): com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile =
+        discoveryFeed.discoveryProfile()
 
-    internal suspend fun chartDiscoverySeeds(market: String): List<Track> = withContext(Dispatchers.IO) {
-        val language = _state.value.languageCode
-        runCatchingPreservingCancellation { chartsRepository.topSongs(market, CHART_DISCOVERY_SEEDS) }.getOrNull().orEmpty()
-            .mapNotNull { track ->
-                if (com.luc4n3x.levyra.data.PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()) {
-                    track
-                } else {
-                    runCatchingPreservingCancellation { repository.search("${track.artist} ${track.title}", 1, language).firstOrNull() }.getOrNull()
-                }
-            }
-    }
+    internal suspend fun onboardingDiscoverySeeds(): List<Track> = discoveryFeed.onboardingDiscoverySeeds()
+
+    internal suspend fun chartDiscoverySeeds(market: String): List<Track> = discoveryFeed.chartDiscoverySeeds(market)
 
     internal fun discoverySources(): com.luc4n3x.levyra.feature.discovery.DiscoverySources =
-        com.luc4n3x.levyra.feature.discovery.DiscoverySources(
-            similarToTrack = { seed -> repository.radio(seed, _state.value.languageCode, limit = DISCOVERY_SOURCE_LIMIT, diversify = true) },
-            newMusic = { market, language -> discoveryNewMusic(market, language) },
-            followedReleases = { discoveryFollowedReleases() },
-            similarArtistTracks = { artist -> discoveryArtistTracks(artist) },
-            regional = { market -> chartsRepository.topSongs(market, DISCOVERY_REGIONAL_LIMIT) },
-            editorial = { language ->
-                com.luc4n3x.levyra.domain.LevyraContentLocales.forLanguage(language).homeQueries.take(2)
-                    .flatMap { query -> repository.search(query, DISCOVERY_SOURCE_LIMIT, language) }
-            },
-            sceneCategories = { discoveryScenes() },
-            sceneTracks = { params -> discoverySceneTracks(params) },
-            cityTracks = { city, rotation -> discoveryCityTracks(city, rotation) },
-            decadeTracks = { year, rotation -> discoveryDecadeTracks(year, rotation) },
-            distantRegions = { market, language ->
-                com.luc4n3x.levyra.feature.discovery.BubbleRegions.distant(
-                    com.luc4n3x.levyra.domain.ChartsCatalog.regions.map { it.id to it.label },
-                    market,
-                    language
-                )
-            }
-        )
+        discoveryFeed.discoverySources()
 
-    private val discoveryScout by lazy { com.luc4n3x.levyra.feature.discovery.MusicBrainzScout() }
-    private val discoverySceneMutex = kotlinx.coroutines.sync.Mutex()
-    @Volatile private var discoverySceneCache: List<com.luc4n3x.levyra.domain.ExploreCategory> = emptyList()
+    internal suspend fun discoveryScenes(): List<com.luc4n3x.levyra.domain.ExploreCategory> =
+        discoveryFeed.discoveryScenes()
 
-    internal suspend fun discoveryScenes(): List<com.luc4n3x.levyra.domain.ExploreCategory> = discoverySceneMutex.withLock {
-        discoverySceneCache.takeIf { it.isNotEmpty() }?.let { return@withLock it }
-        val all = repository.moodCategories(DISCOVERY_SCENE_LANGUAGE)
-        val genres = all.filter { it.section.contains("genre", ignoreCase = true) }
-            .ifEmpty { all.filter { com.luc4n3x.levyra.domain.MoodCategoryKind.fromTitle(it.title) == null } }
-            .filter { it.params.isNotBlank() && it.title.isNotBlank() }
-            .distinctBy { it.params }
-        if (genres.isNotEmpty()) discoverySceneCache = genres
-        genres
-    }
-
-    private suspend fun discoverySceneTracks(params: String): List<Track> {
-        val language = _state.value.languageCode
-        val playlists = repository.moodPlaylists(params, language, DISCOVERY_SCENE_PLAYLISTS * 3)
-            .filter { it.playlistId.isNotBlank() }
-            .shuffled(kotlin.random.Random(params.hashCode().toLong() + java.time.LocalDate.now().toEpochDay()))
-            .take(DISCOVERY_SCENE_PLAYLISTS)
-        return coroutineScope {
-            playlists.map { playlist ->
-                async { runCatchingPreservingCancellation { repository.playlist(playlist.playlistId, language, DISCOVERY_SOURCE_LIMIT * 2)?.tracks }.getOrNull().orEmpty() }
-            }.flatMap { it.await() }
-        }
-    }
-
-    private suspend fun discoveryCityTracks(city: String, rotation: Long): List<Track> {
-        val offset = Math.floorMod(rotation, DISCOVERY_SCOUT_PAGES.toLong()).toInt() * DISCOVERY_SCOUT_PAGE
-        val artists = discoveryScout.artistsFromArea(city, offset).ifEmpty { if (offset > 0) discoveryScout.artistsFromArea(city, 0) else emptyList() }
-        return coroutineScope {
-            artists.take(DISCOVERY_SCOUT_ARTISTS).map { artist ->
-                async { runCatchingPreservingCancellation { discoveryArtistTracks(artist.name).take(2) }.getOrDefault(emptyList()) }
-            }.flatMap { it.await() }
-        }
-    }
-
-    private suspend fun discoveryDecadeTracks(startYear: Int, rotation: Long): List<Track> {
-        val offset = Math.floorMod(rotation, DISCOVERY_SCOUT_PAGES.toLong()).toInt() * DISCOVERY_SCOUT_PAGE
-        val releases = discoveryScout.releasesFromDecade(startYear, offset)
-        val language = _state.value.languageCode
-        return coroutineScope {
-            releases.take(DISCOVERY_SCOUT_ARTISTS).map { release ->
-                async {
-                    runCatchingPreservingCancellation {
-                        val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(release.artist)
-                        val albumKey = playbackTitleKey(release.title)
-                        repository.search("${release.artist} ${release.title}", DISCOVERY_ARTIST_LIMIT, language)
-                            .filter { candidate ->
-                                artistKey.isNotBlank() &&
-                                    com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(candidate.artist).contains(artistKey) &&
-                                    (playbackTitleKey(candidate.album) == albumKey ||
-                                        candidate.year.take(4).toIntOrNull()?.let { it in startYear..startYear + 9 } == true)
-                            }
-                            .take(2)
-                    }.getOrDefault(emptyList())
-                }
-            }.flatMap { it.await() }
-        }
-    }
-
-    private suspend fun discoveryNewMusic(market: String, language: String): List<Track> = coroutineScope {
-        val apple = async {
-            runCatchingPreservingCancellation {
-                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
-                    .newMusic(market, language)?.page?.shelves.orEmpty()
-                    .filter { it.kind == com.luc4n3x.levyra.data.apple.AppleCatalogShelfKind.Songs }
-                    .flatMap { shelf -> shelf.items.mapNotNull(com.luc4n3x.levyra.data.apple.AppleCatalogTracks::fromItem) }
-            }.getOrDefault(emptyList())
-        }
-        val fresh = async {
-            runCatchingPreservingCancellation { chartsRepository.freshCurrentTracks(country = market, limit = DISCOVERY_SOURCE_LIMIT) }
-                .getOrDefault(emptyList())
-        }
-        val tracks = fresh.await() + apple.await()
-        if (tracks.isEmpty()) throw IllegalStateException("No new music available")
-        tracks
-    }
-
-    private suspend fun discoveryFollowedReleases(): List<Track> {
-        val snapshot = _state.value
-        val entries = snapshot.releaseRadar.sortedByDescending { it.isFresh }.take(DISCOVERY_RELEASE_RADAR_LIMIT)
-        if (entries.isEmpty()) return emptyList()
-        return coroutineScope {
-            entries.map { entry ->
-                async {
-                    val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(entry.artistName)
-                    runCatchingPreservingCancellation {
-                        repository.search(releaseRadarSearchQuery(entry), 4, snapshot.languageCode)
-                            .firstOrNull { candidate ->
-                                artistKey.isNotBlank() && com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(candidate.artist).contains(artistKey)
-                            }
-                    }.getOrNull()
-                }
-            }.mapNotNull { it.await() }
-        }
-    }
-
-    private suspend fun discoveryArtistTracks(artist: String): List<Track> {
-        val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(artist)
-        if (artistKey.isBlank()) return emptyList()
-        return repository.search(artist, DISCOVERY_ARTIST_LIMIT, _state.value.languageCode)
-            .filter { com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(it.artist).contains(artistKey) }
-    }
-
-    internal suspend fun resolveDiscoveryAudio(track: Track): Track? = withTimeoutOrNull(DISCOVERY_RESOLVE_TIMEOUT_MS) {
-        try {
-            val matched = youtubePlayableTrack(track) ?: matchDiscoveryCandidate(track) ?: return@withTimeoutOrNull null
-            val resolved = providerRouter.resolve(matched.copy(streamUrl = ""), false)
-            if (resolved.id != matched.id || resolved.streamUrl.isBlank()) null
-            else preserveEditorialArtwork(track, resolved)
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (error: Throwable) {
-            Timber.d(error, "Discovery preview resolution failed")
-            null
-        }
-    }
-
-    private suspend fun matchDiscoveryCandidate(track: Track): Track? {
-        val query = "${track.title} ${track.artist}".trim()
-        if (query.length < 2) return null
-        return repository.search(query, DISCOVERY_MATCH_SEARCH_LIMIT, _state.value.languageCode)
-            .asSequence()
-            .filter { isPlaybackCandidateCompatible(track, it) && youtubePlayableTrack(it) != null }
-            .filter { candidate ->
-                track.durationMs <= 0L || candidate.durationMs <= 0L ||
-                    kotlin.math.abs(candidate.durationMs - track.durationMs) <= DISCOVERY_MATCH_DURATION_TOLERANCE_MS
-            }
-            .map { it to playbackCandidateScore(track, it) }
-            .filter { it.second >= DISCOVERY_MATCH_MIN_SCORE }
-            .maxByOrNull { it.second }
-            ?.first
-            ?.let { LevyraPersonalOrbit.preferAlbumArtwork(youtubePlayableTrack(it) ?: it, track) }
-    }
+    internal suspend fun resolveDiscoveryAudio(track: Track): Track? = discoveryFeed.resolveDiscoveryAudio(track)
 
     internal fun pauseMainPlaybackForDiscovery(): String? {
         val snapshot = _state.value
@@ -10315,7 +9422,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    private val exploreCache = ConcurrentHashMap<String, List<Track>>()
+    private val explore = ExploreController(
+        viewModelScope,
+        application,
+        _state,
+        repository,
+        editorialChartsRepository,
+        preferences,
+        startupExploreDiscovery,
+        startupSettings,
+        refreshOfficialMetadataBatch = { tracks, limit -> refreshOfficialMetadataBatch(tracks, limit) },
+        ensureFreshCurrentsLoaded = { ensureFreshCurrentsLoaded() }
+    )
+    private val exploreCache = explore.exploreCache
     private var musicVideosLoadedLanguage = ""
     private var musicVideosLoadedProfileSignature = ""
     private var musicVideosRequestLanguage = ""
@@ -10338,29 +9457,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val _appleNewThisWeek = MutableStateFlow(AppleNewThisWeek())
     val appleNewThisWeek: StateFlow<AppleNewThisWeek> = _appleNewThisWeek.asStateFlow()
     private var appleNewThisWeekJob: Job? = null
-    private var exploreVideosJob: Job? = null
-    private var exploreVideosLanguage = ""
-    private var exploreJob: Job? = null
-    private val lastFmGenreCharts by lazy { LastFmGenreChartRepository(getApplication()) }
-    private val _exploreGenreChart = MutableStateFlow(ExploreGenreChartState())
-    val exploreGenreChart: StateFlow<ExploreGenreChartState> = _exploreGenreChart.asStateFlow()
-    private var exploreGenreChartJob: Job? = null
-    private val lastFmGenreDiscovery by lazy { LastFmGenreDiscoveryRepository(getApplication()) }
-    private val _exploreGenreDiscovery = MutableStateFlow(ExploreGenreDiscoveryState())
-    val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> = _exploreGenreDiscovery.asStateFlow()
-    private var exploreGenreDiscoveryJob: Job? = null
-    private var exploreCategoriesLoadedLanguage =
-        startupExploreDiscovery?.let { LevyraLanguageCatalog.normalize(startupSettings.languageCode) }.orEmpty()
-    private var exploreCategoriesRequestLanguage = ""
-    private var exploreCategoriesRequestGeneration = 0L
-    private var exploreCategoriesCachedAtMs = startupExploreDiscovery?.savedAtMs ?: 0L
-    private var exploreCategoriesJob: Job? = null
-    private var exploreDiscoveryPersistJob: Job? = null
-    private var exploreArtworkWarmupJob: Job? = null
-    private var exploreArtworkWarmupLanguage = ""
-    private val exploreArtworkWarmupAttempts = mutableSetOf<String>()
-    private val exploreCategoryArtworkRequests = mutableSetOf<String>()
-    private val exploreCategoryArtworkSemaphore = Semaphore(2)
+    val exploreGenreChart: StateFlow<ExploreGenreChartState> = explore.exploreGenreChart
+    val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> = explore.exploreGenreDiscovery
 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
         snapshot.currentTrack?.artist?.let(::add)
@@ -10831,34 +9929,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
         editorialChartsRepository.warm()
-        ensureExploreCategoriesLoaded()
-        warmExploreDiscoveryArtwork()
+        explore.ensureExploreCategoriesLoaded()
+        explore.warmExploreDiscoveryArtwork()
         ensureFreshCurrentsLoaded()
         ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
         ensureExploreVideosLoaded()
     }
 
-    private fun ensureExploreVideosLoaded() {
-        val language = _state.value.languageCode
-        if (exploreVideosJob?.isActive == true && exploreVideosLanguage == language) return
-        if (exploreVideosLanguage == language && _state.value.exploreVideos.isNotEmpty()) return
-        exploreVideosJob?.cancel()
-        if (exploreVideosLanguage != language) _state.update { it.copy(exploreVideos = emptyList()) }
-        exploreVideosLanguage = language
-        exploreVideosJob = viewModelScope.launch {
-            val videos = try {
-                repository.newMusicVideos(language, EXPLORE_VIDEOS_LIMIT)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "Explore videos failed")
-                emptyList()
-            }
-            if (videos.isEmpty()) exploreVideosLanguage = ""
-            _state.update { current -> if (current.languageCode != language || videos.isEmpty()) current else current.copy(exploreVideos = videos) }
-        }
-    }
+    private fun ensureExploreVideosLoaded() = explore.ensureExploreVideosLoaded()
 
     fun ensureExploreSamples() {
         ensureMusicVideosLoaded()
@@ -10873,514 +9952,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ensureMusicVideosLoaded(force = true)
     }
 
-    fun selectExploreZone(zone: ExploreZone) {
-        exploreJob?.cancel()
-        loadExploreGenreChart("zone:${zone.id}", LastFmGenreTags.forZone(zone.id))
-        if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
-            _state.update { current ->
-                current.copy(
-                    exploreZoneId = zone.id,
-                    exploreCategoryParams = null,
-                    exploreTracks = current.exploreFreshTracks,
-                    isExploreLoading = current.isFreshCurrentsLoading
-                )
-            }
-            ensureFreshCurrentsLoaded()
-            return
-        }
-        val languageCode = _state.value.languageCode
-        val cacheKey = "zone:$languageCode:${zone.id}"
-        val cached = exploreCache[cacheKey]
-        _state.update { current ->
-            current.copy(
-                exploreZoneId = zone.id,
-                exploreCategoryParams = null,
-                exploreTracks = cached.orEmpty(),
-                isExploreLoading = cached == null
-            )
-        }
-        cached?.let { cachedTracks ->
-            refreshOfficialMetadataBatch(cachedTracks, 8)
-            return
-        }
-        exploreJob = viewModelScope.launch {
-            val results = try {
-                repository.exploreZone(zone.id, zone.query, languageCode, 24)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "Editorial Explore zone failed for %s", zone.id)
-                emptyList()
-            }
-            if (results.isNotEmpty()) exploreCache[cacheKey] = results
-            if (
-                _state.value.exploreZoneId != zone.id ||
-                _state.value.exploreCategoryParams != null ||
-                _state.value.languageCode != languageCode
-            ) return@launch
-            _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
-            refreshOfficialMetadataBatch(results, 8)
-        }
-    }
+    fun selectExploreZone(zone: ExploreZone) = explore.selectExploreZone(zone)
 
-    private fun mergeExploreEditorialFallback(
-        editorial: List<Track>,
-        fallback: List<Track>,
-        limit: Int
-    ): List<Track> {
-        val output = LinkedHashMap<String, Track>()
-        (editorial + fallback).forEach { track ->
-            val key = LevyraPersonalOrbit.identityKey(track).ifBlank { "id:${track.id}" }
-            output.putIfAbsent(key, track)
-        }
-        return output.values.take(limit.coerceAtLeast(1))
-    }
+    fun selectExploreCategory(category: ExploreCategory) = explore.selectExploreCategory(category)
 
-    fun selectExploreCategory(category: ExploreCategory) {
-        val params = category.params
-        if (params.isBlank() || category.title.isBlank()) return
-        exploreJob?.cancel()
-        loadExploreGenreChart("category:$params", LastFmGenreTags.forCategory(category))
-        val languageCode = _state.value.languageCode
-        val cacheKey = "provider:$languageCode:$params"
-        val cached = exploreCache[cacheKey]
-        _state.update { current ->
-            current.copy(
-                exploreZoneId = null,
-                exploreCategoryParams = params,
-                exploreTracks = cached.orEmpty(),
-                isExploreLoading = cached == null
-            )
-        }
-        cached?.let { cachedTracks ->
-            refreshOfficialMetadataBatch(cachedTracks, 8)
-            return
-        }
-        exploreJob = viewModelScope.launch {
-            val editorial = try {
-                editorialChartsRepository.exploreCollection(params, 24)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "Spotify editorial Explore category failed")
-                null
-            }
-            val editorialTracks = editorial?.tracks.orEmpty()
-            val results = if (editorialTracks.size >= EXPLORE_EDITORIAL_MIN_TRACKS) {
-                editorialTracks
-            } else {
-                val providerTracks = try {
-                    repository.exploreCategory(params, languageCode, 24)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    Timber.w(error, "Provider Explore category failed")
-                    emptyList()
-                }
-                mergeExploreEditorialFallback(
-                    editorial = editorialTracks,
-                    fallback = providerTracks,
-                    limit = 24
-                )
-            }
-            if (results.isNotEmpty()) exploreCache[cacheKey] = results
-            val editorialArtwork = editorial?.artworkUrl.orEmpty()
-            if (editorialArtwork.isNotBlank() && _state.value.languageCode == languageCode) {
-                _state.update { current ->
-                    current.copy(
-                        exploreCategoryArtwork = current.exploreCategoryArtwork +
-                            (params to editorialArtwork)
-                    )
-                }
-                schedulePersistExploreDiscovery(languageCode)
-            }
-            if (
-                _state.value.exploreCategoryParams != params ||
-                _state.value.exploreZoneId != null ||
-                _state.value.languageCode != languageCode
-            ) return@launch
-            _state.update { current -> current.copy(exploreTracks = results, isExploreLoading = false) }
-            refreshOfficialMetadataBatch(results, 8)
-        }
-    }
+    fun openExploreCategoryChart(category: ExploreCategory) = explore.openExploreCategoryChart(category)
 
-    fun openExploreCategoryChart(category: ExploreCategory) {
-        loadExploreGenreChart("category:${category.params}", LastFmGenreTags.forCategory(category))
-    }
+    fun openExploreZoneChart(zone: ExploreZone) = explore.openExploreZoneChart(zone)
 
-    fun openExploreZoneChart(zone: ExploreZone) {
-        loadExploreGenreChart("zone:${zone.id}", LastFmGenreTags.forZone(zone.id))
-    }
+    fun loadExploreZoneDiscovery(zone: ExploreZone) = explore.loadExploreZoneDiscovery(zone)
 
-    private suspend fun fetchExploreGenreChart(
-        identity: String,
-        tags: List<String>,
-        languageCode: String,
-        onProgress: (List<Track>) -> Unit
-    ): List<Track> = runCatchingPreservingCancellation {
-        lastFmGenreCharts.genreChart(
-            tags = tags,
-            languageCode = languageCode,
-            match = { title, artist -> repository.searchSongMatch(title, artist, languageCode) },
-            onProgress = onProgress
-        )
-    }.onFailure { Timber.w(it, "Last.fm genre chart failed for %s", identity) }.getOrDefault(emptyList())
-
-    private fun loadExploreGenreChart(identity: String, tags: List<String>) {
-        val languageCode = _state.value.languageCode
-        val key = "$languageCode:$identity"
-        val current = _exploreGenreChart.value
-        if (current.coversRequest(key, System.currentTimeMillis())) return
-        exploreGenreChartJob?.cancel()
-        if (tags.isEmpty()) {
-            _exploreGenreChart.value = ExploreGenreChartState(key = key)
-            return
-        }
-        _exploreGenreChart.value = if (current.key == key) current.copy(isLoading = true) else ExploreGenreChartState(key = key, isLoading = true)
-        exploreGenreChartJob = viewModelScope.launch {
-            fun publish(tracks: List<Track>, loading: Boolean) {
-                _exploreGenreChart.update { state ->
-                    if (state.key != key) state
-                    else if (loading && tracks.size <= state.tracks.size) state
-                    else state.copy(tracks = tracks, isLoading = loading)
-                }
-            }
-            publish(lastFmGenreCharts.cached(tags, languageCode), loading = true)
-            val tracks = fetchExploreGenreChart(identity, tags, languageCode) { partial ->
-                if (partial.size >= EXPLORE_GENRE_CHART_FIRST_PAINT) publish(partial, loading = true)
-            }
-            _exploreGenreChart.update { state -> if (state.key != key) state else state.finishedWith(tracks, System.currentTimeMillis()) }
-        }
-    }
-
-    fun loadExploreZoneDiscovery(zone: ExploreZone) {
-        val curators = AppleExploreCatalog.zoneCuratorIds(zone.id)
-        loadExploreGenreDiscovery("zone:${zone.id}", LastFmGenreTags.forZone(zone.id), curators) { apple, front, lang ->
-            apple.curatorGenre(curators, front, lang)
-        }
-    }
-
-    fun loadExploreCategoryDiscovery(category: ExploreCategory) {
-        val curators = listOfNotNull(AppleExploreCatalog.curatorId(category.params))
-        val playlistParams = category.params.takeIf { LastFmGenreTags.decadeOf(category) != null }
-        loadExploreGenreDiscovery("category:${category.params}", LastFmGenreTags.forCategory(category), curators, playlistParams) { apple, front, lang ->
-            apple.genre(category.title, category.params, front, lang)
-        }
-    }
-
-    private suspend fun loadAppleGenreShelves(
-        apple: AppleMusicEditorialRepository,
-        identity: String,
-        cachedCurators: List<String>,
-        storefront: String,
-        appleLanguage: String,
-        fetchApple: suspend (AppleMusicEditorialRepository, String, String) -> AppleCatalogPage?,
-        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
-    ) {
-        if (_exploreGenreDiscovery.value.apple.isEmpty()) {
-            apple.cachedCuratorGenre(cachedCurators, storefront, appleLanguage)?.let { page ->
-                val shelves = AppleExploreCatalog.genreShelves(page)
-                publish { state -> if (state.apple.isEmpty()) state.copy(apple = shelves) else state }
-            }
-        }
-        val page = runCatchingPreservingCancellation { fetchApple(apple, storefront, appleLanguage) }
-            .onFailure { Timber.w(it, "Apple genre discovery failed for %s", identity) }
-            .getOrNull()
-        val shelves = page?.let(AppleExploreCatalog::genreShelves).orEmpty()
-        if (shelves.isNotEmpty()) publish { state -> state.copy(apple = shelves) }
-    }
-
-    private suspend fun loadLastFmGenreDiscovery(
-        identity: String,
-        tags: List<String>,
-        languageCode: String,
-        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
-    ) {
-        if (tags.isEmpty()) return
-        if (_exploreGenreDiscovery.value.lastFm == null) {
-            lastFmGenreDiscovery.cached(tags, languageCode)?.let { stored ->
-                publish { state -> if (state.lastFm == null) state.copy(lastFm = stored) else state }
-            }
-        }
-        val fresh = runCatchingPreservingCancellation { lastFmGenreDiscovery.discovery(tags, languageCode) }
-            .onFailure { Timber.w(it, "Last.fm genre discovery failed for %s", identity) }
-            .getOrNull()
-        if (fresh != null) publish { state -> state.copy(lastFm = fresh) }
-    }
-
-    private fun loadExploreGenreDiscovery(
-        identity: String,
-        tags: List<String>,
-        cachedCurators: List<String>,
-        playlistParams: String? = null,
-        fetchApple: suspend (AppleMusicEditorialRepository, String, String) -> AppleCatalogPage?
-    ) {
-        val languageCode = _state.value.languageCode
-        val storefront = AppleStorefronts.normalize(ChartsCatalog.region(_state.value.selectedChartId).country)
-        val appleLanguage = AppleStorefronts.language(languageCode)
-        val key = "$languageCode:$identity"
-        val current = _exploreGenreDiscovery.value
-        val sameTarget = current.key == key && current.storefront == storefront
-        if (sameTarget && current.isLoading) return
-        exploreGenreDiscoveryJob?.cancel()
-        _exploreGenreDiscovery.value =
-            if (sameTarget) current.copy(isLoading = true)
-            else ExploreGenreDiscoveryState(key = key, storefront = storefront, isLoading = true)
-        exploreGenreDiscoveryJob = viewModelScope.launch {
-            fun publish(transform: (ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) {
-                _exploreGenreDiscovery.update { state -> if (state.key == key && state.storefront == storefront) transform(state) else state }
-            }
-            val apple = AppleMusicEditorialRepository.get(getApplication())
-            coroutineScope {
-                launch { loadAppleGenreShelves(apple, identity, cachedCurators, storefront, appleLanguage, fetchApple, ::publish) }
-                launch { loadLastFmGenreDiscovery(identity, tags, languageCode, ::publish) }
-                playlistParams?.let { params -> launch { loadProviderGenrePlaylists(identity, params, languageCode, ::publish) } }
-            }
-            publish { state -> state.copy(isLoading = false) }
-        }
-    }
-
-    private suspend fun loadProviderGenrePlaylists(
-        identity: String,
-        params: String,
-        languageCode: String,
-        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
-    ) {
-        val sections = runCatchingPreservingCancellation { repository.moodPlaylistSections(params, languageCode) }
-            .onFailure { Timber.w(it, "Provider genre playlists failed for %s", identity) }
-            .getOrDefault(emptyList())
-            .filter { section -> section.playlists.any { it.thumbnailUrl.isNotBlank() } }
-        if (sections.isNotEmpty()) publish { state -> state.copy(playlists = sections) }
-    }
+    fun loadExploreCategoryDiscovery(category: ExploreCategory) = explore.loadExploreCategoryDiscovery(category)
 
     fun ensureExploreTrackArtwork(track: Track) {
         enqueueOfficialMetadata(listOf(track), 1, false)
     }
 
-    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) {
-        if (params.isBlank() || !_state.value.exploreCategoryArtwork[params].isNullOrBlank()) return
-        val languageCode = _state.value.languageCode
-        viewModelScope.launch {
-            resolveExploreCategoryArtwork(
-                params = params,
-                languageCode = languageCode,
-                allowTrackFallback = allowTrackFallback
-            )
-        }
-    }
+    fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) =
+        explore.ensureExploreCategoryArtwork(params, allowTrackFallback)
 
-    private suspend fun resolveExploreCategoryArtwork(
-        params: String,
-        languageCode: String,
-        allowTrackFallback: Boolean
-    ) {
-        if (
-            params.isBlank() ||
-            _state.value.languageCode != languageCode ||
-            !_state.value.exploreCategoryArtwork[params].isNullOrBlank()
-        ) return
+    fun playDownloaded(download: DownloadedTrack) = offlineDownloads.playDownloaded(download)
 
-        val mode = if (allowTrackFallback) "deep" else "shallow"
-        val requestKey = "$languageCode:$params:$mode"
-        if (!exploreCategoryArtworkRequests.add(requestKey)) return
-        try {
-            val editorialArtwork = editorialChartsRepository
-                .exploreCollection(params, 1)
-                ?.artworkUrl
-                .orEmpty()
-            val artwork = editorialArtwork.ifBlank {
-                exploreCategoryArtworkSemaphore.withPermit {
-                    repository.moodCategoryArtwork(
-                        params = params,
-                        languageCode = languageCode,
-                        allowTrackFallback = allowTrackFallback
-                    )
-                }
-            }
-            if (artwork.isNotBlank() && _state.value.languageCode == languageCode) {
-                _state.update { current ->
-                    if (!current.exploreCategoryArtwork[params].isNullOrBlank()) current
-                    else current.copy(
-                        exploreCategoryArtwork = current.exploreCategoryArtwork + (params to artwork)
-                    )
-                }
-                schedulePersistExploreDiscovery(languageCode)
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "Provider Explore category artwork failed")
-        } finally {
-            exploreCategoryArtworkRequests.remove(requestKey)
-        }
-    }
-
-    private fun warmExploreDiscoveryArtwork() {
-        val snapshot = _state.value
-        val languageCode = snapshot.languageCode
-        val missing = snapshot.exploreCategories
-            .filter { category ->
-                category.params.isNotBlank() &&
-                    snapshot.exploreCategoryArtwork[category.params].isNullOrBlank() &&
-                    "$languageCode:${category.params}" !in exploreArtworkWarmupAttempts
-            }
-        if (missing.isEmpty()) return
-        if (exploreArtworkWarmupJob?.isActive == true && exploreArtworkWarmupLanguage == languageCode) return
-
-        exploreArtworkWarmupJob?.cancel()
-        exploreArtworkWarmupLanguage = languageCode
-        exploreArtworkWarmupJob = viewModelScope.launch {
-            val prioritized = missing.sortedWith(
-                compareBy<ExploreCategory> { category -> if (category.sectionIndex == 0) 0 else 1 }
-                    .thenBy { category -> category.sectionIndex }
-            )
-            coroutineScope {
-                prioritized.mapIndexed { index, category ->
-                    async {
-                        exploreArtworkWarmupAttempts += "$languageCode:${category.params}"
-                        resolveExploreCategoryArtwork(
-                            params = category.params,
-                            languageCode = languageCode,
-                            allowTrackFallback = category.sectionIndex == 0 &&
-                                index < EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT
-                        )
-                    }
-                }.awaitAll()
-            }
-            if (_state.value.languageCode == languageCode) {
-                schedulePersistExploreDiscovery(languageCode)
-            }
-            exploreArtworkWarmupJob = null
-            if (_state.value.languageCode == languageCode) {
-                warmExploreDiscoveryArtwork()
-            }
-        }
-    }
-
-    private fun schedulePersistExploreDiscovery(languageCode: String) {
-        exploreDiscoveryPersistJob?.cancel()
-        exploreDiscoveryPersistJob = viewModelScope.launch {
-            delay(350L)
-            val current = _state.value
-            if (current.languageCode != languageCode || current.exploreCategories.isEmpty()) return@launch
-            preferences.saveExploreDiscovery(
-                categories = current.exploreCategories,
-                artwork = current.exploreCategoryArtwork,
-                languageCode = languageCode,
-                savedAtMs = exploreCategoriesCachedAtMs
-            )
-        }
-    }
-
-    private fun ensureExploreCategoriesLoaded() {
-        val languageCode = _state.value.languageCode
-        if (exploreCategoriesJob?.isActive == true) {
-            if (exploreCategoriesRequestLanguage == languageCode) return
-            exploreCategoriesJob?.cancel()
-        }
-        val hasCachedCategories =
-            exploreCategoriesLoadedLanguage == languageCode && _state.value.exploreCategories.isNotEmpty()
-        val cacheAgeMs = System.currentTimeMillis() - exploreCategoriesCachedAtMs
-        if (
-            hasCachedCategories &&
-            exploreCategoriesCachedAtMs > 0L &&
-            cacheAgeMs in 0 until EXPLORE_DISCOVERY_CACHE_TTL_MS
-        ) return
-
-        val requestGeneration = ++exploreCategoriesRequestGeneration
-        exploreCategoriesRequestLanguage = languageCode
-        markExploreCategoriesLoading(languageCode)
-        exploreCategoriesJob = viewModelScope.launch {
-            try {
-                val categories = fetchExploreCategories(languageCode)
-                publishExploreCategories(languageCode, requestGeneration, categories)
-            } finally {
-                finishExploreCategoriesRequest(languageCode, requestGeneration)
-            }
-        }
-    }
-
-    private fun markExploreCategoriesLoading(languageCode: String) {
-        _state.update { current ->
-            if (current.languageCode != languageCode) {
-                current
-            } else {
-                current.copy(
-                    exploreCategories = current.exploreCategories,
-                    isExploreCategoriesLoading = current.exploreCategories.isEmpty()
-                )
-            }
-        }
-    }
-
-    private suspend fun fetchExploreCategories(languageCode: String): List<ExploreCategory> = try {
-        repository.moodCategories(languageCode)
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Throwable) {
-        Timber.w(error, "Provider Explore categories failed for %s", languageCode)
-        emptyList()
-    }.asSequence()
-        .filter { category -> category.title.isNotBlank() && category.params.isNotBlank() }
-        .distinctBy { category -> category.params }
-        .toList()
-
-    private fun publishExploreCategories(
-        languageCode: String,
-        requestGeneration: Long,
-        categories: List<ExploreCategory>
-    ) {
-        if (
-            exploreCategoriesRequestGeneration != requestGeneration ||
-            _state.value.languageCode != languageCode
-        ) return
-        if (categories.isNotEmpty()) {
-            exploreCategoriesLoadedLanguage = languageCode
-            exploreCategoriesCachedAtMs = System.currentTimeMillis()
-        }
-        _state.update { current ->
-            if (current.languageCode == languageCode) {
-                current.copy(
-                    exploreCategories = categories.ifEmpty { current.exploreCategories },
-                    isExploreCategoriesLoading = false
-                )
-            } else {
-                current
-            }
-        }
-        if (categories.isNotEmpty()) {
-            schedulePersistExploreDiscovery(languageCode)
-            warmExploreDiscoveryArtwork()
-        }
-    }
-
-    private fun finishExploreCategoriesRequest(languageCode: String, requestGeneration: Long) {
-        if (exploreCategoriesRequestGeneration != requestGeneration) return
-        _state.update { current ->
-            if (current.languageCode == languageCode && current.isExploreCategoriesLoading) {
-                current.copy(isExploreCategoriesLoading = false)
-            } else {
-                current
-            }
-        }
-        exploreCategoriesJob = null
-    }
-
-    fun playDownloaded(download: DownloadedTrack) {
-        if (download.uri.isBlank()) {
-            _state.update { it.copy(playerError = "File offline non disponibile") }
-            return
-        }
-        playOfflineQueue(listOf(offlinePlaybackTrack(download)), 0)
-    }
-
-    fun playDownloads(downloads: List<DownloadedTrack>, shuffled: Boolean) {
-        val tracks = downloads.filter { it.uri.isNotBlank() }.map(::offlinePlaybackTrack)
-        if (tracks.isEmpty()) return
-        if (_state.value.jam.role == JamRole.Guest) return
-        val ordered = if (shuffled) tracks.shuffled() else tracks
-        playOfflineQueue(ordered, 0)
-    }
+    fun playDownloads(downloads: List<DownloadedTrack>, shuffled: Boolean) =
+        offlineDownloads.playDownloads(downloads, shuffled)
 
     private fun playOfflineQueue(tracks: List<Track>, startIndex: Int) {
         val track = tracks[startIndex]
@@ -11391,27 +9985,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueIndex = startIndex
         startResolve(track)
     }
-
-    private fun offlinePlaybackTrack(download: DownloadedTrack): Track =
-        Track(
-            id = download.trackId.ifBlank { "offline-${download.id}" },
-            title = download.title,
-            artist = download.artist,
-            album = download.album,
-            durationMs = download.durationMs,
-            streamUrl = download.uri,
-            videoUrl = "",
-            thumbnailUrl = downloadArtworkModel(download.uri, download.artworkUrl),
-            largeThumbnailUrl = "",
-            source = "Offline",
-            moodTags = emptySet(),
-            energy = 0,
-            vocal = 0,
-            replayScore = 0,
-            cacheScore = 0,
-            accentStart = 0,
-            accentEnd = 0
-        )
 
     private fun resumePositionFor(track: Track): Long =
         if (track.isLiveRadio()) 0L else resumeStartPositionMs(pendingSeekMs, track.durationMs)
@@ -11477,7 +10050,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         recordPlaybackHistory(track)
-        beginListenSession(track)
+        listeningSession.beginListenSession(track)
         recordSmartPlayback(track)
         fetchSponsorSegments(track)
     }
@@ -11760,7 +10333,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.clearPreparedQueueNextIfStale()
         if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
         if (!queuePrefetchAllowed(_state.value.audioSettings)) {
-            ensureRadioTail(force = false)
+            radio.ensureRadioTail(force = false)
             return
         }
         val queueSnapshot = queueEngine.state.value
@@ -11773,7 +10346,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .filterNot { samePlayableTrack(it, playable) }
                 .distinctBy { playbackIdentity(it) }
             if (candidates.isEmpty()) {
-                ensureRadioTail(force = false)
+                radio.ensureRadioTail(force = false)
                 return@launch
             }
             val semaphore = Semaphore(plan.concurrency.coerceAtLeast(1))
@@ -11803,7 +10376,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             }
-            ensureRadioTail(force = false)
+            radio.ensureRadioTail(force = false)
         }
     }
 
@@ -12038,157 +10611,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         dataSaverOn = dataSaverOn
     )
 
-    private data class RadioTailRequest(
-        val seed: Track,
-        val anchor: Track,
-        val generation: Long,
-        val session: RadioSession?
-    )
-
-    private fun ensureRadioTail(
-        force: Boolean,
-        playWhenReady: Boolean = false,
-        insertAfterCurrent: Boolean = false
-    ) {
-        val request = radioTailRequest(force) ?: return
-        radioJob = viewModelScope.launch(Dispatchers.IO) {
-            appendRadioTail(request, playWhenReady, insertAfterCurrent)
-        }
-    }
-
-    private fun radioTailRequest(force: Boolean): RadioTailRequest? {
-        val snapshot = queueEngine.state.value
-        val anchor = snapshot.currentTrack ?: return null
-        if (anchor.isLiveRadio()) return null
-        if (!snapshot.radioEnabled) return null
-        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
-        if (!force && queueEngine.upcoming(targetUpcoming).size >= targetUpcoming) return null
-        if (radioJob?.isActive == true) return null
-        if (isLocalPlaybackTrack(anchor) || !lyricsNetworkProfile().connected) return null
-        val session = radioSession.get()?.takeIf { it.isActiveFor(snapshot) }
-        val seed = radioSeedFor(session, snapshot) ?: return null
-        return RadioTailRequest(seed = seed, anchor = anchor, generation = snapshot.generation, session = session)
-    }
-
-    private suspend fun appendRadioTail(
-        request: RadioTailRequest,
-        playWhenReady: Boolean,
-        insertAfterCurrent: Boolean = false
-    ) {
-        val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
-        val currentUpcoming = queueEngine.upcoming(targetUpcoming).size
-        val tailFetchLimit = radioTailFetchLimit(targetUpcoming, currentUpcoming)
-        val fetchLimit = if (insertAfterCurrent) maxOf(tailFetchLimit, RADIO_START_FETCH) else tailFetchLimit
-        val fetchedRadioTracks = fetchRadioTracks(request, fetchLimit)
-        rememberRelatedCandidates(request.seed, fetchedRadioTracks)
-        val candidateRadioTracks = freshDiscoveryCandidates(
-            candidates = fetchedRadioTracks,
-            minimumFresh = if (insertAfterCurrent) targetUpcoming else (targetUpcoming - currentUpcoming).coerceAtLeast(1),
-            unavailableIds = { radioQueuedIds(request.seed) }
-        )
-        val current = currentRadioSnapshot(request) ?: return
-        val mixedRadioTracks = mixRadioTracks(request, current, candidateRadioTracks, insertAfterCurrent)
-        appendMixedRadioTracks(mixedRadioTracks, targetUpcoming, insertAfterCurrent)
-        updateRadioSession(request, fetchedRadioTracks, mixedRadioTracks)
-        continueAfterRadioAppend(mixedRadioTracks, playWhenReady)
-    }
-
-    private suspend fun fetchRadioTracks(request: RadioTailRequest, fetchLimit: Int): List<Track> =
-        try {
-            repository.radio(
-                seed = request.seed,
-                languageCode = _state.value.languageCode,
-                limit = fetchLimit,
-                excludeIds = request.session?.addedIds.orEmpty(),
-                diversify = true
-            )
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            emptyList()
-        }
-
-    private fun currentRadioSnapshot(request: RadioTailRequest): PlaybackQueueSnapshot? {
-        val current = queueEngine.state.value
-        return current.takeIf {
-            it.radioEnabled &&
-                isSameRadioSeed(it.currentTrack, request.anchor) &&
-                it.generation == request.generation
-        }
-    }
-
-    private fun mixRadioTracks(
-        request: RadioTailRequest,
-        current: PlaybackQueueSnapshot,
-        fetchedRadioTracks: List<Track>,
-        insertAfterCurrent: Boolean
-    ): List<Track> {
-        val radioTracks = _state.value.artistExclusions.filterTracks(fetchedRadioTracks)
-        val bonusScores = smartOrbitPool.bonusScores
-        val orderedRadioTracks = smartRankingProfile(bonusScores)?.let { signals ->
-            ListeningSignalRanker.rank(
-                candidates = radioTracks,
-                profile = signals,
-                limit = radioTracks.size,
-                bonusScores = bonusScores
-            )
-        } ?: radioTracks
-        return RadioMixer.mix(
-            candidates = orderedRadioTracks,
-            seed = request.seed,
-            queued = current.tracks,
-            recentContext = radioMixContext(current, insertAfterCurrent),
-            recentlyPlayed = radioRecentlyPlayed(current),
-            limit = if (insertAfterCurrent) RADIO_START_TRACKS else RADIO_MIX_LIMIT
-        )
-    }
-
-    private fun appendMixedRadioTracks(
-        tracks: List<Track>,
-        targetUpcoming: Int,
-        insertAfterCurrent: Boolean
-    ) {
-        if (tracks.isEmpty()) return
-        if (insertAfterCurrent) {
-            queueEngine.insertRadioTracksAfterCurrent(tracks, RADIO_START_TRACKS)
-        } else {
-            appendRadioTracksUntil(tracks, targetUpcoming)
-        }
-    }
-
-    private fun updateRadioSession(
-        request: RadioTailRequest,
-        fetchedRadioTracks: List<Track>,
-        mixedRadioTracks: List<Track>
-    ) {
-        val session = request.session?.takeIf { fetchedRadioTracks.isNotEmpty() } ?: return
-        val queuedIds = queueEngine.state.value.tracks.mapTo(HashSet(), Track::id)
-        val added = mixedRadioTracks.map(Track::id).filter { it in queuedIds && it !in session.addedIds }
-        radioSession.compareAndSet(session, session.recordAdded(added))
-    }
-
-    private suspend fun continueAfterRadioAppend(tracks: List<Track>, playWhenReady: Boolean) {
-        if (tracks.isEmpty()) return
-        if (!playWhenReady) {
-            if (_state.value.audioSettings.advancedQueuePrefetchTracks > 0) {
-                withContext(Dispatchers.Main) { syncAdvancedQueuePrefetch() }
-            }
-            return
-        }
-        withContext(Dispatchers.Main) {
-            queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
-        }
-    }
-
-    private fun appendRadioTracksUntil(tracks: List<Track>, targetUpcoming: Int) {
-        repeat(RADIO_TAIL_MAX_APPEND_ROUNDS) {
-            val before = queueEngine.upcoming(targetUpcoming).size
-            queueEngine.appendRadioTracks(tracks)
-            val after = queueEngine.upcoming(targetUpcoming).size
-            if (after <= before || after >= targetUpcoming) return
-        }
-    }
-
     private suspend fun freshDiscoveryCandidates(
         candidates: List<Track>,
         minimumFresh: Int,
@@ -12216,14 +10638,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             SystemClock.elapsedRealtime() - startedAt
         )
         return selected
-    }
-
-    private fun radioQueuedIds(seed: Track): Set<String> {
-        val tracks = queueEngine.state.value.tracks
-        val ids = HashSet<String>(tracks.size + 1)
-        tracks.mapNotNullTo(ids) { it.id.takeIf(String::isNotBlank) }
-        seed.id.takeIf(String::isNotBlank)?.let(ids::add)
-        return ids
     }
 
     private fun freshDiscoveryFavoriteMembership(): FavoriteMembership {
@@ -12263,10 +10677,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         synchronized(relatedCandidateCache) { relatedCandidateCache[playbackIdentity(seed)] }
 
     private fun maybeRecordSignificantListen(durationMs: Long) {
-        if (listenSessionSignificant) return
-        val track = listenSessionTrack ?: return
-        if (!ListenPlayPolicy.isSignificantProgress(listenSessionAccumulatedMs, durationMs)) return
-        listenSessionSignificant = true
+        if (listeningSession.listenSessionSignificant) return
+        val track = listeningSession.listenSessionTrack ?: return
+        if (!ListenPlayPolicy.isSignificantProgress(listeningSession.listenSessionAccumulatedMs, durationMs)) return
+        listeningSession.listenSessionSignificant = true
         if (track.isLiveRadio() || isLocalPlaybackTrack(track)) return
         val cached = cachedRelatedCandidates(track)
         val languageCode = _state.value.languageCode
@@ -12279,113 +10693,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 emptyList()
             }
             if (related.isEmpty()) return@launch
-            smartOrbitMutex.withLock { smartOrbitPool = smartOrbitStore.recordRelated(track, related) }
+            personalOrbit.recordRelated(track, related)
             withContext(Dispatchers.Main) { refreshSmartOrbit() }
         }
     }
 
-    private fun refreshSmartOrbit() {
-        smartOrbitRefreshJob?.cancel()
-        smartOrbitRefreshJob = viewModelScope.launch(Dispatchers.Default) {
-            smartOrbitRefreshMutex.withLock {
-                val freshBlocked = smartOrbitFreshDiscoveryBlock()
-                val discoveries = computeSmartOrbitDiscoveries(freshBlocked)
-                val retireRestored = !smartOrbitApplied && !smartOrbitPool.isEmpty
-                smartOrbitApplied = true
-                if (discoveries == smartOrbitDiscoveries && !retireRestored) return@withLock
-                smartOrbitDiscoveries = discoveries
-                _state.update { current ->
-                    current.copy(personalOrbitTracks = rankSmartOrbit(buildSmartOrbit(current), current.recommendationFeedback))
-                }
-            }
-        }
-    }
+    private fun smartOrbitExclusion(): (Track) -> Boolean = personalOrbit.smartOrbitExclusion()
 
-    private suspend fun smartOrbitFreshDiscoveryBlock(): ((Track) -> Boolean)? {
-        val pool = smartOrbitPool
-        if (!_state.value.automationSettings.freshDiscovery.enabled || pool.isEmpty) return null
-        val tracks = pool.candidates.map(SmartOrbitCandidate::track)
-        val kept = freshDiscoveryCandidates(tracks, minimumFresh = 0)
-        if (kept.size == tracks.size) return null
-        val keptKeys = kept.mapTo(HashSet(kept.size * 2), SmartOrbitEngine::trackKey)
-        val excludedKeys = tracks.asSequence().map(SmartOrbitEngine::trackKey).filterNot(keptKeys::contains).toHashSet()
-        return { track -> SmartOrbitEngine.trackKey(track) in excludedKeys }
-    }
-
-    private fun computeSmartOrbitDiscoveries(freshBlocked: ((Track) -> Boolean)?): List<Track> {
-        val pool = smartOrbitPool
-        if (pool.isEmpty) return emptyList()
-        val snapshot = _state.value
-        val rejected = queueEngine.rejectedAutomaticKeys()
-        val profile = listeningSignals?.copy(feedback = snapshot.recommendationFeedback)
-        val heardArtistsByTitle = HashMap<String, MutableSet<String>>()
-        (snapshot.recentSearches + snapshot.recentListens + snapshot.favorites).forEach { track ->
-            val title = LevyraPersonalOrbit.musicTitleKey(track)
-            if (title.isNotBlank()) heardArtistsByTitle.getOrPut(title) { HashSet() } += LevyraPersonalOrbit.artistKeys(track)
-        }
-        return SmartOrbitEngine.discoveries(
-            pool = pool,
-            profile = profile,
-            isBlocked = { track ->
-                snapshot.artistExclusions.excludesTrack(track) ||
-                    isRejectedAutomatic(track, rejected) ||
-                    isHeardRecording(track, heardArtistsByTitle) ||
-                    freshBlocked?.invoke(track) == true
-            }
-        )
-    }
-
-    private fun isHeardRecording(track: Track, heardArtistsByTitle: Map<String, Set<String>>): Boolean {
-        if (heardArtistsByTitle.isEmpty()) return false
-        val artists = heardArtistsByTitle[LevyraPersonalOrbit.musicTitleKey(track)] ?: return false
-        val candidateArtists = LevyraPersonalOrbit.artistKeys(track)
-        return artists.isEmpty() || candidateArtists.isEmpty() || candidateArtists.any(artists::contains)
-    }
-
-    private fun isRejectedAutomatic(track: Track, rejected: Set<String>): Boolean =
-        rejected.isNotEmpty() && AutoQueueTombstones.rejectionKeys(track).any(rejected::contains)
-
-    private fun smartOrbitExclusion(): (Track) -> Boolean {
-        val pool = smartOrbitPool
-        val discoveries = smartOrbitDiscoveries
-        val rejected = queueEngine.rejectedAutomaticKeys()
-        if (pool.isEmpty && rejected.isEmpty()) return { false }
-        return { track ->
-            isRejectedAutomatic(track, rejected) ||
-                (pool.contains(track) && discoveries.none { LevyraPersonalOrbit.sameRecording(it, track) })
-        }
-    }
-
-    private fun buildSmartOrbit(current: LevyraUiState): List<Track> = LevyraPersonalOrbit.build(
-        currentTrack = current.currentTrack,
-        recentSearches = current.recentSearches,
-        favorites = current.favorites,
-        tracks = current.tracks,
-        homeSections = current.homeSections,
-        charts = current.charts,
-        cachedOrbit = current.personalOrbitTracks,
-        limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-        languageCode = current.languageCode,
-        discoveries = smartOrbitDiscoveries,
-        excluded = smartOrbitExclusion()
-    )
-
-    private fun rankSmartOrbit(
-        tracks: List<Track>,
-        feedback: com.luc4n3x.levyra.domain.RecommendationFeedback
-    ): List<Track> {
-        val signals = listeningSignals ?: return tracks
-        return ListeningSignalRanker.rank(
-            candidates = tracks,
-            profile = signals.copy(feedback = feedback),
-            limit = tracks.size,
-            dropSuppressed = false,
-            bonusScores = smartOrbitPool.bonusScores
-        )
-    }
-
-    private fun isSameRadioSeed(current: Track?, seed: Track): Boolean =
-        current?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
+    private fun refreshSmartOrbit() = personalOrbit.refreshSmartOrbit()
 
     private fun prefetchTop(tracks: List<Track>, count: Int = 8, respectHomeScroll: Boolean = false) {
         val plan = adaptivePlaybackPolicy.current(videoMode = false)
@@ -12575,8 +10890,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtwork.cancelResolution()
         lyricsController.cancelRequests()
         sponsorJob?.cancel()
-        radioJob?.cancel()
-        radioJob = null
+        radio.clearRadioJob()
         PlaybackService.cancelSleepTimer()
         sponsorSegments = emptyList()
         sponsorSkipTracker.reset()
@@ -12643,7 +10957,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playJob?.cancel()
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
-        radioJob?.cancel()
+        radio.cancelRadioJob()
         resumeShortcutJob?.cancel()
         pause()
         val current = _state.value.currentTrack
@@ -12654,7 +10968,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             isResolving = _state.value.isResolving
         )
         musicRecognition.cancelRecognizer()
-        if (jamControllerDelegate.isInitialized()) jamController.close()
+        jamSession.close()
         viewModelScope.launch {
             lastPlaybackSaveJob?.join()
             liveRadioPlaybackSaveJob?.join()
@@ -12691,7 +11005,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             startResolve(nextTrack)
             return
         }
-        if (queueEngine.state.value.radioEnabled) ensureRadioTail(force = true, playWhenReady = true)
+        if (queueEngine.state.value.radioEnabled) radio.ensureRadioTail(force = true, playWhenReady = true)
     }
 
     fun previous() {
@@ -12881,13 +11195,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 val nowElapsed = android.os.SystemClock.elapsedRealtime()
-                if (listenSessionTrack != null && player.isPlaying && listenTickElapsedMs > 0L) {
-                    val delta = nowElapsed - listenTickElapsedMs
-                    if (delta in 1..2_000L) listenSessionAccumulatedMs += delta
+                if (listeningSession.listenSessionTrack != null && player.isPlaying && listeningSession.listenTickElapsedMs > 0L) {
+                    val delta = nowElapsed - listeningSession.listenTickElapsedMs
+                    if (delta in 1..2_000L) listeningSession.listenSessionAccumulatedMs += delta
                     maybeRecordSignificantListen(duration)
-                    maybePersistListenSession()
+                    listeningSession.maybePersistListenSession()
                 }
-                listenTickElapsedMs = nowElapsed
+                listeningSession.listenTickElapsedMs = nowElapsed
 
                 val position = livePlaybackPositionMs()
                 val buffered = (player.bufferedPositionMs / 1_000L) * 1_000L
@@ -13368,19 +11682,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
-    private fun beginListenSession(track: Track) {
-        flushListenSession()
-        listenSessionTrack = track.copy(streamUrl = "", videoStreamUrl = "")
-        listenSessionStartedAt = System.currentTimeMillis()
-        listenSessionAccumulatedMs = 0L
-        listenSessionCompleted = false
-        listenSessionSignificant = false
-        listenTickElapsedMs = android.os.SystemClock.elapsedRealtime()
-        listenSessionPersistedMs = 0L
-        val startedAt = listenSessionStartedAt
-        viewModelScope.launch(Dispatchers.IO) { scrobbling.nowPlaying(track, startedAt) }
-    }
-
     fun beginLastFmAuthorization(apiKey: String, sharedSecret: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val url = lastFmAuthorizationLock.withLock {
@@ -13549,54 +11850,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private data class ListenSession(
-        val track: Track,
-        val startedAt: Long,
-        val listenedMs: Long,
-        val completed: Boolean
-    )
-
-    private fun takeListenSession(): ListenSession? {
-        val track = listenSessionTrack ?: return null
-        val session = ListenSession(track, listenSessionStartedAt, listenSessionAccumulatedMs, listenSessionCompleted)
-        listenSessionTrack = null
-        listenSessionAccumulatedMs = 0L
-        listenSessionCompleted = false
-        listenSessionSignificant = false
-        listenSessionPersistedMs = 0L
-        return session.takeIf { it.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS }
-    }
-
-    private fun flushListenSession() {
-        val session = takeListenSession() ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            scrobbling.scrobble(session.track, session.startedAt, session.listenedMs)
-            listeningPulseStore.record(session.track, session.listenedMs, session.completed, session.startedAt)
-            refreshListeningPulse()
-        }
-    }
-
-    private fun flushListenSessionBlocking() {
-        val session = takeListenSession() ?: return
-        listeningPulseStore.recordSync(session.track, session.listenedMs, session.completed, session.startedAt)
-    }
-
-    private fun maybePersistListenSession() {
-        val track = listenSessionTrack ?: return
-        val listenedMs = listenSessionAccumulatedMs
-        if (listenedMs < ListeningPulseEngine.MIN_LISTEN_MS) return
-        if (listenedMs - listenSessionPersistedMs < LISTEN_SESSION_FLUSH_INTERVAL_MS) return
-        if (listenSessionPersistJob?.isActive == true) return
-        val startedAt = listenSessionStartedAt
-        listenSessionPersistJob = viewModelScope.launch(Dispatchers.IO) {
-            scrobbling.scrobble(track, startedAt, listenedMs)
-            listeningPulseStore.record(track, listenedMs, completed = false, startedAt = startedAt)
-            if (listenSessionStartedAt == startedAt && listenSessionTrack?.id == track.id) {
-                listenSessionPersistedMs = maxOf(listenSessionPersistedMs, listenedMs)
-            }
-            refreshListeningPulse()
-        }
-    }
+    private fun flushListenSession() = listeningSession.flushListenSession()
 
     private fun refreshListeningPulse(force: Boolean = false) {
         if (listeningPulseRefreshJob?.isActive == true) return
@@ -13620,15 +11874,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playlistTracks = signalSnapshot.playlists.flatMap { it.tracks },
                 followedArtists = signalSnapshot.followedArtists.map { it.name }
             )
-            listeningSignals = signals
-            smartOrbitMutex.withLock { smartOrbitPool = smartOrbitStore.load() }
+            personalOrbit.listeningSignals = signals
+            personalOrbit.reloadPool()
             withContext(Dispatchers.Main) { refreshSmartOrbit() }
             _state.update { current ->
                 val updated = current.copy(
                     listeningPulse = pulse,
                     recentListens = recent,
                     mostPlayedTracks = mostPlayed,
-                    personalOrbitTracks = rankSmartOrbit(current.personalOrbitTracks, current.recommendationFeedback)
+                    personalOrbitTracks = personalOrbit.rankSmartOrbit(current.personalOrbitTracks, current.recommendationFeedback)
                 )
                 val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
                 val rankedAlbums = rankAlbumRecommendations(
@@ -13752,17 +12006,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val OFFICIAL_METADATA_SEARCH_BACKLOG = OFFICIAL_METADATA_MAX_BATCH_SIZE * 4
         private const val FRESH_APPLE_ARTWORK_LIMIT = 21
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
-        const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
         const val PULSE_REFRESH_THROTTLE_MS = 5_000L
         val WIDGET_DEFAULT_ACCENT = 0xFF6EE7FF.toInt()
-        const val MIX_RADIO_LIMIT = 25
-        const val MIX_SEARCH_LIMIT = 40
-        const val MIX_HISTORY_DAYS = 180
         const val MIX_LAB_PLAYLIST_TAG = "Mix Lab"
-        const val MIX_SURPRISE_ANCHORS = 3
-        const val MIX_UNAVAILABLE_MARKER = "levyra_mix_unavailable"
-        const val JAM_TRACK_SOURCE = "jam"
-        const val JAM_DISPLAY_NAME_MAX_LENGTH = 32
         const val LIVE_RADIO_RECOVERY_STABLE_MS = 10_000L
         const val LIVE_RADIO_MAX_SESSION_RECOVERIES = 8
         const val LIVE_RADIO_SIBLING_LOOKUP_TIMEOUT_MS = 6_000L
@@ -13776,15 +12022,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.isSectionLoopActive = false
         musicRecognition.release()
         networkTestJob?.cancel()
-        jamStateJob?.cancel()
-        if (jamControllerDelegate.isInitialized()) jamController.close()
+        jamSession.release()
         if (playlistImportEngineDelegate.isInitialized()) playlistImportEngine.detach(playlistImportHost)
         _state.value.currentTrack?.takeUnless { exitingApplication || it.isLiveRadio() }?.let {
             preferences.saveLastPlayback(it, player.positionMs)
         }
         audioSettingsPersistJob?.cancel()
         audioSettingsPersistence.flush()
-        flushListenSessionBlocking()
+        listeningSession.flushListenSessionBlocking()
         playJob?.cancel()
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
@@ -13804,7 +12049,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sponsorJob?.cancel()
         artistProfiles.cancelRequests()
         radarJob?.cancel()
-        radioJob?.cancel()
+        radio.cancelRadioJob()
         if (!exitingApplication) queueEngine.updatePosition(player.positionMs)
         player.release()
         playlistLibrary.cancelReplacementSearch()
@@ -13822,24 +12067,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         videoMetadataJob?.cancel()
         motionArtwork.close()
         if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
-        levyraMixJob?.cancel()
-        listeningDnaJob?.cancel()
+        radio.cancelLevyraMix()
+        listeningSession.cancelListeningDna()
         super.onCleared()
     }
 
-    private var levyraMixJob: Job? = null
-    private var listeningDnaJob: Job? = null
 
-    fun setMixFamiliarity(value: Float) {
-        val clamped = value.coerceIn(0f, 1f)
-        if (_state.value.mixFamiliarity == clamped) return
-        _state.update { it.copy(mixFamiliarity = clamped) }
-    }
+    fun setMixFamiliarity(value: Float) = radio.setMixFamiliarity(value)
 
-    fun clearMixMessage() {
-        if (_state.value.mixMessage == null) return
-        _state.update { it.copy(mixMessage = null) }
-    }
+    fun clearMixMessage() = radio.clearMixMessage()
 
     fun surpriseMe() {
         startLevyraMix(LevyraMixKind.SurpriseMe)
@@ -13854,56 +12090,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         seedTrack: Track? = null,
         seedQuery: String = "",
         label: String = ""
-    ) {
-        levyraMixJob?.cancel()
-        levyraMixJob = viewModelScope.launch {
-            _state.update { it.copy(mixLoading = true, mixMessage = null) }
-            try {
-                val snapshot = _state.value
-                val seed = seedTrack
-                    ?: snapshot.currentTrack
-                    ?: snapshot.recentListens.firstOrNull()
-                    ?: snapshot.mostPlayedTracks.firstOrNull()
-                val pool = snapshot.artistExclusions.filterTracks(
-                    collectMixPool(kind, seed, seedQuery, snapshot)
-                )
-                if (pool.isEmpty()) {
-                    _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
-                    return@launch
-                }
-                val listens = listeningPulseStore.eventsWindow(MIX_HISTORY_DAYS)
-                val avoidRecent = kind == LevyraMixKind.SurpriseMe || kind == LevyraMixKind.Rediscover
-                val ranked = withContext(Dispatchers.Default) {
-                    val candidates = buildMixCandidates(pool, listens, System.currentTimeMillis())
-                    LevyraMixRanker
-                        .rank(candidates, snapshot.mixFamiliarity, excludeRecent = avoidRecent)
-                        .ifEmpty { LevyraMixRanker.rank(candidates, snapshot.mixFamiliarity) }
-                }
-                if (ranked.isEmpty()) {
-                    _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
-                    return@launch
-                }
-                _state.update {
-                    it.copy(
-                        mixLoading = false,
-                        activeMix = LevyraMixSummary(
-                            kind = kind,
-                            label = label,
-                            seedTrackId = seed?.id.orEmpty(),
-                            trackCount = ranked.size
-                        )
-                    )
-                }
-                playFrom(ranked, ranked.first(), loopOnCompletion = true)
-            } catch (cancelled: CancellationException) {
-                _state.update { it.copy(mixLoading = false) }
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Levyra mix build failed")
-                _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
-            }
-        }
-    }
+    ) = radio.startLevyraMix(kind, seedTrack, seedQuery, label)
 
     fun saveDiscoveryAsPlaylist(name: String, tracks: List<Track>) {
         val cleanName = name.trim()
@@ -13921,301 +12108,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun playListeningDnaTrack(entry: PulseTrack) {
-        val snapshot = _state.value
-        val local = (snapshot.recentListens + snapshot.mostPlayedTracks).firstOrNull { candidate ->
-            candidate.id.isNotBlank() && candidate.id == entry.trackId
-        }
-        if (local != null) {
-            playFrom(listOf(local), local)
-            return
-        }
-        viewModelScope.launch {
-            val resolved = try {
-                repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Listening DNA track resolve failed")
-                null
-            } ?: return@launch
-            playFrom(listOf(resolved), resolved)
-        }
-    }
-    fun openListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod) {
-        _state.update { it.copy(showListeningRecap = true, listeningRecapPeriod = period) }
-        refreshListeningRecap(period)
-    }
+    fun playListeningDnaTrack(entry: PulseTrack) = listeningSession.playListeningDnaTrack(entry)
 
-    fun openListeningInsights() {
-        _state.update { it.copy(showListeningInsights = true) }
-    }
+    fun openListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod) =
+        listeningSession.openListeningRecap(period)
 
-    fun closeListeningInsights() {
-        if (!_state.value.showListeningInsights) return
-        _state.update { it.copy(showListeningInsights = false) }
-    }
+    fun openListeningInsights() = listeningSession.openListeningInsights()
 
-    fun playListeningInsightsTrack(entry: ListeningInsightsTrack) {
-        playListeningRecapTrack(
-            TopTrackStat(
-                rank = 0,
-                trackId = entry.trackId,
-                title = entry.title,
-                artist = entry.artist,
-                album = entry.album,
-                thumbnailUrl = entry.artworkUrl,
-                plays = entry.plays,
-                listenedMs = entry.listenedMs
-            )
-        )
-    }
+    fun closeListeningInsights() = listeningSession.closeListeningInsights()
 
-    fun closeListeningRecap() {
-        if (!_state.value.showListeningRecap) return
-        _state.update { it.copy(showListeningRecap = false) }
-    }
+    fun playListeningInsightsTrack(entry: ListeningInsightsTrack) = listeningSession.playListeningInsightsTrack(entry)
 
-    fun selectListeningRecapPeriod(period: ListeningRecapPeriod) {
-        if (_state.value.listeningRecapPeriod == period && _state.value.listeningRecap.hasSignal) return
-        val cached = listeningRecapRepository.peekCached(period)
-        _state.update { current ->
-            current.copy(
-                listeningRecapPeriod = period,
-                listeningRecap = cached ?: ListeningRecapSummary(period = period),
-                listeningRecapLoading = cached == null
-            )
-        }
-        refreshListeningRecap(period)
-    }
+    fun closeListeningRecap() = listeningSession.closeListeningRecap()
 
-    fun refreshListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod, force: Boolean = false) {
-        listeningRecapJob?.cancel()
-        listeningRecapJob = viewModelScope.launch {
-            _state.update { it.copy(listeningRecapLoading = true) }
-            try {
-                val rawRecap = listeningRecapRepository.getRecap(period, force = force)
-                val recap = enrichListeningRecapArtists(rawRecap)
-                _state.update { current ->
-                    if (current.listeningRecapPeriod != period) {
-                        current.copy(listeningRecapLoading = false)
-                    } else {
-                        current.copy(listeningRecap = recap, listeningRecapLoading = false)
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Listening recap load failed")
-                _state.update { it.copy(listeningRecapLoading = false) }
-            }
-        }
-    }
+    fun selectListeningRecapPeriod(period: ListeningRecapPeriod) = listeningSession.selectListeningRecapPeriod(period)
 
-    private suspend fun enrichListeningRecapArtists(recap: ListeningRecapSummary): ListeningRecapSummary {
-        if (recap.topArtists.isEmpty()) return recap
-        val enriched = coroutineScope {
-            recap.topArtists.map { artist ->
-                async(Dispatchers.IO) { resolveRecapArtist(artist) }
-            }.awaitAll()
-        }
-        return recap.copy(topArtists = enriched)
-    }
+    fun refreshListeningRecap(period: ListeningRecapPeriod = _state.value.listeningRecapPeriod, force: Boolean = false) =
+        listeningSession.refreshListeningRecap(period, force)
 
-    private suspend fun resolveRecapArtist(artist: TopArtistStat): TopArtistStat {
-        val lookupName = artist.lookupName.ifBlank { artist.name }
-        return try {
-            val hit = if (artist.browseId.isNotBlank()) {
-                artistRepository.artistHit(artist.browseId, lookupName)
-            } else {
-                artistRepository.artistHitFor(artist.name)
-            }
-            if (hit == null || hit.thumbnailUrl.isBlank()) {
-                artist
-            } else {
-                artist.copy(
-                    name = hit.name.ifBlank { artist.name },
-                    browseId = hit.browseId.ifBlank { artist.browseId },
-                    thumbnailUrl = hit.thumbnailUrl
-                )
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            Timber.w(error, "Listening recap artist artwork resolve failed for ${artist.name}")
-            artist
-        }
-    }
+    fun playListeningRecapTrack(entry: TopTrackStat) = listeningSession.playListeningRecapTrack(entry)
 
-    fun playListeningRecapTrack(entry: TopTrackStat) {
-        val snapshot = _state.value
-        val inMemoryCandidate = listOf(
-            snapshot.recentListens,
-            snapshot.mostPlayedTracks,
-            snapshot.favorites,
-            snapshot.tracks,
-            snapshot.queue,
-            snapshot.recentSearches,
-            snapshot.forgottenFavorites,
-            snapshot.personalOrbitTracks,
-            snapshot.quickPickSeeds,
-            snapshot.charts,
-            snapshot.exploreTracks,
-            snapshot.exploreFreshTracks
-        ).asSequence().flatten().firstOrNull { candidate ->
-            candidate.id.isNotBlank() && candidate.id == entry.trackId
-        }
-        if (inMemoryCandidate != null) {
-            playFrom(listOf(inMemoryCandidate), inMemoryCandidate)
-            return
-        }
-        val downloaded = snapshot.downloads.firstOrNull { it.trackId == entry.trackId }
-        if (downloaded != null) {
-            playDownloaded(downloaded)
-            return
-        }
-        viewModelScope.launch {
-            if (entry.trackId.isNotBlank()) {
-                val dbTrack = try {
-                    withContext(Dispatchers.IO) {
-                        database.listenEventsDao()
-                            .findLatestByTrackId(entry.trackId)
-                            ?.toTrack()
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    Timber.w(error, "Listening recap DB lookup failed")
-                    null
-                }
-                if (dbTrack != null) {
-                    playFrom(listOf(dbTrack), dbTrack)
-                    return@launch
-                }
-            }
-            val resolved = try {
-                repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Listening recap track resolve failed")
-                null
-            }
-            if (resolved != null) {
-                playFrom(listOf(resolved), resolved)
-            }
-        }
-    }
+    fun openYourSound() = listeningSession.openYourSound()
 
-    fun openYourSound() {
-        _state.update { it.copy(showYourSound = true) }
-        refreshListeningDna(_state.value.listeningDnaPeriod)
-    }
+    fun closeYourSound() = listeningSession.closeYourSound()
 
-    fun closeYourSound() {
-        if (!_state.value.showYourSound) return
-        _state.update { it.copy(showYourSound = false) }
-    }
-
-    fun selectListeningDnaPeriod(period: ListeningDnaPeriod) {
-        if (_state.value.listeningDnaPeriod == period && _state.value.listeningDna.hasSignal) return
-        _state.update { it.copy(listeningDnaPeriod = period) }
-        refreshListeningDna(period)
-    }
-
-    private fun refreshListeningDna(period: ListeningDnaPeriod) {
-        listeningDnaJob?.cancel()
-        listeningDnaJob = viewModelScope.launch {
-            _state.update { it.copy(listeningDnaLoading = true) }
-            try {
-                val events = listeningPulseStore.eventsWindow()
-                val zoneOffsetMs = TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
-                val lifetime = if (period == ListeningDnaPeriod.AllTime) {
-                    listeningPulseStore.lifetime()
-                } else {
-                    null
-                }
-                val dna = withContext(Dispatchers.Default) {
-                    if (lifetime != null) {
-                        ListeningDnaEngine.buildAllTime(lifetime, events, zoneOffsetMs = zoneOffsetMs)
-                    } else {
-                        ListeningDnaEngine.build(events, period, zoneOffsetMs = zoneOffsetMs)
-                    }
-                }
-                _state.update { current ->
-                    if (current.listeningDnaPeriod != period) {
-                        current.copy(listeningDnaLoading = false)
-                    } else {
-                        current.copy(listeningDna = dna, listeningDnaLoading = false)
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Listening DNA build failed")
-                _state.update { it.copy(listeningDnaLoading = false) }
-            }
-        }
-    }
-
-    private suspend fun collectMixPool(
-        kind: LevyraMixKind,
-        seed: Track?,
-        seedQuery: String,
-        snapshot: LevyraUiState
-    ): List<Track> {
-        val languageCode = snapshot.languageCode
-        return when (kind) {
-            LevyraMixKind.SimilarTrack, LevyraMixKind.Personalized ->
-                seed?.let { repository.radio(it, languageCode, MIX_RADIO_LIMIT) }.orEmpty()
-
-            LevyraMixKind.SimilarArtist -> {
-                val artist = seedQuery.trim().ifEmpty { seed?.artist.orEmpty() }.trim()
-                if (artist.isEmpty()) {
-                    emptyList()
-                } else {
-                    val fromRadio = seed?.let { repository.radio(it, languageCode, MIX_RADIO_LIMIT) }.orEmpty()
-                    fromRadio + repository.search(artist, MIX_SEARCH_LIMIT, languageCode)
-                }
-            }
-
-            LevyraMixKind.Genre -> {
-                val query = seedQuery.trim()
-                if (query.isEmpty()) {
-                    emptyList()
-                } else {
-                    repository.search(query, MIX_SEARCH_LIMIT, languageCode)
-                }
-            }
-
-            LevyraMixKind.Rediscover -> {
-                val recentKeys = snapshot.recentListens.mapTo(HashSet()) { mixTrackKey(it) }
-                listeningPulseStore.mostPlayedTracks(days = MIX_HISTORY_DAYS, limit = MIX_SEARCH_LIMIT)
-                    .filterNot { mixTrackKey(it) in recentKeys }
-            }
-
-            LevyraMixKind.CurrentRotation ->
-                snapshot.mostPlayedTracks + snapshot.recentListens
-
-            LevyraMixKind.SurpriseMe -> {
-                val anchors = (snapshot.mostPlayedTracks + snapshot.recentListens)
-                    .distinctBy { mixTrackKey(it) }
-                    .take(MIX_SURPRISE_ANCHORS)
-                val radio = ArrayList<Track>(MIX_RADIO_LIMIT * MIX_SURPRISE_ANCHORS)
-                for (anchor in anchors) {
-                    radio.addAll(repository.radio(anchor, languageCode, MIX_RADIO_LIMIT))
-                }
-                radio + snapshot.exploreFreshTracks + snapshot.homeResonanceTracks
-            }
-        }
-    }
+    fun selectListeningDnaPeriod(period: ListeningDnaPeriod) = listeningSession.selectListeningDnaPeriod(period)
 }
 
 
 private const val LOCAL_LIBRARY_SEARCH_CANDIDATE_LIMIT = 4_000
 private const val MAX_UNAVAILABLE_LOCAL_SKIPS = 8
 private const val COLLECTION_SKIP_WINDOW_MS = 60_000L
-
-
-private const val ONBOARDING_DISCOVERY_SEED_ARTISTS = 4
-private const val CHART_DISCOVERY_SEEDS = 8
