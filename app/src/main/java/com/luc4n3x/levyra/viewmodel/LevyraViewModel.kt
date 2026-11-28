@@ -411,6 +411,7 @@ import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
 import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
+import com.luc4n3x.levyra.data.locallibrary.downloadArtworkModel
 import com.luc4n3x.levyra.data.locallibrary.isPreferredLocalSubstitute
 import com.luc4n3x.levyra.data.locallibrary.rejectPreferredLocalStream
 import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
@@ -13515,7 +13516,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             durationMs = download.durationMs,
             streamUrl = download.uri,
             videoUrl = "",
-            thumbnailUrl = "",
+            thumbnailUrl = downloadArtworkModel(download.uri, download.artworkUrl),
             largeThumbnailUrl = "",
             source = "Offline",
             moodTags = emptySet(),
